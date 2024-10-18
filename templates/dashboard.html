@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center">{{ account.name }}</h1>
+    <p><strong>URL Path:</strong> {{ account.url }}</p>
+    <p><strong>Last Updated:</strong> {{ account.updated_at }}</p>
+
+    <form action="/update/{{ account.id }}" method="POST" class="mt-4">
+        <div class="form-group">
+            <label for="bucket_name">S3 Bucket Name:</label>
+            <input type="text" id="bucket_name" name="bucket_name" class="form-control"
+                value="{{ settings.bucket_name }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="dt_rule">Datetime Rule:</label>
+            <select id="dt_rule" name="dt_rule" class="form-control">
+                <option value="seconds" {% if settings.dt_rule=='seconds' %}selected{% endif %}>Seconds (YYYYMMDDHHMMSS)
+                </option>
+                <option value="hours" {% if settings.dt_rule=='hours' %}selected{% endif %}>Hours (YYYYMMDDHH)</option>
+                <option value="days" {% if settings.dt_rule=='days' %}selected{% endif %}>Days (YYYYMMDD)</option>
+                <option value="weeks" {% if settings.dt_rule=='weeks' %}selected{% endif %}>Weeks (YYYYWW)</option>
+                <option value="months" {% if settings.dt_rule=='months' %}selected{% endif %}>Months (YYYYMM)</option>
+                <option value="years" {% if settings.dt_rule=='years' %}selected{% endif %}>Years (YYYY)</option>
+                <option value="never" {% if settings.dt_rule=='never' %}selected{% endif %}>Never</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="max_file_size">Max File Size (bytes):</label>
+            <input type="number" id="max_file_size" name="max_file_size" class="form-control"
+                value="{{ settings.max_file_size }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="use_cloud">Use/Upload to Cloud:</label>
+            <select id="use_cloud" name="use_cloud" class="form-control">
+                <option value="true" {% if settings.use_cloud %}selected{% endif %}>True</option>
+                <option value="false" {% if not settings.use_cloud %}selected{% endif %}>False</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="delete_scans">Delete Scans:</label>
+            <select id="delete_scans" name="delete_scans" class="form-control">
+                <option value="true" {% if settings.delete_scans %}selected{% endif %}>True</option>
+                <option value="false" {% if not settings.delete_scans %}selected{% endif %}>False</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="delete_scans_days_old">Delete Scans Older Than (days):</label>
+            <input type="number" id="delete_scans_days_old" name="delete_scans_days_old" class="form-control"
+                value="{{ settings.delete_scans_days_old }}">
+        </div>
+
+        <div class="form-group">
+            <label for="delete_scans_percent_remaining">Delete Scans Percent Remaining:</label>
+            <input type="number" id="delete_scans_percent_remaining" name="delete_scans_percent_remaining"
+                class="form-control" value="{{ settings.delete_scans_percent_remaining }}">
+        </div>
+
+        <div class="form-group">
+            <label for="device_name_includes">Device Filter by Name:</label>
+            <input type="text" id="device_name_includes" name="device_name_includes" class="form-control"
+                value="{{ settings.device_name_includes }}">
+        </div>
+
+        <div class="form-group">
+            <label for="id_file_starts_with">Override MAC with ID File (Starts With):</label>
+            <input type="text" id="id_file_starts_with" name="id_file_starts_with" class="form-control"
+                value="{{ settings.id_file_starts_with }}">
+        </div>
+
+        <div class="text-center">
+            <button type="submit" class="btn btn-success mt-3 mr-2">Update Settings</button>
+            <form action="/delete/{{ account.id }}" method="POST" class="d-inline"
+                onsubmit="return confirm('Are you sure you want to delete this account?');">
+                <button type="submit" class="btn btn-danger mt-3">Delete Account</button>
+            </form>
+        </div>
+    </form>
+</div>
+{% endblock %}
