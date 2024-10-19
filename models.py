@@ -20,7 +20,8 @@ class Account(db.Model):
 class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    s3_api_key = db.Column(db.String(200), nullable=True)
+    aws_access_key_id = db.Column(db.String(200), nullable=True)
+    aws_secret_access_key = db.Column(db.String(200), nullable=True)
     bucket_name = db.Column(db.String(200), nullable=True)
     dt_rule = db.Column(db.String(50), nullable=False)
     max_file_size = db.Column(db.Integer, nullable=False)
@@ -37,8 +38,6 @@ class Setting(db.Model):
 
     def to_dict(self):
         return {
-            'account_id': self.account_id,
-            's3_api_key': self.s3_api_key,
             'bucket_name': self.bucket_name,
             'dt_rule': self.dt_rule,
             'max_file_size': self.max_file_size,

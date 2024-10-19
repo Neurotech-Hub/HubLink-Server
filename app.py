@@ -4,6 +4,7 @@ import os
 import logging
 import random
 import string
+import boto3
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -31,7 +32,8 @@ def generate_random_string(length=24):
 def create_default_settings(account_id):
     try:
         new_setting = Setting(
-            s3_api_key='',
+            aws_access_key_id='',
+            aws_secret_access_key='',
             account_id=account_id,
             bucket_name='',
             dt_rule='days',
@@ -50,6 +52,54 @@ def create_default_settings(account_id):
     except Exception as e:
         logging.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
         db.session.rollback()
+
+def get_recent_files(bucket_name, aws_access_key_id, aws_secret_access_key, retries=3):
+    try:
+        # Create S3 client using the access key provided by the user
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')  # Default to 'us-east-1' if not set
+        )
+    except Exception as e:
+        logging.error(f"Failed to create S3 client: {e}")
+        return []
+
+    for attempt in range(retries):
+        try:
+            response = s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=30, Prefix='')
+            files = []
+            if 'Contents' in response:
+                for obj in response['Contents']:
+                    pre_signed_url = s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={'Bucket': bucket_name, 'Key': obj['Key']},
+                        ExpiresIn=3600  # URL valid for 1 hour
+                    )
+                    files.append({
+                        'name': obj['Key'],
+                        'url': pre_signed_url,
+                        'size': obj['Size'],
+                        'updated_at': obj['LastModified'].isoformat()
+                    })
+            return files
+        except s3_client.exceptions.NoSuchBucket:
+            logging.error(f"Bucket '{bucket_name}' does not exist.")
+            return []
+        except s3_client.exceptions.ClientError as e:
+            error_code = e.response['Error']['Code']
+            logging.error(f"Client error ({error_code}) accessing S3 bucket: {e}")
+            if error_code == 'AccessDenied':
+                logging.error("Access to the bucket was denied.")
+                return []
+        except Exception as e:
+            logging.error(f"Attempt {attempt + 1} failed accessing S3 bucket: {e}")
+            if attempt < retries - 1:
+                logging.debug("Retrying...")
+            else:
+                return []
+    return []
 
 # Route to display the form and list all accounts
 @app.route('/')
@@ -90,30 +140,30 @@ def submit():
 
 # Route to view the account dashboard by its unique URL
 @app.route('/dashboard/<account_url>', methods=['GET'])
+@app.route('/dashboard/<account_url>', methods=['GET'])
 def account_dashboard(account_url):
     try:
-        if account_url.endswith('.json'):
-            account_url = account_url.replace('.json', '')
-            account = Account.query.filter_by(url=account_url).first_or_404()
-            setting = Setting.query.filter_by(account_id=account.id).first()
-            if setting:
-                return jsonify(setting.to_dict())
-            else:
-                return jsonify({'error': 'Settings not found'}), 404
-        else:
-            account = Account.query.filter_by(url=account_url).first_or_404()
-            settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-            return render_template('dashboard.html', account=account, settings=settings)
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Fetch recent files using the user's S3 API key
+        aws_access_key_id = settings.aws_access_key_id
+        aws_secret_access_key = settings.aws_secret_access_key
+        recent_files = get_recent_files(settings.bucket_name, aws_access_key_id, aws_secret_access_key) if settings.bucket_name else []
+        
+        return render_template('dashboard.html', account=account, settings=settings, recent_files=recent_files)
     except Exception as e:
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard.", 500
+
 
 # Route to update settings for an account
 @app.route('/update/<int:account_id>', methods=['POST'])
 def update_settings(account_id):
     settings = Setting.query.filter_by(account_id=account_id).first_or_404()
     try:
-        settings.s3_api_key = request.form['s3_api_key']
+        settings.aws_access_key_id = request.form['aws_access_key_id']
+        settings.aws_secret_access_key = request.form['aws_secret_access_key']
         settings.bucket_name = request.form['bucket_name']
         settings.dt_rule = request.form['dt_rule']
         settings.max_file_size = int(request.form['max_file_size'])

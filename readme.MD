@@ -4,6 +4,9 @@ source venv/bin/activate
 pip install flask
 pip3 install Flask-SQLAlchemy
 pip install Flask-Migrate
+pip install boto3
+pip install awscli
+
 
 rm instance/accounts.db
 
