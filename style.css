@@ -1,0 +1,58 @@
+/* Custom styles to improve the look of the dashboard */
+
+/* Add background color and shadow to the main container */
+.container {
+    background-color: #f8f9fa;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Style form inputs to make them stand out */
+.form-control {
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+    padding: 10px;
+}
+
+/* Add a bit of spacing between form groups */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+/* Style headings for a better visual hierarchy */
+h1 {
+    font-weight: bold;
+    color: #343a40;
+}
+
+/* Style buttons for a more modern look */
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    padding: 10px 20px;
+    font-size: 1.1rem;
+}
+
+/* Add hover effect to buttons for better user feedback */
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* Center-aligning all text within the card container */
+.card {
+    text-align: center;
+}
