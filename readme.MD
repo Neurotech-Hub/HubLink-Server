@@ -7,6 +7,7 @@ pip install Flask-Migrate
 pip install boto3
 pip install awscli
 
+pip install -r requirements.txt
 
 rm instance/accounts.db
 

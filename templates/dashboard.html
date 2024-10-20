@@ -12,7 +12,7 @@
         </li>
         <li class="nav-item">
             <a class="nav-link {% if request.args.get('tab') == 'data' %}active{% endif %}" id="data-tab"
-                data-toggle="tab" href="#data" role="tab" aria-controls="data" aria-selected="false">Data</a>
+                data-toggle="tab" href="#data" role="tab" aria-controls="data" aria-selected="false">Recent Data</a>
         </li>
     </ul>
 
@@ -60,13 +60,13 @@
 
                 <div class="form-group">
                     <label for="bucket_name">S3 Bucket Name:</label>
-                    <input type="text" id="bucket_name" name="bucket_name" class="form-control"
+                    <input type="text" id="bucket_name" name="bucket_name" class="form-control border-secondary"
                         value="{{ settings.bucket_name }}">
                 </div>
 
                 <div class="form-group">
                     <label for="dt_rule">Datetime Rule:</label>
-                    <select id="dt_rule" name="dt_rule" class="form-control border border-secondary">
+                    <select id="dt_rule" name="dt_rule" class="form-control border">
                         <option value="seconds" {% if settings.dt_rule=='seconds' %}selected{% endif %}>Seconds
                             (YYYYMMDDHHMMSS)</option>
                         <option value="hours" {% if settings.dt_rule=='hours' %}selected{% endif %}>Hours (YYYYMMDDHH)
@@ -148,7 +148,6 @@
 
         <div class="tab-pane fade {% if request.args.get('tab') == 'data' %}show active{% endif %}" id="data"
             role="tabpanel" aria-labelledby="data-tab">
-            <h3>Recent Data</h3>
             {% if recent_files %}
             <table class="table table-striped">
                 <thead>
