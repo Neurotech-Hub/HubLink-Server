@@ -141,22 +141,29 @@ def submit():
 
 # Route to view the account dashboard by its unique URL
 @app.route('/dashboard/<account_url>', methods=['GET'])
-@app.route('/dashboard/<account_url>', methods=['GET'])
 def account_dashboard(account_url):
     try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        
-        # Fetch recent files using the user's S3 API key
-        aws_access_key_id = settings.aws_access_key_id
-        aws_secret_access_key = settings.aws_secret_access_key
-        recent_files = get_recent_files(settings.bucket_name, aws_access_key_id, aws_secret_access_key) if settings.bucket_name else []
-        
-        return render_template('dashboard.html', account=account, settings=settings, recent_files=recent_files)
+        if account_url.endswith('.json'):
+            account_url = account_url.replace('.json', '')
+            account = Account.query.filter_by(url=account_url).first_or_404()
+            setting = Setting.query.filter_by(account_id=account.id).first()
+            if setting:
+                return jsonify(setting.to_dict())
+            else:
+                return jsonify({'error': 'Settings not found'}), 404
+        else:
+            account = Account.query.filter_by(url=account_url).first_or_404()
+            settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+            
+            # Fetch recent files using the user's S3 API key
+            aws_access_key_id = settings.aws_access_key_id
+            aws_secret_access_key = settings.aws_secret_access_key
+            recent_files = get_recent_files(settings.bucket_name, aws_access_key_id, aws_secret_access_key) if settings.bucket_name else []
+            
+            return render_template('dashboard.html', account=account, settings=settings, recent_files=recent_files)
     except Exception as e:
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard.", 500
-
 
 # Route to update settings for an account
 @app.route('/update/<int:account_id>', methods=['POST'])
