@@ -38,6 +38,8 @@ class Setting(db.Model):
 
     def to_dict(self):
         return {
+            'aws_access_key_id': self.aws_access_key_id,
+            'aws_secret_access_key': self.aws_secret_access_key,
             'bucket_name': self.bucket_name,
             'dt_rule': self.dt_rule,
             'max_file_size': self.max_file_size,
