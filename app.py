@@ -1,4 +1,4 @@
-from flask import Flask, redirect, render_template, jsonify, request, url_for
+from flask import Flask, redirect, render_template, jsonify, request, url_for, flash
 from models import db, Account, Setting
 import os
 import logging
@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
+app.config['SECRET_KEY'] = os.urandom(24)
 
 # Ensure the instance folder exists
 if not os.path.exists(app.instance_path):
@@ -176,10 +177,12 @@ def update_settings(account_id):
         settings.alert_email = request.form['alert_email']
 
         db.session.commit()
+        flash("Settings updated successfully.", "success")
         logging.debug(f"Settings updated for account ID {account_id}")
         return redirect(url_for('account_dashboard', account_url=Account.query.get_or_404(account_id).url))
     except Exception as e:
         db.session.rollback()
+        flash("There was an issue updating the settings.", "error")
         logging.error(f"There was an issue updating the settings: {e}")
         return "There was an issue updating the settings."
 
