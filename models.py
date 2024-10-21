@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
@@ -10,6 +10,9 @@ class Account(db.Model):
     url = db.Column(db.String(200), nullable=False, unique=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Define relationship with settings
+    settings = db.relationship('Setting', backref='account', uselist=False, cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<Account {self.name}>"
 
@@ -17,7 +20,9 @@ class Account(db.Model):
 class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    bucket_name = db.Column(db.String(200), nullable=False)
+    aws_access_key_id = db.Column(db.String(200), nullable=True)
+    aws_secret_access_key = db.Column(db.String(200), nullable=True)
+    bucket_name = db.Column(db.String(200), nullable=True)
     dt_rule = db.Column(db.String(50), nullable=False)
     max_file_size = db.Column(db.Integer, nullable=False)
     use_cloud = db.Column(db.Boolean, nullable=False)
@@ -26,6 +31,23 @@ class Setting(db.Model):
     delete_scans_percent_remaining = db.Column(db.Integer, nullable=True)
     device_name_includes = db.Column(db.String(100), nullable=True)
     id_file_starts_with = db.Column(db.String(100), nullable=True)
+    alert_email = db.Column(db.String(100), nullable=True)
 
     def __repr__(self):
         return f"<Setting for Account {self.account_id}>"
+
+    def to_dict(self):
+        return {
+            'aws_access_key_id': self.aws_access_key_id,
+            'aws_secret_access_key': self.aws_secret_access_key,
+            'bucket_name': self.bucket_name,
+            'dt_rule': self.dt_rule,
+            'max_file_size': self.max_file_size,
+            'use_cloud': self.use_cloud,
+            'delete_scans': self.delete_scans,
+            'delete_scans_days_old': self.delete_scans_days_old,
+            'delete_scans_percent_remaining': self.delete_scans_percent_remaining,
+            'device_name_includes': self.device_name_includes,
+            'id_file_starts_with': self.id_file_starts_with,
+            'alert_email': self.alert_email
+        }
