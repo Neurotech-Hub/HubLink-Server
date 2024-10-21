@@ -1,5 +1,7 @@
 from flask import Flask, redirect, render_template, jsonify, request, url_for, flash
-from models import *
+# from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from models import db, Account, Setting
 from S3Manager import *
 import os
 import logging
@@ -12,17 +14,19 @@ logging.basicConfig(level=logging.DEBUG)
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
 app.config['SECRET_KEY'] = os.urandom(24)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(app.instance_path, "accounts.db")}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Ensure the instance folder exists
 if not os.path.exists(app.instance_path):
     os.makedirs(app.instance_path)
 
-# Configure the SQLite database to be inside the instance folder
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'accounts.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Initialize the database
+# Initialize SQLAlchemy
+# db = SQLAlchemy(app)
 db.init_app(app)
+
+# Initialize Flask-Migrate
+migrate = Migrate(app, db)
 
 # Function to generate random URL strings
 def generate_random_string(length=24):
@@ -209,14 +213,6 @@ def account_dashboard(account_url):
 def page_not_found(e):
     logging.error(f"404 error: {e}")
     return render_template('404.html'), 404
-
-# Create tables explicitly before running the app
-with app.app_context():
-    try:
-        db.create_all()  # Create all tables (Account and Setting)
-        print("Database tables created successfully.")
-    except Exception as e:
-        print(f"Error creating tables: {e}")
 
 if __name__ == '__main__':
     app.run(debug=True)
