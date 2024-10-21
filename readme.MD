@@ -130,10 +130,9 @@ Using this workflow, you can effectively maintain database schema compatibility 
 python3 -m venv venv
 source venv/bin/activate
 
-pip install flask
-pip3 install Flask-SQLAlchemy
-pip install Flask-Migrate
-pip install boto3
-pip install awscli
-
 pip install -r requirements.txt
+
+### Render Config
+Disks > /var/data
+Environment > DATABASE_URL = sqlite:////var/data/accounts.db
+Settings > Pre-deploy Command: flask db upgrade
