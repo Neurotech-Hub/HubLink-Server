@@ -4,10 +4,112 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Line Chart Section: File Uploads Over Time -->
     <div class="row">
-        <div class="col-12">
-            <h1>coming soon</h1>
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">File Uploads Over Time</h5>
+                    <div style="position: relative; height:400px;">
+                        <canvas id="uploadsLineChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side by Side Section: Uploads vs Device & Alerts Table -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Uploads vs Device</h5>
+                    <div style="position: relative; height:400px;">
+                        <canvas id="uploadsBarChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Alerts <i class="fas fa-exclamation-triangle"></i></h5>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-striped alerts-table">
+                            <thead>
+                                <tr>
+                                    <th>Device</th>
+                                    <th>Message</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Placeholder Rows -->
+                                <tr>
+                                    <td>Device A</td>
+                                    <td>Error detected</td>
+                                    <td>2024-10-21 10:15:00</td>
+                                </tr>
+                                <tr>
+                                    <td>Device B</td>
+                                    <td>Warning issued</td>
+                                    <td>2024-10-21 11:30:00</td>
+                                </tr>
+                                <tr>
+                                    <td>Device C</td>
+                                    <td>Low battery</td>
+                                    <td>2024-10-21 12:00:00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Chart.js Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Line Chart: File Uploads Over Time
+    var ctxLine = document.getElementById('uploadsLineChart').getContext('2d');
+    var uploadsLineChart = new Chart(ctxLine, {
+        type: 'line',
+        data: {
+            labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+            datasets: [{
+                label: 'File Uploads',
+                data: [10, 25, 13, 40, 35, 50],
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+        }
+    });
+
+    // Bar Chart: Uploads vs Device
+    var ctxBar = document.getElementById('uploadsBarChart').getContext('2d');
+    var uploadsBarChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: ['Device A', 'Device B', 'Device C', 'Device D'],
+            datasets: [{
+                label: 'Uploads',
+                data: [15, 30, 10, 20],
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+        }
+    });
+</script>
 {% endblock %}

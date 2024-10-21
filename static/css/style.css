@@ -113,3 +113,32 @@ body {
 .border-bottom {
     border-bottom: 1px solid #e5e5e5;
 }
+
+.alerts-table {
+    font-size: 0.7em;
+}
+
+.alerts-table th,
+.alerts-table td {
+    padding: 0.3rem;
+    /* Reduce padding for compactness */
+}
+
+.alerts-table thead th {
+    background-color: #f8f9fa;
+    /* Light background color for table headers */
+    font-weight: bold;
+    text-align: left;
+}
+
+.alerts-card-title {
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+}
+
+.alerts-card-title i {
+    margin-left: 5px;
+    color: #ffcc00;
+    /* Yellow color for alert icon */
+}

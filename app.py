@@ -14,12 +14,13 @@ logging.basicConfig(level=logging.DEBUG)
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///instance/accounts.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL', 
+    f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
+)
 
-# Ensure the instance folder exists
-if not os.path.exists(app.instance_path):
-    os.makedirs(app.instance_path)
+logging.info(f"SQLALCHEMY_DATABASE_URI is set to: {app.config['SQLALCHEMY_DATABASE_URI']}")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
 db.init_app(app)
