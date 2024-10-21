@@ -1,33 +1,103 @@
-{% extends 'base.html' %}
+<!doctype html>
+<html lang="en">
 
-{% block title %}Create New Account{% endblock %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hublink</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Add Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 60vh;
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: #f8f9fa;
+        }
 
-{% block content %}
-<div class="container mt-5">
-    <div class="card">
-        <div class="card-body">
-            <h1 class="card-title text-center text-dark">Create a New Account</h1>
-            <form action="/submit" method="POST">
-                <div class="form-group">
-                    <label for="name">Account Name:</label>
-                    <input type="text" id="name" name="name" class="form-control" required>
+        h1 {
+            font-size: 5rem;
+            font-weight: 900;
+            color: #333;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #555;
+            margin-top: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            border-right: .15em solid #555;
+            animation: typing 2s steps(13, end) 1, blink .75s step-end infinite;
+        }
+
+        @keyframes typing {
+            0% {
+                width: 0;
+            }
+
+            100% {
+                width: 13ch;
+            }
+        }
+
+        @keyframes blink {
+            50% {
+                border-color: transparent;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>hublink</h1>
+    <h2 class="typing-effect" onclick="toggleAccountForm()">&gt;&gt;get newaccount</h2>
+    <div id="hidden-account-form" style="display: none;">
+        <div class="container mt-5">
+            <div class="card">
+                <div class="card-body">
+                    <form action="/new" method="POST">
+                        <div class="form-group">
+                            <input type="text" id="name" name="name" class="form-control" required>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success mt-3 shadow-sm px-4">Create Account</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="text-center">
-                    <button type="submit" class="btn btn-success mt-3 shadow-sm px-4">Create Account</button>
-                </div>
-            </form>
+            </div>
+            <div class="mt-4">
+                <h4 class="text-center text-dark">Accounts</h2>
+                    <ul class="list-group mt-3 shadow-sm">
+                        <!-- Assuming this list will be dynamically populated -->
+                        {% for account in accounts %}
+                        <li class="list-group-item text-dark">
+                            <a href="/{{ account.url }}">{{ account.name }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+            </div>
         </div>
     </div>
-    <div class="mt-4">
-        <h2 class="text-center text-dark">All Accounts</h2>
-        <ul class="list-group mt-3 shadow-sm">
-            <!-- Assuming this list will be dynamically populated -->
-            {% for account in accounts %}
-            <li class="list-group-item text-dark">
-                <a href="/dashboard/{{ account.url }}">{{ account.name }}</a>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
-</div>
-{% endblock %}
+    <script>
+        function toggleAccountForm() {
+            const form = document.getElementById('hidden-account-form');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+            } else {
+                form.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+
+</html>

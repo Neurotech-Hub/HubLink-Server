@@ -1,62 +1,115 @@
-/* Custom styles to improve the look of the dashboard */
-
-/* Add background color and shadow to the main container */
-.container {
-    background-color: #f8f9fa;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+body {
+    font-size: .875rem;
+    font-family: 'Outfit', sans-serif;
 }
 
-/* Style form inputs to make them stand out */
-.form-control {
-    border-radius: 5px;
-    border: 1px solid #ced4da;
-    padding: 10px;
+.feather {
+    width: 16px;
+    height: 16px;
+    vertical-align: text-bottom;
 }
 
-/* Add a bit of spacing between form groups */
-.form-group {
-    margin-bottom: 1.5rem;
+/*
+ * Sidebar
+ */
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 100;
+    /* Behind the navbar */
+    padding: 0;
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
 }
 
-/* Style headings for a better visual hierarchy */
-h1 {
-    font-weight: bold;
-    color: #343a40;
+.sidebar-sticky {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 48px;
+    /* Height of navbar */
+    height: calc(100vh - 48px);
+    padding-top: .5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    /* Scrollable contents if viewport is shorter than content. */
 }
 
-/* Style buttons for a more modern look */
-.btn-success {
-    background-color: #28a745;
-    border-color: #28a745;
-    padding: 10px 20px;
-    font-size: 1.1rem;
+.sidebar .nav-link {
+    font-weight: 500;
+    color: #333;
 }
 
-.btn-danger {
-    background-color: #dc3545;
-    border-color: #dc3545;
-    padding: 10px 20px;
-    font-size: 1.1rem;
+.sidebar .nav-link .feather {
+    margin-right: 4px;
+    color: #999;
 }
 
-/* Add hover effect to buttons for better user feedback */
-.btn-success:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
+.sidebar .nav-link.active {
+    color: #007bff;
 }
 
-.btn-danger:hover {
-    background-color: #c82333;
-    border-color: #bd2130;
+.sidebar .nav-link:hover .feather,
+.sidebar .nav-link.active .feather {
+    color: inherit;
 }
 
-/* Center-aligning all text within the card container */
-.card {
-    text-align: center;
+.sidebar-heading {
+    font-size: .75rem;
+    text-transform: uppercase;
 }
 
-.f-right {
-    float: right;
+/*
+ * Navbar
+ */
+
+.navbar-brand {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 900;
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.navbar-nav {
+    margin-left: auto;
+}
+
+.account-name {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500;
+    font-size: 1.25rem;
+    padding: 1rem;
+    color: #333;
+}
+
+.navbar .form-control {
+    padding: .75rem 1rem;
+    border-width: 0;
+    border-radius: 0;
+}
+
+.form-control-dark {
+    color: #fff;
+    background-color: rgba(255, 255, 255, .1);
+    border-color: rgba(255, 255, 255, .1);
+}
+
+.form-control-dark:focus {
+    border-color: transparent;
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+}
+
+/*
+ * Utilities
+ */
+
+.border-top {
+    border-top: 1px solid #e5e5e5;
+}
+
+.border-bottom {
+    border-bottom: 1px solid #e5e5e5;
 }

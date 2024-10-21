@@ -1,10 +1,10 @@
 from flask import Flask, redirect, render_template, jsonify, request, url_for, flash
-from models import db, Account, Setting
+from models import *
+from S3Manager import *
 import os
 import logging
 import random
 import string
-import boto3
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -54,55 +54,10 @@ def create_default_settings(account_id):
         logging.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
         db.session.rollback()
 
-def get_recent_files(bucket_name, aws_access_key_id, aws_secret_access_key, retries=3):
-    try:
-        # Create S3 client using the access key provided by the user
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-            region_name=os.getenv('AWS_REGION', 'us-east-1')  # Default to 'us-east-1' if not set
-        )
-    except Exception as e:
-        logging.error(f"Failed to create S3 client: {e}")
-        return []
+# Reserved keywords to avoid conflicts
+RESERVED_KEYWORDS = ['new', 'docs', 'settings', 'delete', 'data']
 
-    for attempt in range(retries):
-        try:
-            response = s3_client.list_objects_v2(Bucket=bucket_name, MaxKeys=30, Prefix='')
-            files = []
-            if 'Contents' in response:
-                for obj in response['Contents']:
-                    pre_signed_url = s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': bucket_name, 'Key': obj['Key']},
-                        ExpiresIn=3600  # URL valid for 1 hour
-                    )
-                    files.append({
-                        'name': obj['Key'],
-                        'url': pre_signed_url,
-                        'size': obj['Size'],
-                        'updated_at': obj['LastModified'].isoformat()
-                    })
-            return files
-        except s3_client.exceptions.NoSuchBucket:
-            logging.error(f"Bucket '{bucket_name}' does not exist.")
-            return []
-        except s3_client.exceptions.ClientError as e:
-            error_code = e.response['Error']['Code']
-            logging.error(f"Client error ({error_code}) accessing S3 bucket: {e}")
-            if error_code == 'AccessDenied':
-                logging.error("Access to the bucket was denied.")
-                return []
-        except Exception as e:
-            logging.error(f"Attempt {attempt + 1} failed accessing S3 bucket: {e}")
-            if attempt < retries - 1:
-                logging.debug("Retrying...")
-            else:
-                return []
-    return []
-
-# Route to display the form and list all accounts
+# Route to display the homepage
 @app.route('/')
 def index():
     try:
@@ -115,7 +70,7 @@ def index():
         return "There was an issue loading the homepage.", 500
 
 # Route to submit a new account
-@app.route('/submit', methods=['POST'])
+@app.route('/new', methods=['POST'])
 def submit():
     user_name = request.form['name']
     unique_path = generate_random_string()
@@ -139,36 +94,36 @@ def submit():
         logging.error(f"There was an issue adding your account: {e}")
         return "There was an issue adding your account."
 
-# Route to view the account dashboard by its unique URL
-@app.route('/dashboard/<account_url>', methods=['GET'])
-def account_dashboard(account_url):
+# Route to output account settings as JSON
+@app.route('/<account_url>.json', methods=['GET'])
+def account_settings_json(account_url):
     try:
-        if account_url.endswith('.json'):
-            account_url = account_url.replace('.json', '')
-            account = Account.query.filter_by(url=account_url).first_or_404()
-            setting = Setting.query.filter_by(account_id=account.id).first()
-            if setting:
-                return jsonify(setting.to_dict())
-            else:
-                return jsonify({'error': 'Settings not found'}), 404
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        setting = Setting.query.filter_by(account_id=account.id).first()
+        if setting:
+            return jsonify(setting.to_dict())
         else:
-            account = Account.query.filter_by(url=account_url).first_or_404()
-            settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-            
-            # Fetch recent files using the user's S3 API key
-            aws_access_key_id = settings.aws_access_key_id
-            aws_secret_access_key = settings.aws_secret_access_key
-            recent_files = get_recent_files(settings.bucket_name, aws_access_key_id, aws_secret_access_key) if settings.bucket_name else []
-            
-            return render_template('dashboard.html', account=account, settings=settings, recent_files=recent_files)
+            return jsonify({'error': 'Settings not found'}), 404
     except Exception as e:
-        logging.error(f"Error loading dashboard for {account_url}: {e}")
-        return "There was an issue loading the dashboard.", 500
+        logging.error(f"Error generating JSON for {account_url}: {e}")
+        return "There was an issue generating the JSON.", 500
 
-# Route to update settings for an account
-@app.route('/update/<int:account_id>', methods=['POST'])
-def update_settings(account_id):
-    settings = Setting.query.filter_by(account_id=account_id).first_or_404()
+# Route to view the settings for an account
+@app.route('/<account_url>/settings', methods=['GET'])
+def account_settings(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        return render_template('settings.html', account=account, settings=settings)
+    except Exception as e:
+        logging.error(f"Error loading settings for {account_url}: {e}")
+        return "There was an issue loading the settings page.", 500
+
+# Route to submit updated settings for an account
+@app.route('/<account_url>/settings/update', methods=['POST'])
+def update_settings(account_url):
+    account = Account.query.filter_by(url=account_url).first_or_404()
+    settings = Setting.query.filter_by(account_id=account.id).first_or_404()
     try:
         settings.aws_access_key_id = request.form['aws_access_key_id']
         settings.aws_secret_access_key = request.form['aws_secret_access_key']
@@ -185,8 +140,8 @@ def update_settings(account_id):
 
         db.session.commit()
         flash("Settings updated successfully.", "success")
-        logging.debug(f"Settings updated for account ID {account_id}")
-        return redirect(url_for('account_dashboard', account_url=Account.query.get_or_404(account_id).url))
+        logging.debug(f"Settings updated for account URL {account_url}")
+        return redirect(url_for('account_settings', account_url=account_url))
     except Exception as e:
         db.session.rollback()
         flash("There was an issue updating the settings.", "error")
@@ -194,21 +149,66 @@ def update_settings(account_id):
         return "There was an issue updating the settings."
 
 # Route to delete an account
-@app.route('/delete/<int:account_id>', methods=['POST'])
-def delete_account(account_id):
-    account_to_delete = Account.query.get_or_404(account_id)
-    settings_to_delete = Setting.query.filter_by(account_id=account_id).first()
+@app.route('/<account_url>/delete', methods=['POST'])
+def delete_account(account_url):
+    account_to_delete = Account.query.filter_by(url=account_url).first_or_404()
+    settings_to_delete = Setting.query.filter_by(account_id=account_to_delete.id).first()
     try:
         if settings_to_delete:
             db.session.delete(settings_to_delete)
         db.session.delete(account_to_delete)
         db.session.commit()
-        logging.debug(f"Account and settings deleted for account ID {account_id}")
+        logging.debug(f"Account and settings deleted for account URL {account_url}")
         return redirect(url_for('index'))
     except Exception as e:
         db.session.rollback()
         logging.error(f"There was an issue deleting the account: {e}")
         return "There was an issue deleting the account."
+
+# Route to view data for an account
+@app.route('/<account_url>/data', methods=['GET'])
+def account_data(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        if settings.bucket_name and settings.aws_access_key_id and settings.aws_secret_access_key:
+            recent_files = get_recent_files(settings.bucket_name, settings.aws_access_key_id, settings.aws_secret_access_key)
+            logging.debug(f"Recent files retrieved: {recent_files}")
+        else:
+            recent_files = []
+        return render_template('data.html', account=account, recent_files=recent_files)
+    except Exception as e:
+        logging.error(f"Error loading data for {account_url}: {e}")
+        return "There was an issue loading the data page.", 500
+
+# Route to view documentation
+@app.route('/docs', methods=['GET'])
+def docs():
+    try:
+        return render_template('docs.html')
+    except Exception as e:
+        logging.error(f"Error loading documentation: {e}")
+        return "There was an issue loading the documentation.", 500
+
+# Route to view the account dashboard by its unique URL
+@app.route('/<account_url>', methods=['GET'])
+def account_dashboard(account_url):
+    if account_url in RESERVED_KEYWORDS:
+        return page_not_found(404)
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        return render_template('dashboard.html', account=account, settings=settings, account_url=account_url)
+    except Exception as e:
+        logging.error(f"Error loading dashboard for {account_url}: {e}")
+        return "There was an issue loading the dashboard.", 500
+
+# Define error handler
+@app.errorhandler(404)
+def page_not_found(e):
+    logging.error(f"404 error: {e}")
+    return render_template('404.html'), 404
 
 # Create tables explicitly before running the app
 with app.app_context():
@@ -217,12 +217,6 @@ with app.app_context():
         print("Database tables created successfully.")
     except Exception as e:
         print(f"Error creating tables: {e}")
-
-# Define error handler
-@app.errorhandler(404)
-def page_not_found(e):
-    logging.error(f"404 error: {e}")
-    return render_template('404.html'), 404
 
 if __name__ == '__main__':
     app.run(debug=True)
