@@ -1,4 +1,4 @@
-from flask import Flask, redirect, render_template, jsonify, request, url_for, flash
+from flask import Flask, g, redirect, render_template, jsonify, request, url_for, flash
 # from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from models import db, Account, Setting
@@ -101,6 +101,7 @@ def submit():
 # Route to output account settings as JSON
 @app.route('/<account_url>.json', methods=['GET'])
 def account_settings_json(account_url):
+    g.title = "API"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         setting = Setting.query.filter_by(account_id=account.id).first()
@@ -115,6 +116,7 @@ def account_settings_json(account_url):
 # Route to view the settings for an account
 @app.route('/<account_url>/settings', methods=['GET'])
 def account_settings(account_url):
+    g.title = "Settings"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
@@ -172,6 +174,7 @@ def delete_account(account_url):
 # Route to view data for an account
 @app.route('/<account_url>/data', methods=['GET'])
 def account_data(account_url):
+    g.title = "Data"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
@@ -188,6 +191,7 @@ def account_data(account_url):
 # Route to view documentation
 @app.route('/docs', methods=['GET'])
 def docs():
+    g.title = "Docs"
     try:
         return render_template('docs.html')
     except Exception as e:
@@ -197,6 +201,7 @@ def docs():
 # Route to view the account dashboard by its unique URL
 @app.route('/<account_url>', methods=['GET'])
 def account_dashboard(account_url):
+    g.title = "Dashboard"
     if account_url in RESERVED_KEYWORDS:
         return page_not_found(404)
     try:
