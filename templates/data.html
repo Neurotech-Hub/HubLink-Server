@@ -11,16 +11,16 @@
                     <tr>
                         <th>Filename</th>
                         <th>Size</th>
-                        <th>Updated At</th>
+                        <th>Last Modified</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if recent_files and recent_files|length > 0 %}
                     {% for file in recent_files %}
                     <tr>
-                        <td><a href="{{ file.url }}" download>{{ file.name }}</a></td>
+                        <td><a href="{{ file.download_link }}" download>{{ file.key }}</a></td>
                         <td>{{ file.size | filesizeformat }}</td>
-                        <td>{{ file.updated_at }}</td>
+                        <td>{{ file.last_modified }}</td>
                     </tr>
                     {% endfor %}
                     {% else %}

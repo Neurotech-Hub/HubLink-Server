@@ -1,7 +1,7 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for, flash
 # from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from models import db, Account, Setting
+from models import db, Account, Setting, File
 from S3Manager import *
 import os
 import logging
@@ -10,6 +10,9 @@ import string
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
+# Suppress botocore and boto3 debugging logs
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('boto3').setLevel(logging.WARNING)
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
@@ -178,11 +181,11 @@ def account_data(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        if settings.bucket_name and settings.aws_access_key_id and settings.aws_secret_access_key:
-            recent_files = get_recent_files(settings.bucket_name, settings.aws_access_key_id, settings.aws_secret_access_key)
-            logging.debug(f"Recent files retrieved: {recent_files}")
-        else:
-            recent_files = []
+        update_S3_files(settings)
+        recent_files = get_latest_files(account.id)
+        # Generate download links for each file
+        for file in recent_files:
+            file.download_link = generate_download_link(settings, file.key)
         return render_template('data.html', account=account, recent_files=recent_files)
     except Exception as e:
         logging.error(f"Error loading data for {account_url}: {e}")
@@ -207,11 +210,33 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        update_S3_files(settings)
         
         return render_template('dashboard.html', account=account, settings=settings, account_url=account_url)
     except Exception as e:
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard.", 500
+
+# Route to download a file
+@app.route('/<account_url>/download/<int:file_id>', methods=['GET'])
+def download_file(account_url, file_id):
+    try:
+        # Ensure the account exists
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Ensure the file belongs to the given account
+        file = File.query.filter_by(id=file_id, account_id=account.id).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Generate a download link using the settings and file key
+        download_link = generate_download_link(settings, file.key)
+        if not download_link:
+            return "There was an issue generating the download link.", 500
+        
+        return redirect(download_link)
+    except Exception as e:
+        logging.error(f"Error downloading file {file_id} for account {account_url}: {e}")
+        return "There was an issue downloading the file.", 500
 
 # Define error handler
 @app.errorhandler(404)

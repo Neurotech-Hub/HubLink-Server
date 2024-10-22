@@ -51,3 +51,24 @@ class Setting(db.Model):
             'id_file_starts_with': self.id_file_starts_with,
             'alert_email': self.alert_email
         }
+    
+# Define the files model
+class File(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    key = db.Column(db.String(200), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    size = db.Column(db.Integer, nullable=False)
+    last_modified = db.Column(db.DateTime, nullable=False)
+
+    def __repr__(self):
+        return f"<File {self.key} for Account {self.account_id}>"
+
+    def to_dict(self):
+        return {
+            'account_id': self.account_id,
+            'key': self.key,
+            'url': self.url,
+            'size': self.size,
+            'last_modified': self.last_modified.isoformat()
+        }
