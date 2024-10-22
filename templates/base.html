@@ -51,6 +51,28 @@
                 </div>
             </nav>
 
+            <!-- Mobile Icon Navbar -->
+            <nav class="mobile-nav d-md-none">
+                <ul class="nav justify-content-around">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/{{ account.url }}" aria-label="Dashboard">
+                            <i class="fa fa-home"></i>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/{{ account.url }}/settings" aria-label="Settings">
+                            <i class="fa fa-cog"></i>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/{{ account.url }}/data" aria-label="Data">
+                            <i class="fa fa-database"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+
+
             <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
                 <div class="content mt-4">
                     {% block content %}
