@@ -210,9 +210,51 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        update_S3_files(settings)
         
-        return render_template('dashboard.html', account=account, settings=settings, account_url=account_url)
+        # Sample data retrieval for file uploads over the last month
+        today = datetime.today()
+        start_date = today - timedelta(days=30)
+        recent_files = get_latest_files(account.id)
+        
+        # Generate counts for each day in the last 30 days
+        file_uploads_over_time = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(31)]
+        uploads_count = [0] * 31
+        
+        device_uploads = {}
+        
+        for file in recent_files:
+            if start_date <= file.last_modified <= today:
+                day_index = (file.last_modified - start_date).days
+                uploads_count[day_index] += 1
+                
+                # Extract device from the file key
+                device = file.key.split('/')[0]
+                if device in device_uploads:
+                    device_uploads[device] += 1
+                else:
+                    device_uploads[device] = 1
+        
+        # Sort devices by number of uploads and take the top 10
+        sorted_devices = sorted(device_uploads.items(), key=lambda x: x[1], reverse=True)[:10]
+        devices = [device for device, count in sorted_devices]
+        device_upload_counts = [count for device, count in sorted_devices]
+
+        alerts = [
+            {"device": "Device A", "message": "Error detected", "created_at": "2024-10-21 10:15:00"},
+            {"device": "Device B", "message": "Warning issued", "created_at": "2024-10-21 11:30:00"},
+            {"device": "Device C", "message": "Low battery", "created_at": "2024-10-21 12:00:00"}
+        ]
+
+        return render_template(
+            'dashboard.html',
+            account=account,
+            settings=settings,
+            file_uploads_over_time=file_uploads_over_time,
+            uploads_count=uploads_count,
+            alerts=alerts,
+            devices=devices,
+            device_upload_counts=device_upload_counts
+        )
     except Exception as e:
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard.", 500
