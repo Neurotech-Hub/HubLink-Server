@@ -3,6 +3,16 @@ body {
     font-family: 'Outfit', sans-serif;
 }
 
+body,
+html {
+    margin: 0;
+    overflow-x: hidden;
+}
+
+main {
+    padding-bottom: 40px;
+}
+
 .feather {
     width: 16px;
     height: 16px;
@@ -166,7 +176,7 @@ body {
     /* Top border to distinguish from page */
     z-index: 1030;
     /* Ensure it's above other elements */
-    padding: 0.5rem 0;
+    padding: 0.35rem 0;
     box-shadow: 0 -1px 5px rgba(0, 0, 0, 0.1);
     /* Light shadow for better separation */
 }
@@ -179,7 +189,7 @@ body {
 .mobile-nav .nav-link {
     color: #6c757d;
     /* Use a grey color for inactive links */
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     /* Make icons big enough to tap */
     transition: color 0.2s ease-in-out;
 }
