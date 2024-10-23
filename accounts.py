@@ -63,7 +63,7 @@ def update_settings(account_url):
         if (original_access_key != settings.aws_access_key_id or
                 original_secret_key != settings.aws_secret_access_key or
                 original_bucket_name != settings.bucket_name):
-            update_S3_files(settings)  # Call update_S3_files if any of the AWS settings changed
+            update_S3_files(settings, True)  # Call update_S3_files if any of the AWS settings changed
 
         db.session.commit()
         flash("Settings updated successfully.", "success")
