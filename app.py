@@ -140,6 +140,10 @@ def force_sync():
         logging.error(f"Error during '/force_sync' endpoint: {e}")
         return jsonify({"error": "There was an issue processing the force sync request."}), 500
     
+@app.route('/favicon.ico')
+def favicon():
+    return redirect(url_for('static', filename='favicon.ico'))
+    
 # Define error handler
 @app.errorhandler(404)
 def page_not_found(e):

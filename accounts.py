@@ -3,6 +3,7 @@ from models import db, Account, Setting, File
 from datetime import datetime, timedelta
 import logging
 from S3Manager import *
+import traceback
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -109,30 +110,41 @@ def account_data(account_url):
         logging.error(f"Error loading data for {account_url}: {e}")
         return "There was an issue loading the data page.", 500
 
-# Route to check if files exist for a given account
 @accounts_bp.route('/<account_url>/files', methods=['POST'])
 def check_files(account_url):
     try:
+        # Log the incoming request
+        logging.debug(f"Received request for checking files for account: {account_url}")
+        
         # Get the account details
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
         # Get the list of filenames and sizes from the request JSON body
         request_data = request.get_json()
-        files = request_data.get('files', [])
+        logging.debug(f"Request data: {request_data}")
 
+        if not request_data or 'files' not in request_data:
+            return jsonify({"error": "Invalid input. JSON body must contain 'files'."}), 400
+        
+        files = request_data.get('files', [])
+        
         if not isinstance(files, list) or not all(isinstance(file, dict) and 'filename' in file and 'size' in file for file in files):
+            logging.error("Invalid input structure for 'files'. Must be a list of dictionaries with 'filename' and 'size'.")
             return jsonify({"error": "Invalid input. 'files' must be a list of dictionaries with 'filename' and 'size' keys."}), 400
 
         # Delegate to existing function to check file existence
         result = do_files_exist(account.id, files)
+        logging.debug(f"File existence result: {result}")
 
         # Return the results as a list of booleans
         return jsonify({"exists": result})
 
     except Exception as e:
         logging.error(f"Error in '/{account_url}/files' endpoint: {e}")
+        logging.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": "There was an issue processing your request."}), 500
+
     
 # Route to view the account dashboard by its unique URL
 @accounts_bp.route('/<account_url>', methods=['GET'])
