@@ -62,7 +62,7 @@ def create_default_settings(account_id):
         db.session.rollback()
 
 # Reserved keywords to avoid conflicts
-RESERVED_KEYWORDS = ['new', 'docs', 'settings', 'delete', 'data']
+RESERVED_KEYWORDS = ['new', 'docs', 'settings', 'delete', 'data', 'files']
 
 # Route to display the homepage
 @app.route('/')
@@ -190,6 +190,31 @@ def account_data(account_url):
     except Exception as e:
         logging.error(f"Error loading data for {account_url}: {e}")
         return "There was an issue loading the data page.", 500
+
+# Route to check if files exist for a given account
+@app.route('/<account_url>/files', methods=['POST'])
+def check_files(account_url):
+    try:
+        # Get the account details
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+
+        # Get the list of filenames from the request JSON body
+        request_data = request.get_json()
+        filenames = request_data.get('filenames', [])
+
+        if not isinstance(filenames, list):
+            return jsonify({"error": "Invalid input. 'filenames' must be a list."}), 400
+
+        # Delegate to existing function to check file existence (replace this with your existing logic)
+        result = do_files_exist(settings, filenames)  # Assuming you have a function like this
+
+        # Return the results as a list of booleans
+        return jsonify({"exists": result})
+
+    except Exception as e:
+        logging.error(f"Error in '/{account_url}/files' endpoint: {e}")
+        return jsonify({"error": "There was an issue processing your request."}), 500
 
 # Route to view documentation
 @app.route('/docs', methods=['GET'])

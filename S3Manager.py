@@ -127,3 +127,16 @@ def get_latest_files(account_id, total=30):
     except Exception as e:
         logging.error(f"Failed to retrieve latest files for account {account_id}: {e}")
         return []
+    
+def do_files_exist(account_id, filenames):
+    try:
+        # Query the File table for entries matching the given account_id and filenames
+        existing_files = File.query.filter(File.account_id == account_id, File.key.in_(filenames)).all()
+        existing_file_keys = {file.key for file in existing_files}
+
+        # Generate a list of booleans indicating if each filename exists
+        result = [filename in existing_file_keys for filename in filenames]
+        return result
+    except Exception as e:
+        logging.error(f"Error in 'check_files_in_s3' function: {e}")
+        return [False] * len(filenames)

@@ -2,37 +2,71 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>hublink</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Add Bootstrap CSS -->
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
-    <style>
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 60vh;
-            margin: 0;
-            font-family: 'Outfit', sans-serif;
-            background-color: #f8f9fa;
-        }
-
-        h1 {
-            font-size: 5rem;
-            font-weight: 900;
-            color: #333;
-        }
-    </style>
+    {% include 'head.html' %}
 </head>
 
 <body>
-    <h1>coming soon</h1>
+    {% include 'nav.html' %}
+
+    <div class="container mt-5">
+        <!-- Documentation Header -->
+        <h1 class="text-center mb-4">Hublink: A Centralized Gateway Manager & API</h1>
+
+        <!-- Image at the top of the page -->
+        <div class="text-center mb-5">
+            <img src="/static/img/hublink-docs.jpeg" alt="Hublink System Diagram" class="img-fluid">
+        </div>
+
+        <!-- Overview Section -->
+        <section class="mb-5">
+            <h2>Overview</h2>
+            <p>Hublink is a centralized cloud-based management system that allows users to easily gather, manage, and
+                view data from multiple IoT gateway devices. These gateways act as the central <strong>hub</strong>,
+                syncing data from various <strong>spoke</strong> devices (nodes) to cloud storage. This system provides
+                an efficient way to handle data from numerous animal behavior tests, such as running wheels, and
+                presents an intuitive dashboard for monitoring activity, settings, and device health.</p>
+        </section>
+
+        <!-- Features Section -->
+        <section class="mb-5">
+            <h2>Features</h2>
+            <ul>
+                <li><strong>Settings Configuration:</strong> Set AWS credentials, file size limits, and other
+                    configurations to manage cloud storage.</li>
+                <li><strong>Data Synchronization:</strong> Ensure all experiment data is backed up to a centralized
+                    cloud storage system for accessibility.</li>
+                <li><strong>Dashboard:</strong> Monitor devices, alerts, and track experiment progress in real-time.
+                </li>
+                <li><strong>REST API:</strong> Programmatically check file existence and output account settings in JSON
+                    format.</li>
+            </ul>
+        </section>
+
+        <!-- Endpoint Summary Section -->
+        <section class="mb-5">
+            <h2>Endpoint Summary</h2>
+            <p>Below is a high-level summary of the available endpoints in the Hublink system:</p>
+            <ul>
+                <li><strong>Account Dashboard:</strong> View detailed information about a specific account's activity.
+                    (<code>/&lt;account_url&gt;</code>)</li>
+                <li><strong>Account Settings:</strong> View and update settings for each account.
+                    (<code>/&lt;account_url&gt;/settings</code>)</li>
+                <li><strong>Data Management:</strong> View collected data and generate download links.
+                    (<code>/&lt;account_url&gt;/data</code>)</li>
+                <li><strong>File Existence API:</strong> Check if specific files exist in the cloud.
+                    (<code>/&lt;account_url&gt;/files</code>)</li>
+                <li><strong>Settings JSON API:</strong> Get account settings in JSON format.
+                    (<code>/&lt;account_url&gt;.json</code>)</li>
+            </ul>
+        </section>
+
+        <!-- Getting Started Section -->
+        <section class="mb-5">
+            <h2>Getting Started</h2>
+            <p>To begin using Hublink, you will need a secret account link from the <a
+                    href="https://neurotechhub.wustl.edu/">Neurotech Hub</a>.</p>
+        </section>
+    </div>
 </body>
 
 </html>
