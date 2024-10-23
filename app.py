@@ -83,6 +83,12 @@ def submit():
     user_name = request.form['name']
     unique_path = generate_random_string()
 
+    # Check if user_name contains '|', indicating a specified unique_path
+    if "|" in user_name:
+        parts = user_name.split("|", 1)
+        if len(parts) == 2:
+            user_name, unique_path = parts[0], parts[1]
+
     new_account = Account(name=user_name, url=unique_path)
 
     try:
