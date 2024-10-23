@@ -8,7 +8,8 @@
         <div class="tab-pane fade show active" id="settings" role="tabpanel" aria-labelledby="settings-tab">
             <div class="d-flex align-items-center mb-3">
                 <p class="mb-0 mr-2"><strong>Secret URL:</strong>
-                    <span id="secretUrl">{{ url_for('account_dashboard', account_url=account.url, _external=True)
+                    <span id="secretUrl">{{ url_for('accounts.account_dashboard', account_url=account.url,
+                        _external=True)
                         }}</span>
                 </p>
                 <button id="copyButton" class="btn btn-outline-secondary btn-sm ml-2" onclick="copyToClipboard()">
@@ -53,7 +54,7 @@
 
                 <div class="form-group">
                     <label for="dt_rule">Datetime Rule:</label>
-                    <select id="dt_rule" name="dt_rule" class="form-control border">
+                    <select id="dt_rule" name="dt_rule" class="form-control border-secondary">
                         <option value="seconds" {% if settings.dt_rule=='seconds' %}selected{% endif %}>Seconds
                             (YYYYMMDDHHMMSS)</option>
                         <option value="hours" {% if settings.dt_rule=='hours' %}selected{% endif %}>Hours (YYYYMMDDHH)

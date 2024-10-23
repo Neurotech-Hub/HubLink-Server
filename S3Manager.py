@@ -8,14 +8,16 @@ from sqlalchemy import update  # Assuming the File, Account, and Setting models 
 
 # Removed account.updated_at as we are now tracking updates directly in the Account model
 
-def update_S3_files(account_settings, retries=3):
+def update_S3_files(account_settings, force_update=False):
+    retries = 3
     account_id = account_settings.account_id
 
     # Check if the update has run in the past 5 minutes for this account
     account = Account.query.filter_by(id=account_id).first()
-    if account and account.updated_at and datetime.now(timezone.utc) - account.updated_at.replace(tzinfo=timezone.utc) < timedelta(minutes=5):
-        logging.info(f"Skipping update for account {account_id}, as it was already run in the last 5 minutes.")
-        return
+    if not force_update:
+        if account and account.updated_at and datetime.now(timezone.utc) - account.updated_at.replace(tzinfo=timezone.utc) < timedelta(minutes=5):
+            logging.info(f"Skipping update for account {account_id}, as it was already run in the last 5 minutes.")
+            return
 
     # Validate that required settings are not empty
     if not account_settings.aws_access_key_id or not account_settings.aws_secret_access_key or not account_settings.bucket_name:
@@ -128,15 +130,21 @@ def get_latest_files(account_id, total=30):
         logging.error(f"Failed to retrieve latest files for account {account_id}: {e}")
         return []
     
-def do_files_exist(account_id, filenames):
+def do_files_exist(account_id, files):
     try:
+        # Extract filenames from the provided list of dictionaries
+        filenames = [file['filename'] for file in files]
+        
         # Query the File table for entries matching the given account_id and filenames
         existing_files = File.query.filter(File.account_id == account_id, File.key.in_(filenames)).all()
-        existing_file_keys = {file.key for file in existing_files}
+        existing_file_dict = {file.key: file.size for file in existing_files}
 
-        # Generate a list of booleans indicating if each filename exists
-        result = [filename in existing_file_keys for filename in filenames]
+        # Generate a list of booleans indicating if each filename exists and has the same size
+        result = [
+            file['filename'] in existing_file_dict and existing_file_dict[file['filename']] == file['size']
+            for file in files
+        ]
         return result
     except Exception as e:
-        logging.error(f"Error in 'check_files_in_s3' function: {e}")
-        return [False] * len(filenames)
+        logging.error(f"Error in 'do_files_exist' function: {e}")
+        return [False] * len(files)

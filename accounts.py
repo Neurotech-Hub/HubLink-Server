@@ -1,0 +1,212 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
+from models import db, Account, Setting, File
+from datetime import datetime, timedelta
+import logging
+from S3Manager import *
+
+# Create the Blueprint for account-related routes
+accounts_bp = Blueprint('accounts', __name__)
+
+# Route to output account settings as JSON
+@accounts_bp.route('/<account_url>.json', methods=['GET'])
+def account_settings_json(account_url):
+    g.title = "API"
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        setting = Setting.query.filter_by(account_id=account.id).first()
+        if setting:
+            return jsonify(setting.to_dict())
+        else:
+            return jsonify({'error': 'Settings not found'}), 404
+    except Exception as e:
+        logging.error(f"Error generating JSON for {account_url}: {e}")
+        return "There was an issue generating the JSON.", 500
+
+# Route to view the settings for an account
+@accounts_bp.route('/<account_url>/settings', methods=['GET'])
+def account_settings(account_url):
+    g.title = "Settings"
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        return render_template('settings.html', account=account, settings=settings)
+    except Exception as e:
+        logging.error(f"Error loading settings for {account_url}: {e}")
+        return "There was an issue loading the settings page.", 500
+
+# Route to submit updated settings for an account
+@accounts_bp.route('/<account_url>/settings/update', methods=['POST'])
+def update_settings(account_url):
+    account = Account.query.filter_by(url=account_url).first_or_404()
+    settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+    try:
+        # Track original values
+        original_access_key = settings.aws_access_key_id
+        original_secret_key = settings.aws_secret_access_key
+        original_bucket_name = settings.bucket_name
+
+        # Update settings with new form data
+        settings.aws_access_key_id = request.form['aws_access_key_id']
+        settings.aws_secret_access_key = request.form['aws_secret_access_key']
+        settings.bucket_name = request.form['bucket_name']
+        settings.dt_rule = request.form['dt_rule']
+        settings.max_file_size = int(request.form['max_file_size'])
+        settings.use_cloud = request.form['use_cloud'] == 'true'
+        settings.delete_scans = request.form['delete_scans'] == 'true'
+        settings.delete_scans_days_old = int(request.form['delete_scans_days_old']) if request.form['delete_scans_days_old'] else None
+        settings.delete_scans_percent_remaining = int(request.form['delete_scans_percent_remaining']) if request.form['delete_scans_percent_remaining'] else None
+        settings.device_name_includes = request.form['device_name_includes']
+        settings.id_file_starts_with = request.form['id_file_starts_with']
+        settings.alert_email = request.form['alert_email']
+
+        # Check if any of the AWS settings were updated
+        if (original_access_key != settings.aws_access_key_id or
+                original_secret_key != settings.aws_secret_access_key or
+                original_bucket_name != settings.bucket_name):
+            update_S3_files(settings)  # Call update_S3_files if any of the AWS settings changed
+
+        db.session.commit()
+        flash("Settings updated successfully.", "success")
+        logging.debug(f"Settings updated for account URL {account_url}")
+        return redirect(url_for('accounts.account_settings', account_url=account_url))
+    except Exception as e:
+        db.session.rollback()
+        flash("There was an issue updating the settings.", "error")
+        logging.error(f"There was an issue updating the settings: {e}")
+        return "There was an issue updating the settings."
+
+# Route to delete an account
+@accounts_bp.route('/<account_url>/delete', methods=['POST'])
+def delete_account(account_url):
+    account_to_delete = Account.query.filter_by(url=account_url).first_or_404()
+    settings_to_delete = Setting.query.filter_by(account_id=account_to_delete.id).first()
+    try:
+        if settings_to_delete:
+            db.session.delete(settings_to_delete)
+        db.session.delete(account_to_delete)
+        db.session.commit()
+        logging.debug(f"Account and settings deleted for account URL {account_url}")
+        return redirect(url_for('index'))
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"There was an issue deleting the account: {e}")
+        return "There was an issue deleting the account."
+
+# Route to view data for an account
+@accounts_bp.route('/<account_url>/data', methods=['GET'])
+def account_data(account_url):
+    g.title = "Data"
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        update_S3_files(settings)
+        recent_files = get_latest_files(account.id)
+        # Generate download links for each file
+        for file in recent_files:
+            file.download_link = generate_download_link(settings, file.key)
+        return render_template('data.html', account=account, recent_files=recent_files)
+    except Exception as e:
+        logging.error(f"Error loading data for {account_url}: {e}")
+        return "There was an issue loading the data page.", 500
+
+# Route to check if files exist for a given account
+@accounts_bp.route('/<account_url>/files', methods=['POST'])
+def check_files(account_url):
+    try:
+        # Get the account details
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+
+        # Get the list of filenames and sizes from the request JSON body
+        request_data = request.get_json()
+        files = request_data.get('files', [])
+
+        if not isinstance(files, list) or not all(isinstance(file, dict) and 'filename' in file and 'size' in file for file in files):
+            return jsonify({"error": "Invalid input. 'files' must be a list of dictionaries with 'filename' and 'size' keys."}), 400
+
+        # Delegate to existing function to check file existence
+        result = do_files_exist(account.id, files)
+
+        # Return the results as a list of booleans
+        return jsonify({"exists": result})
+
+    except Exception as e:
+        logging.error(f"Error in '/{account_url}/files' endpoint: {e}")
+        return jsonify({"error": "There was an issue processing your request."}), 500
+    
+# Route to view the account dashboard by its unique URL
+@accounts_bp.route('/<account_url>', methods=['GET'])
+def account_dashboard(account_url):
+    g.title = "Dashboard"
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Sample data retrieval for file uploads over the last month
+        today = datetime.today()
+        start_date = today - timedelta(days=30)
+        recent_files = get_latest_files(account.id)
+        
+        # Generate counts for each day in the last 30 days
+        file_uploads_over_time = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(31)]
+        uploads_count = [0] * 31
+        
+        device_uploads = {}
+        
+        for file in recent_files:
+            if start_date <= file.last_modified <= today:
+                day_index = (file.last_modified - start_date).days
+                uploads_count[day_index] += 1
+                
+                # Extract device from the file key
+                device = file.key.split('/')[0]
+                if device in device_uploads:
+                    device_uploads[device] += 1
+                else:
+                    device_uploads[device] = 1
+        
+        # Sort devices by number of uploads and take the top 10
+        sorted_devices = sorted(device_uploads.items(), key=lambda x: x[1], reverse=True)[:10]
+        devices = [device for device, count in sorted_devices]
+        device_upload_counts = [count for device, count in sorted_devices]
+
+        alerts = [
+            {"device": "Device A", "message": "Error detected", "created_at": "2024-10-21 10:15:00"},
+            {"device": "Device B", "message": "Warning issued", "created_at": "2024-10-21 11:30:00"},
+            {"device": "Device C", "message": "Low battery", "created_at": "2024-10-21 12:00:00"}
+        ]
+
+        return render_template(
+            'dashboard.html',
+            account=account,
+            settings=settings,
+            file_uploads_over_time=file_uploads_over_time,
+            uploads_count=uploads_count,
+            alerts=alerts,
+            devices=devices,
+            device_upload_counts=device_upload_counts
+        )
+    except Exception as e:
+        logging.error(f"Error loading dashboard for {account_url}: {e}")
+        return "There was an issue loading the dashboard.", 500
+    
+# Route to download a file
+@accounts_bp.route('/<account_url>/download/<int:file_id>', methods=['GET'])
+def download_file(account_url, file_id):
+    try:
+        # Ensure the account exists
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Ensure the file belongs to the given account
+        file = File.query.filter_by(id=file_id, account_id=account.id).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Generate a download link using the settings and file key
+        download_link = generate_download_link(settings, file.key)
+        if not download_link:
+            return "There was an issue generating the download link.", 500
+        
+        return redirect(download_link)
+    except Exception as e:
+        logging.error(f"Error downloading file {file_id} for account {account_url}: {e}")
+        return "There was an issue downloading the file.", 500
