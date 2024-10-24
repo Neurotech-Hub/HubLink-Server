@@ -118,7 +118,6 @@ def check_files(account_url):
         
         # Get the account details
         account = Account.query.filter_by(url=account_url).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
         # Get the list of filenames and sizes from the request JSON body
         request_data = request.get_json()
@@ -145,6 +144,19 @@ def check_files(account_url):
         logging.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": "There was an issue processing your request."}), 500
 
+# Sync endpoint, touch after gateway uploading
+@accounts_bp.route('/<account_url>/sync', methods=['GET'])
+def sync(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        # Call update_S3_files for the account with force_update set to True
+        update_S3_files(settings, force_update=True)
+
+        return jsonify({"message": "Sync completed successfully"}), 200
+    except Exception as e:
+        logging.error(f"Error during '/sync' endpoint: {e}")
+        return jsonify({"error": "There was an issue processing the sync request."}), 500
     
 # Route to view the account dashboard by its unique URL
 @accounts_bp.route('/<account_url>', methods=['GET'])

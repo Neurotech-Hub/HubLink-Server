@@ -8,10 +8,13 @@ class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     url = db.Column(db.String(200), nullable=False, unique=True)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Define relationship with settings
     settings = db.relationship('Setting', backref='account', uselist=False, cascade="all, delete-orphan")
+
+    # Define relationship with devices
+    devices = db.relationship('Device', backref='account', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Account {self.name}>"
@@ -51,7 +54,7 @@ class Setting(db.Model):
             'id_file_starts_with': self.id_file_starts_with,
             'alert_email': self.alert_email
         }
-    
+
 # Define the files model
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -71,4 +74,24 @@ class File(db.Model):
             'url': self.url,
             'size': self.size,
             'last_modified': self.last_modified.isoformat()
+        }
+
+# Define the device model with ip_address instead of mac_address
+class Gateway(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False)  # IPv4 is 15 characters max, IPv6 is up to 45 characters
+    name = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    def __repr__(self):
+        return f"<Gateway {self.name} with IP {self.ip_address}>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'account_id': self.account_id,
+            'ip_address': self.ip_address,
+            'name': self.name,
+            'created_at': self.created_at.isoformat()
         }
