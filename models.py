@@ -13,8 +13,8 @@ class Account(db.Model):
     # Define relationship with settings
     settings = db.relationship('Setting', backref='account', uselist=False, cascade="all, delete-orphan")
 
-    # Define relationship with devices
-    devices = db.relationship('Device', backref='account', cascade="all, delete-orphan")
+    # Define relationship with gateways
+    gateways = db.relationship('Gateway', backref='account', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Account {self.name}>"
@@ -33,7 +33,8 @@ class Setting(db.Model):
     delete_scans_days_old = db.Column(db.Integer, nullable=True)
     delete_scans_percent_remaining = db.Column(db.Integer, nullable=True)
     device_name_includes = db.Column(db.String(100), nullable=True)
-    id_file_starts_with = db.Column(db.String(100), nullable=True)
+    id_file_starts_with = db.Column(db.String(100), nullable=False, default="")
+    alert_file_starts_with = db.Column(db.String(100), nullable=False, default="")
     alert_email = db.Column(db.String(100), nullable=True)
 
     def __repr__(self):
@@ -52,6 +53,7 @@ class Setting(db.Model):
             'delete_scans_percent_remaining': self.delete_scans_percent_remaining,
             'device_name_includes': self.device_name_includes,
             'id_file_starts_with': self.id_file_starts_with,
+            'alert_file_starts_with': self.alert_file_starts_with,
             'alert_email': self.alert_email
         }
 

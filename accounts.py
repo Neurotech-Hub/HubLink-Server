@@ -1,21 +1,39 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
-from models import db, Account, Setting, File
+from models import db, Account, Setting, File, Gateway
 from datetime import datetime, timedelta
 import logging
 from S3Manager import *
 import traceback
+from werkzeug.exceptions import NotFound
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
 
 # Route to output account settings as JSON
 @accounts_bp.route('/<account_url>.json', methods=['GET'])
-def account_settings_json(account_url):
+@accounts_bp.route('/<account_url>/<gateway_name>.json', methods=['GET'])
+def get_account(account_url, gateway_name=None):
     g.title = "API"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         setting = Setting.query.filter_by(account_id=account.id).first()
         if setting:
+            # Extract client IP address
+            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+            if gateway_name:
+                # Add a row for the gateway
+                gateway = Gateway(
+                    account_id=account.id,
+                    ip_address=ip_address,
+                    name=gateway_name,
+                    created_at=datetime.now(timezone.utc)
+                )
+                
+                # Add the new gateway to the session and commit
+                db.session.add(gateway)
+                db.session.commit()
+
             return jsonify(setting.to_dict())
         else:
             return jsonify({'error': 'Settings not found'}), 404
@@ -58,6 +76,7 @@ def update_settings(account_url):
         settings.delete_scans_percent_remaining = int(request.form['delete_scans_percent_remaining']) if request.form['delete_scans_percent_remaining'] else None
         settings.device_name_includes = request.form['device_name_includes']
         settings.id_file_starts_with = request.form['id_file_starts_with']
+        settings.alert_file_starts_with = request.form['alert_file_starts_with']
         settings.alert_email = request.form['alert_email']
 
         # Check if any of the AWS settings were updated
@@ -210,7 +229,13 @@ def account_dashboard(account_url):
             devices=devices,
             device_upload_counts=device_upload_counts
         )
+    except NotFound as e:
+        # Handle NotFound exception separately to render the 404 template
+        logging.error(f"404 Not Found for account URL: {account_url}, error: {e}")
+        return render_template('404.html'), 404
+
     except Exception as e:
+        # Handle other unexpected exceptions
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard.", 500
     
@@ -234,3 +259,9 @@ def download_file(account_url, file_id):
     except Exception as e:
         logging.error(f"Error downloading file {file_id} for account {account_url}: {e}")
         return "There was an issue downloading the file.", 500
+
+# Define error handler
+@accounts_bp.errorhandler(404)
+def page_not_found(e):
+    logging.error(f"404 error: {e}")
+    return render_template('404.html'), 404
