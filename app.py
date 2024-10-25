@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for
 from flask_migrate import Migrate
-from models import db, Account, Setting, File
+from models import db, Account, Setting # db locations
 from S3Manager import *
 import os
 import logging
@@ -22,6 +22,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL', 
     f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
 )
+
+# security by obscurity
+new_route = os.getenv('NEW_ROUTE', 'new')
 
 logging.info(f"SQLALCHEMY_DATABASE_URI is set to: {app.config['SQLALCHEMY_DATABASE_URI']}")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -71,13 +74,17 @@ def create_default_settings(account_id):
 def index():
     try:
         logging.debug("Accessing the index route.")
-        all_accounts = Account.query.all()
-        logging.debug(f"Accounts retrieved: {all_accounts}")
-        return render_template('index.html', accounts=all_accounts)
+        return render_template('index.html')
     except Exception as e:
         logging.error(f"Error loading index: {e}")
         return "There was an issue loading the homepage.", 500
-    
+
+# Define location dynamically
+@app.route(f'/{new_route}', methods=['GET'])
+def add_route_handler():
+    all_accounts = Account.query.all()
+    return render_template('new.html', accounts=all_accounts)
+   
 # Route to submit a new account
 @app.route('/new', methods=['POST'])
 def submit():

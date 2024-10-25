@@ -4,9 +4,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from flask_sqlalchemy import SQLAlchemy
 from models import File, Account, db, Setting
-from sqlalchemy import update  # Assuming the File, Account, and Setting models are defined elsewhere and imported here
-
-# Removed account.updated_at as we are now tracking updates directly in the Account model
+from sqlalchemy import update
 
 def update_S3_files(account_settings, force_update=False):
     retries = 3

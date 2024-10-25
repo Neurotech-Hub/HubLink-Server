@@ -13,6 +13,16 @@ main {
     padding-bottom: 40px;
 }
 
+.center-area {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f8f9fa;
+}
+
 .feather {
     width: 16px;
     height: 16px;

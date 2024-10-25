@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% include 'head.html' %}
+</head>
+
+<body>
+    {% include 'nav.html' %}
+
+    <div class="container-fluid center-area">
+        <div class="container mt-5">
+            <div class="card">
+                <div class="card-body">
+                    <form action="/new" method="POST">
+                        <div class="form-group">
+                            <input type="text" id="name" name="name" class="form-control" required>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-success mt-3 shadow-sm px-4">Create
+                                Account</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="mt-4">
+                <h4 class="text-center text-dark">Accounts</h2>
+                    <ul class="list-group mt-3 shadow-sm">
+                        <!-- Assuming this list will be dynamically populated -->
+                        {% for account in accounts %}
+                        <li class="list-group-item text-dark">
+                            <a href="/{{ account.url }}">{{ account.name }}</a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

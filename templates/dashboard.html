@@ -9,7 +9,7 @@
         <div class="col-12 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">File Uploads Over Time</h5>
+                    <h5 class="card-title"><i class="fas fa-history"></i> File Uploads Over Time</h5>
                     <div style="position: relative; height:400px;">
                         <canvas id="uploadsLineChart"></canvas>
                     </div>
@@ -23,7 +23,7 @@
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">File Uploads (last 30 days)</h5>
+                    <h5 class="card-title"><i class="fas fa-cloud-upload-alt"></i> File Uploads (last 30 days)</h5>
                     <div style="position: relative; height:400px;">
                         <canvas id="uploadsBarChart"></canvas>
                     </div>
@@ -33,7 +33,35 @@
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Alerts <i class="fas fa-exclamation-triangle"></i></h5>
+                    <h5 class="card-title"><i class="fas fa-network-wired"></i> Gateway Activity</h5>
+                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                        <table class="table table-sm table-striped gateways-table">
+                            <thead>
+                                <tr>
+                                    <th>IP Address</th>
+                                    <th>Gateway Name</th>
+                                    <th>Created At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for gateway in gateways %}
+                                <tr>
+                                    <td>{{ gateway.ip_address }}</td>
+                                    <td>{{ gateway.name }}</td>
+                                    <td>{{ gateway.created_at }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-exclamation-triangle"></i> Alerts</h5>
                     <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                         <table class="table table-sm table-striped alerts-table">
                             <thead>
@@ -56,7 +84,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> -->
     </div>
 </div>
 

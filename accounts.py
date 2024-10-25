@@ -5,13 +5,14 @@ import logging
 from S3Manager import *
 import traceback
 from werkzeug.exceptions import NotFound
+from sqlalchemy import desc
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
 
 # Route to output account settings as JSON
 @accounts_bp.route('/<account_url>.json', methods=['GET'])
-@accounts_bp.route('/<account_url>/<gateway_name>.json', methods=['GET'])
+@accounts_bp.route('/<account_url>.json/<gateway_name>', methods=['GET'])
 def get_account(account_url, gateway_name=None):
     g.title = "API"
     try:
@@ -184,7 +185,8 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        
+        gateways = Gateway.query.order_by(desc(Gateway.created_at)).all()
+
         # Sample data retrieval for file uploads over the last month
         today = datetime.today()
         start_date = today - timedelta(days=30)
@@ -227,6 +229,7 @@ def account_dashboard(account_url):
             uploads_count=uploads_count,
             alerts=alerts,
             devices=devices,
+            gateways=gateways,
             device_upload_counts=device_upload_counts
         )
     except NotFound as e:

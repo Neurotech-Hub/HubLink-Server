@@ -2,18 +2,9 @@
 <html lang="en">
 
 <head>
+    <!-- Hi, thanks for checking source :) -->
     {% include 'head.html' %}
     <style>
-        .center-area {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f8f9fa;
-        }
-
         h1 {
             font-size: 5rem;
             font-weight: 900;
@@ -55,45 +46,7 @@
     <div class="container-fluid center-area">
         <h1>hublink</h1>
         <h2 class="typing-effect" onclick="toggleAccountForm()">&gt;&gt;collect data --now</h2>
-        <div id="hidden-account-form" style="display: none;">
-            <div class="container mt-5">
-                <div class="card">
-                    <div class="card-body">
-                        <form action="/new" method="POST">
-                            <div class="form-group">
-                                <input type="text" id="name" name="name" class="form-control" required>
-                            </div>
-                            <div class="text-center">
-                                <button type="submit" class="btn btn-success mt-3 shadow-sm px-4">Create
-                                    Account</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <h4 class="text-center text-dark">Accounts</h2>
-                        <ul class="list-group mt-3 shadow-sm">
-                            <!-- Assuming this list will be dynamically populated -->
-                            {% for account in accounts %}
-                            <li class="list-group-item text-dark">
-                                <a href="/{{ account.url }}">{{ account.name }}</a>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                </div>
-            </div>
-        </div>
     </div>
-    <script>
-        function toggleAccountForm() {
-            const form = document.getElementById('hidden-account-form');
-            if (form.style.display === 'none') {
-                form.style.display = 'block';
-            } else {
-                form.style.display = 'none';
-            }
-        }
-    </script>
 </body>
 
 </html>
