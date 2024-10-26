@@ -83,10 +83,11 @@ def index():
 @app.route(f'/{new_route}', methods=['GET'])
 def add_route_handler():
     all_accounts = Account.query.all()
-    return render_template('new.html', accounts=all_accounts)
-   
+    return render_template('new.html', accounts=all_accounts, new_route=new_route)
+
+# !! need to make new route include new_route
 # Route to submit a new account
-@app.route('/new', methods=['POST'])
+@app.route(f'/{new_route}', methods=['POST'])
 def submit():
     user_name = request.form['name']
     unique_path = generate_random_string()
