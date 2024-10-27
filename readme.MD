@@ -125,6 +125,9 @@ This step should be done once when you initially create the database for your pr
 
 Using this workflow, you can effectively maintain database schema compatibility across development, staging, and production environments while ensuring data persistence.
 
+### S3 Browsing Tools
+- [AwsDash - simple yet powerful](https://awsdash.com/)
+
 ---
 
 python3 -m venv venv
