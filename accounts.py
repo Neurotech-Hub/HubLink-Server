@@ -188,27 +188,29 @@ def account_dashboard(account_url):
         gateways = Gateway.query.order_by(desc(Gateway.created_at)).all()
 
         # Sample data retrieval for file uploads over the last month
-        today = datetime.today()
+        today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)  # Start of today's date
         start_date = today - timedelta(days=30)
         recent_files = get_latest_files(account.id)
-        
+
         # Generate counts for each day in the last 30 days
         file_uploads_over_time = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(31)]
         uploads_count = [0] * 31
-        
+
         device_uploads = {}
-        
+
         for file in recent_files:
-            if start_date <= file.last_modified <= today:
-                day_index = (file.last_modified - start_date).days
+            file_date = file.last_modified.replace(hour=0, minute=0, second=0, microsecond=0)  # Normalize to day
+            if start_date <= file_date <= today:
+                day_index = (file_date - start_date).days
                 uploads_count[day_index] += 1
-                
+
                 # Extract device from the file key
                 device = file.key.split('/')[0]
                 if device in device_uploads:
                     device_uploads[device] += 1
                 else:
                     device_uploads[device] = 1
+
         
         # Sort devices by number of uploads and take the top 10
         sorted_devices = sorted(device_uploads.items(), key=lambda x: x[1], reverse=True)[:10]

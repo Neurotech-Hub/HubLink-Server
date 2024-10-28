@@ -126,28 +126,6 @@ def docs():
     except Exception as e:
         logging.error(f"Error loading documentation: {e}")
         return "There was an issue loading the documentation.", 500
-
-# Lambda S3 endpoint
-# @app.route('/force_sync', methods=['GET'])
-# def force_sync():
-#     try:
-#         # Calculate the time window of the last 10 minutes
-#         ten_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=10)
-        
-#         # Query accounts that were updated in the last 10 minutes
-#         accounts_to_sync = Account.query.filter(Account.updated_at >= ten_minutes_ago).all()
-
-#         for account in accounts_to_sync:
-#             # Construct account settings
-#             account_settings = Setting.query.filter_by(account_id=account.id).first()
-#             if account_settings:
-#                 # Call update_S3_files for the account with force_update set to True
-#                 update_S3_files(account_settings, force_update=True)
-
-#         return jsonify({"message": "Force sync completed successfully"}), 200
-#     except Exception as e:
-#         logging.error(f"Error during '/force_sync' endpoint: {e}")
-#         return jsonify({"error": "There was an issue processing the force sync request."}), 500
     
 @app.route('/favicon.ico')
 def favicon():
