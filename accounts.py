@@ -20,7 +20,7 @@ def get_account(account_url, gateway_name=None):
         setting = Setting.query.filter_by(account_id=account.id).first()
         if setting:
             # Extract client IP address
-            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
 
             if gateway_name:
                 # Add a row for the gateway
