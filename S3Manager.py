@@ -116,7 +116,7 @@ def generate_download_link(account_settings, key, expires_in=3600):
         logging.error(f"Failed to generate download link for {key}: {e}")
         return None
 
-def get_latest_files(account_id, total=30):
+def get_latest_files(account_id, total=1000):
     try:
         latest_files = File.query.filter_by(account_id=account_id).order_by(File.last_modified.desc()).limit(total).all()
         return latest_files
