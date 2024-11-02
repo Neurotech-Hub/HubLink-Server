@@ -10,63 +10,183 @@
 
     <div class="container mt-5">
         <!-- Documentation Header -->
-        <h1 class="text-center mb-4">Hublink: A Centralized Gateway Manager & API</h1>
+        <div class="text-center mb-4">
+            <h1 class="display-4">Hublink: A Centralized Gateway Manager</h1>
+            <p class="lead">Efficiently manage, sync, and monitor IoT data from a central dashboard.</p>
+        </div>
+
+        <div class="card-deck mb-3 text-center">
+
+            <div class="card mb-4 box-shadow">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Hobby</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">$9 <small class="text-muted">/ mo</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>Up to 5 Gateways</li>
+                        <li>10 GB of storage</li>
+                        <li>No support</li>
+                    </ul>
+                    <a href="#getting-started" class="btn btn-lg btn-block btn-light">Get Started</a>
+                </div>
+            </div>
+            <div class="card mb-4 box-shadow">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Pro</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">$19 <small class="text-muted">/ mo</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>Up to 25 Gateways</li>
+                        <li>50 GB of storage</li>
+                        <li>Phone & email support</li>
+                    </ul>
+                    <a href="#getting-started" class="btn btn-lg btn-block btn-primary">Get Started</a>
+                </div>
+            </div>
+        </div>
 
         <!-- Image at the top of the page -->
-        <div class="text-center mb-5">
-            <img src="/static/img/hublink-docs.jpeg" alt="Hublink System Diagram" class="img-fluid">
-        </div>
+        <!-- <div class="text-center mb-5">
+            <img src="/static/img/hublink-docs.jpeg" alt="Hublink System Diagram" class="img-fluid rounded">
+        </div> -->
 
         <!-- Overview Section -->
         <section class="mb-5">
-            <h2>Overview</h2>
-            <p>Hublink is a centralized cloud-based management system that allows users to easily gather, manage, and
-                view data from multiple IoT gateway devices. These gateways act as the central <strong>hub</strong>,
-                syncing data from various <strong>spoke</strong> devices (nodes) to cloud storage. This system provides
-                an efficient way to handle data from numerous animal behavior tests, such as running wheels, and
-                presents an intuitive dashboard for monitoring activity, settings, and device health.</p>
+            <div class="container">
+                <h2 class="text-primary mb-4">Overview</h2>
+                <p>Hublink is a cloud-based management system for gathering, managing, and viewing
+                    data from
+                    multiple IoT
+                    gateway devices. These gateways act as a central <strong>hub</strong>, syncing data from various
+                    <strong>spoke</strong> devices (nodes) to cloud storage. It streamlines handling data from numerous
+                    animal behavior tests, such as running wheels, and provides an intuitive dashboard for activity
+                    monitoring, settings, and device health.
+                </p>
+
+                <div class="text-center mb-5 mt-5">
+                    <img src="/static/img/hublink-flow.jpg" alt="Hublink System Diagram" class="img-fluid rounded">
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Core Components Section -->
+        <section class="mb-5">
+            <h3 class="text-primary">Core Components</h3>
+            <p>The Hublink architecture includes three primary components:</p>
+            <ol class="pl-3">
+                <li>
+                    <strong>Hublink Node:</strong> An embedded, Arduino-based library to mediate efficient file transfer
+                    over
+                    Bluetooth Low Energy.
+                </li>
+                <li>
+                    <strong>Hublink Gateway:</strong> A Linux-based (e.g., Raspberry Pi) deployable to find, connect,
+                    and manage
+                    file dumps from nodes.
+                </li>
+                <li>
+                    <strong>Hublink.cloud:</strong> A web-based app to sync multiple gateway settings and manage Hublink
+                    lab-wide.
+                </li>
+            </ol>
         </section>
 
         <!-- Features Section -->
-        <section class="mb-5">
-            <h2>Features</h2>
-            <ul>
-                <li><strong>Settings Configuration:</strong> Set AWS credentials, file size limits, and other
-                    configurations to manage cloud storage.</li>
-                <li><strong>Data Synchronization:</strong> Ensure all experiment data is backed up to a centralized
-                    cloud storage system for accessibility.</li>
-                <li><strong>Dashboard:</strong> Monitor devices, alerts, and track experiment progress in real-time.
-                </li>
-                <li><strong>REST API:</strong> Programmatically check file existence and output account settings in JSON
-                    format.</li>
-            </ul>
+        <section class="mb-5 position-relative">
+            <div class="container position-relative">
+                <!-- Faded Background -->
+                <div class="bg-light rounded" style="opacity: 1; background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)); 
+                            padding: 3rem; position: absolute; top: 0; left: 0; right: 0; height: 100%; z-index: 0;">
+                </div>
+
+                <!-- Features Content -->
+                <div class="position-relative" style="z-index: 1;padding-top:15px;">
+                    <h2 class="text-center mb-5">Features</h2>
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-cog fa-3x text-primary mb-3"></i>
+                                    <h5 class="card-title">Settings Configuration</h5>
+                                    <p class="card-text">Easily set AWS credentials, file size limits, and other
+                                        configurations
+                                        to manage cloud storage.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-sync-alt fa-3x text-success mb-3"></i>
+                                    <h5 class="card-title">Data Synchronization</h5>
+                                    <p class="card-text">Automatically back up experiment data to centralized cloud
+                                        storage for
+                                        easy access.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-tachometer-alt fa-3x text-warning mb-3"></i>
+                                    <h5 class="card-title">Dashboard</h5>
+                                    <p class="card-text">Monitor devices, receive alerts, and track experiment progress
+                                        in
+                                        real-time on an intuitive dashboard.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-plug fa-3x text-danger mb-3"></i>
+                                    <h5 class="card-title">REST API</h5>
+                                    <p class="card-text">Programmatically check file existence and output account
+                                        settings in
+                                        JSON format for integration.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </section>
+
 
         <!-- Endpoint Summary Section -->
         <section class="mb-5">
-            <h2>Endpoint Summary</h2>
-            <p>Below is a high-level summary of the available endpoints in the Hublink system:</p>
+            <h2 class="text-primary">Endpoint Summary</h2>
+            <p>A high-level summary of available endpoints:</p>
             <ul>
-                <li><strong>Account Dashboard:</strong> View detailed information about a specific account's activity.
+                <li><strong>Account Dashboard:</strong> View specific account activity.
                     (<code>/&lt;secret_url&gt;</code>)</li>
-                <li><strong>Account Settings:</strong> View and update settings for each account.
+                <li><strong>Account Settings:</strong> View and update settings per account.
                     (<code>/&lt;secret_url&gt;/settings</code>)</li>
-                <li><strong>Data Management:</strong> View collected data and generate download links.
+                <li><strong>Data Management:</strong> View collected data and download links.
                     (<code>/&lt;secret_url&gt;/data</code>)</li>
-                <li><strong>File Existence API:</strong> Check if specific files exist in the cloud.
+                <li><strong>File Existence API:</strong> Check if files exist in cloud.
                     (<code>/&lt;secret_url&gt;/files</code>)</li>
-                <li><strong>Settings JSON API:</strong> Get account settings in JSON format.
+                <li><strong>Settings JSON API:</strong> Account settings in JSON.
                     (<code>/&lt;secret_url&gt;.json</code>)</li>
             </ul>
         </section>
 
         <!-- Getting Started Section -->
-        <section class="mb-5">
-            <h2>Getting Started</h2>
-            <p>To begin using Hublink, you will need a <code>&lt;secret_url&gt;</code> from the <a
-                    href="https://neurotechhub.wustl.edu/">Neurotech Hub</a>.</p>
+        <section class="mb-5 py-5 rounded" id="getting-started" style="background-color: #f0f8ff;">
+            <div class="container text-center">
+                <h3 class="text-dark mb-4">Ready to start?</h3>
+                <p class="lead">To start with Hublink, obtain a <code>&lt;secret_url&gt;</code> from the
+                    <a href="https://neurotechhub.wustl.edu/" class="text-primary font-weight-bold">Neurotech Hub</a>.
+                </p>
+            </div>
         </section>
+
     </div>
+
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </body>
 
 </html>
