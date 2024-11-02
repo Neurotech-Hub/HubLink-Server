@@ -22,6 +22,13 @@
             animation: typing 2s steps(13, end) 1, blink .75s step-end infinite;
         }
 
+        .center-area {
+            position: relative;
+            top: -2rem;
+            /* Adjust this value as needed */
+        }
+
+
         @keyframes typing {
             0% {
                 width: 0;
@@ -37,15 +44,49 @@
                 border-color: transparent;
             }
         }
+
+        /* Sleek button styling */
+        .learn-more-btn {
+            display: inline-block;
+            margin-top: 2rem;
+            padding: 1rem 3rem;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            background-color: #fff;
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .learn-more-btn:hover {
+            box-shadow: 0px 16px 32px rgba(0, 0, 0, 0.25);
+            transform: translateY(-4px);
+            color: inherit;
+            /* Prevent color change on hover */
+            text-decoration: none;
+            /* Prevent underline on hover */
+        }
+
+        .learn-more-btn:focus {
+            outline: none;
+            box-shadow: 0px 16px 32px rgba(0, 0, 0, 0.25);
+        }
     </style>
 </head>
 
 <body>
     {% include 'nav.html' %}
 
-    <div class="container-fluid center-area">
+    <div class="container-fluid center-area text-center">
         <h1>hublink</h1>
         <h2 class="typing-effect" onclick="toggleAccountForm()">&gt;&gt;collect data --now</h2>
+
+        <!-- Learn More Button -->
+        <a href="/docs" class="learn-more-btn">Learn More</a>
     </div>
 </body>
 
