@@ -11,8 +11,8 @@
     <div class="container mt-5">
         <!-- Documentation Header -->
         <div class="text-center mb-4">
-            <h1 class="display-4">Hublink: A Centralized Gateway Manager</h1>
-            <p class="lead">Efficiently manage, sync, and monitor data from a central dashboard.</p>
+            <h1 class="display-4">The Gateway Manager</h1>
+            <p class="lead">Efficiently manage, sync, and monitor data.</p>
         </div>
 
         <div class="card-deck mb-3 text-center">
@@ -57,7 +57,7 @@
             <div class="container">
                 <h2 class="text-primary mb-4">Overview</h2>
                 <p>Hublink is a turn-key system for gathering, managing, and viewing data from multiple
-                    node → and → gateway devices. <strong>Nodes</strong> are any "edge" device that collect data,
+                    node and gateway devices. <strong>Nodes</strong> are any "edge" device that collect data,
                     typically
                     onto an SD card. <strong>Gateways</strong> are centralized devices (one or many) used for
                     gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> endpoints to
@@ -68,7 +68,8 @@
                     <img src="/static/img/hublink-flow.jpg" alt="Hublink System Diagram" class="img-fluid rounded">
                 </div>
 
-                <p><strong>The Hublink ecosystem streamlines the transfer of node data to the cloud.</strong> It relies
+                <p><strong>The Hublink ecosystem streamlines the transfer of node data to the cloud (Amazon
+                        S3).</strong> It relies
                     on node-based Bluetooth Low Energy, with stress-tested, efficient methods to collect those data with
                     minimal radio usage.
                 </p>
@@ -79,7 +80,7 @@
         <!-- Core Components Section -->
         <section class="mb-5">
             <h3 class="text-primary">Core Components</h3>
-            <p>The Hublink architecture includes three primary components:</p>
+            <p>The Hublink architecture includes these primary components:</p>
             <ol class="pl-3">
                 <li>
                     <strong>Hublink Node:</strong> An embedded, Arduino-based device (e.g., ESP32-S3) using the hublink
@@ -96,6 +97,11 @@
                 <li>
                     <strong>Hublink.cloud:</strong> A web-based app to sync gateway settings and manage all aspects of
                     the Hublink system.
+                </li>
+                <li>
+                    <strong>Hublink Client:</strong> A client library written in Python to interact, consume, and sync
+                    with Hublink-created
+                    Amazon S3 data.
                 </li>
             </ol>
         </section>
@@ -117,7 +123,7 @@
                                 <div class="card-body">
                                     <i class="fas fa-cog fa-3x mb-3"></i>
                                     <h5 class="card-title">Settings Config</h5>
-                                    <p class="card-text">Easily set AWS credentials, file size limits, and other
+                                    <p class="card-text">Easily set credentials, file size limits, and other
                                         configurations
                                         to manage cloud storage.</p>
                                 </div>
@@ -163,15 +169,16 @@
 
         <div class="row align-items-center mb-5 mt-5">
             <!-- Feature Text Section -->
-            <div class="col-md-6">
+            <div class="col-md-8">
                 <h3 class="">Mobile Ready</h3>
                 <p class="lead mt-3">Access Hublink on-the-go with the mobile-friendly web app. Manage devices, monitor
                     data,
-                    and view real-time updates, all from your smartphone or tablet.</p>
+                    and view real-time updates from your smartphone or tablet.</p>
             </div>
             <!-- Image Section -->
-            <div class="col-md-6 mb-4">
-                <img src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp" class="img-fluid">
+            <div class="col-md-4 mb-4 text-center">
+                <img style="max-height: 400px;" src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp"
+                    class="img-fluid drop-shadow">
             </div>
         </div>
 
@@ -182,14 +189,14 @@
             <ul>
                 <li><strong>Account Dashboard:</strong> View specific account activity.
                     (<code>/&lt;secret_url&gt;</code>)</li>
+                <li><strong>Account JSON API:</strong> Account settings in JSON.
+                    (<code>/&lt;secret_url&gt;.json</code>)</li>
                 <li><strong>Account Settings:</strong> View and update settings per account.
                     (<code>/&lt;secret_url&gt;/settings</code>)</li>
                 <li><strong>Data Management:</strong> View collected data and download links.
                     (<code>/&lt;secret_url&gt;/data</code>)</li>
                 <li><strong>File Existence API:</strong> Check if files exist in cloud.
                     (<code>/&lt;secret_url&gt;/files</code>)</li>
-                <li><strong>Settings JSON API:</strong> Account settings in JSON.
-                    (<code>/&lt;secret_url&gt;.json</code>)</li>
             </ul>
         </section>
 

@@ -219,3 +219,7 @@ main {
         /* Hide the mobile nav for larger screens */
     }
 }
+
+.drop-shadow {
+    filter: drop-shadow(0px 8px 16px rgba(0, 0, 0, 0.2));
+}
