@@ -2,9 +2,9 @@ import boto3
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from flask_sqlalchemy import SQLAlchemy
-from models import File, Account, db, Setting
-from sqlalchemy import update
+from models import *
+import json
+from dateutil import parser
 
 def update_S3_files(account_settings, force_update=False):
     retries = 3
@@ -142,3 +142,86 @@ def do_files_exist(account_id, files):
     except Exception as e:
         logging.error(f"Error in 'do_files_exist' function: {e}")
         return [False] * len(files)
+
+def process_sqs_messages(account_settings):
+    sqs_client = boto3.client(
+        'sqs',
+        aws_access_key_id=account_settings.aws_access_key_id,
+        aws_secret_access_key=account_settings.aws_secret_access_key,
+        region_name=os.getenv('AWS_REGION', 'us-east-1')
+    )
+    
+    queue_url = "https://sqs.us-east-1.amazonaws.com/557690613785/HublinkQueue"
+    
+    while True:
+        try:
+            logging.debug("Polling SQS queue for messages...")
+            response = sqs_client.receive_message(
+                QueueUrl=queue_url,
+                MaxNumberOfMessages=10,
+                WaitTimeSeconds=10  # Long polling
+            )
+            
+            # Check if there are any messages
+            if 'Messages' in response:
+                logging.info(f"Received {len(response['Messages'])} messages from SQS.")
+
+                for message in response['Messages']:
+                    # Parse the message body to get the S3 event
+                    message_body = json.loads(message['Body'])
+                    
+                    # Check if "Message" is in the message body, as it sometimes contains nested JSON
+                    if 'Message' in message_body:
+                        s3_event = json.loads(message_body['Message'])
+                    else:
+                        s3_event = message_body
+                        
+                    # Process each S3 event
+                    for record in s3_event.get('Records', []):
+                        bucket_name = record['s3']['bucket']['name']
+                        file_key = record['s3']['object']['key']
+                        file_size = record['s3']['object'].get('size', 0)  # Default to 0 for deletion events
+                        last_modified_str = record.get('eventTime')
+
+                        # Convert last_modified from string to datetime
+                        last_modified = parser.parse(last_modified_str) if last_modified_str else None
+
+                        logging.info(f"Processing S3 record for bucket '{bucket_name}', key '{file_key}'.")
+
+                        # Only process messages for the configured bucket
+                        if bucket_name == account_settings.bucket_name:
+                            # Check if file already exists
+                            existing_file = File.query.filter_by(account_id=account_settings.account_id, key=file_key).first()
+                            
+                            if existing_file:
+                                logging.debug(f"Updating existing file: {file_key}")
+                                # Update existing file details if necessary
+                                existing_file.size = file_size
+                                existing_file.last_modified = last_modified
+                                db.session.commit()
+                            else:
+                                logging.debug(f"Inserting new file record: {file_key}")
+                                # Add new file entry to the database
+                                new_file = File(
+                                    account_id=account_settings.account_id,
+                                    key=file_key,
+                                    url=f"s3://{bucket_name}/{file_key}",
+                                    size=file_size,
+                                    last_modified=last_modified
+                                )
+                                db.session.add(new_file)
+                                db.session.commit()
+
+                    # Delete the message after processing
+                    sqs_client.delete_message(
+                        QueueUrl=queue_url,
+                        ReceiptHandle=message['ReceiptHandle']
+                    )
+                    logging.debug(f"Deleted message from SQS: {message['MessageId']}")
+            else:
+                logging.info("No new messages in the queue.")
+                break  # Exit the loop if no messages are found
+            
+        except Exception as e:
+            logging.error(f"Error processing SQS messages: {e}")
+            break

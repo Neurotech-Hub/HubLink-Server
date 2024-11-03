@@ -170,8 +170,11 @@ def sync(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+
         # Call update_S3_files for the account with force_update set to True
-        update_S3_files(settings, force_update=True)
+        # update_S3_files(settings, force_update=True)
+
+        process_sqs_messages(settings)
 
         return jsonify({"message": "Sync completed successfully"}), 200
     except Exception as e:
