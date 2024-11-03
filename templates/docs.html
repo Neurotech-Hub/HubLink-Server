@@ -12,7 +12,7 @@
         <!-- Documentation Header -->
         <div class="text-center mb-4">
             <h1 class="display-4">Hublink: A Centralized Gateway Manager</h1>
-            <p class="lead">Efficiently manage, sync, and monitor IoT data from a central dashboard.</p>
+            <p class="lead">Efficiently manage, sync, and monitor data from a central dashboard.</p>
         </div>
 
         <div class="card-deck mb-3 text-center">
@@ -56,18 +56,22 @@
         <section class="mb-5">
             <div class="container">
                 <h2 class="text-primary mb-4">Overview</h2>
-                <p>Hublink is a cloud-based management system for gathering, managing, and viewing
-                    data from
-                    multiple IoT
-                    gateway devices. These gateways act as a central <strong>hub</strong>, syncing data from various
-                    <strong>spoke</strong> devices (nodes) to cloud storage. It streamlines handling data from numerous
-                    animal behavior tests, such as running wheels, and provides an intuitive dashboard for activity
-                    monitoring, settings, and device health.
-                </p>
+                <p>Hublink is a turn-key system for gathering, managing, and viewing data from multiple
+                    node → and → gateway devices. <strong>Nodes</strong> are any "edge" device that collect data,
+                    typically
+                    onto an SD card. <strong>Gateways</strong> are centralized devices (one or many) used for
+                    gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> endpoints to
+                    coordinate
+                    settings and data transfer to the cloud.</p>
 
                 <div class="text-center mb-5 mt-5">
                     <img src="/static/img/hublink-flow.jpg" alt="Hublink System Diagram" class="img-fluid rounded">
                 </div>
+
+                <p><strong>The Hublink ecosystem streamlines the transfer of node data to the cloud.</strong> It relies
+                    on node-based Bluetooth Low Energy, with stress-tested, efficient methods to collect those data with
+                    minimal radio usage.
+                </p>
 
             </div>
         </section>
@@ -78,18 +82,20 @@
             <p>The Hublink architecture includes three primary components:</p>
             <ol class="pl-3">
                 <li>
-                    <strong>Hublink Node:</strong> An embedded, Arduino-based library to mediate efficient file transfer
+                    <strong>Hublink Node:</strong> An embedded, Arduino-based device (e.g., ESP32-S3) using the hublink
+                    library to mediate efficient file transfer
                     over
                     Bluetooth Low Energy.
                 </li>
                 <li>
-                    <strong>Hublink Gateway:</strong> A Linux-based (e.g., Raspberry Pi) deployable to find, connect,
+                    <strong>Hublink Gateway:</strong> Linux-based (e.g., Raspberry Pi) deployable hardware to find,
+                    connect,
                     and manage
-                    file dumps from nodes.
+                    data transfer from nodes and sync with cloud storage.
                 </li>
                 <li>
-                    <strong>Hublink.cloud:</strong> A web-based app to sync multiple gateway settings and manage Hublink
-                    lab-wide.
+                    <strong>Hublink.cloud:</strong> A web-based app to sync gateway settings and manage all aspects of
+                    the Hublink system.
                 </li>
             </ol>
         </section>
@@ -104,13 +110,13 @@
 
                 <!-- Features Content -->
                 <div class="position-relative" style="z-index: 1;padding-top:15px;">
-                    <h2 class="text-center mb-5">Features</h2>
+                    <h2 class="text-center mb-5 font-weight-bold">Features</h2>
                     <div class="row text-center">
                         <div class="col-md-3 mb-4">
                             <div class="card bg-white text-dark border-0 shadow-sm h-100">
                                 <div class="card-body">
-                                    <i class="fas fa-cog fa-3x text-primary mb-3"></i>
-                                    <h5 class="card-title">Settings Configuration</h5>
+                                    <i class="fas fa-cog fa-3x mb-3"></i>
+                                    <h5 class="card-title">Settings Config</h5>
                                     <p class="card-text">Easily set AWS credentials, file size limits, and other
                                         configurations
                                         to manage cloud storage.</p>
@@ -120,8 +126,8 @@
                         <div class="col-md-3 mb-4">
                             <div class="card bg-white text-dark border-0 shadow-sm h-100">
                                 <div class="card-body">
-                                    <i class="fas fa-sync-alt fa-3x text-success mb-3"></i>
-                                    <h5 class="card-title">Data Synchronization</h5>
+                                    <i class="fas fa-sync-alt fa-3x mb-3"></i>
+                                    <h5 class="card-title">Data Sync</h5>
                                     <p class="card-text">Automatically back up experiment data to centralized cloud
                                         storage for
                                         easy access.</p>
@@ -131,7 +137,7 @@
                         <div class="col-md-3 mb-4">
                             <div class="card bg-white text-dark border-0 shadow-sm h-100">
                                 <div class="card-body">
-                                    <i class="fas fa-tachometer-alt fa-3x text-warning mb-3"></i>
+                                    <i class="fas fa-tachometer-alt fa-3x mb-3"></i>
                                     <h5 class="card-title">Dashboard</h5>
                                     <p class="card-text">Monitor devices, receive alerts, and track experiment progress
                                         in
@@ -142,7 +148,7 @@
                         <div class="col-md-3 mb-4">
                             <div class="card bg-white text-dark border-0 shadow-sm h-100">
                                 <div class="card-body">
-                                    <i class="fas fa-plug fa-3x text-danger mb-3"></i>
+                                    <i class="fas fa-plug fa-3x mb-3"></i>
                                     <h5 class="card-title">REST API</h5>
                                     <p class="card-text">Programmatically check file existence and output account
                                         settings in
@@ -155,6 +161,19 @@
             </div>
         </section>
 
+        <div class="row align-items-center mb-5 mt-5">
+            <!-- Feature Text Section -->
+            <div class="col-md-6">
+                <h3 class="">Mobile Ready</h3>
+                <p class="lead mt-3">Access Hublink on-the-go with the mobile-friendly web app. Manage devices, monitor
+                    data,
+                    and view real-time updates, all from your smartphone or tablet.</p>
+            </div>
+            <!-- Image Section -->
+            <div class="col-md-6 mb-4">
+                <img src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp" class="img-fluid">
+            </div>
+        </div>
 
         <!-- Endpoint Summary Section -->
         <section class="mb-5">
