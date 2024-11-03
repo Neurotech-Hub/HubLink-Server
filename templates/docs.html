@@ -3,216 +3,139 @@
 
 <head>
     {% include 'head.html' %}
+    <style>
+
+    </style>
 </head>
 
 <body>
     {% include 'nav.html' %}
 
     <div class="container mt-5">
-        <!-- Documentation Header -->
-        <div class="text-center mb-4">
-            <h1 class="display-4">The Gateway Manager</h1>
-            <p class="lead">Efficiently manage, sync, and monitor data.</p>
-        </div>
-
-        <div class="card-deck mb-3 text-center">
-            <div class="card mb-4 box-shadow">
-                <div class="card-header">
-                    <h4 class="my-0 font-weight-normal">Hobby</h4>
-                </div>
-                <div class="card-body">
-                    <h1 class="card-title pricing-card-title">$9 <small class="text-muted">/ mo</small></h1>
-                    <ul class="list-unstyled mt-3 mb-4">
-                        <li>Up to 5 Gateways</li>
-                        <li>10 GB of storage</li>
-                        <li>No support</li>
-                    </ul>
-                    <a href="#getting-started" class="btn btn-lg btn-block btn-light">Get Started</a>
-                </div>
-            </div>
-            <div class="card mb-4 box-shadow">
-                <div class="card-header">
-                    <h4 class="my-0 font-weight-normal">Pro</h4>
-                </div>
-                <div class="card-body">
-                    <h1 class="card-title pricing-card-title">$19 <small class="text-muted">/ mo</small></h1>
-                    <ul class="list-unstyled mt-3 mb-4">
-                        <li>Up to 25 Gateways</li>
-                        <li>50 GB of storage</li>
-                        <li>Phone & email support</li>
-                    </ul>
-                    <a href="#getting-started" class="btn btn-lg btn-block btn-primary">Get Started</a>
-                </div>
-            </div>
-        </div>
-        <!-- Pricing Note Section -->
-        <div class="text-center mt-2">
-            <p class="font-italic text-muted">Pre-configured ESP32-based nodes starting at <strong>$79</strong>;
-                pre-configured Raspberry
-                Pi-based gateways starting at <strong>$299</strong>.</p>
-        </div>
-
-        <!-- Overview Section -->
-        <section class="mb-5">
-            <div class="container">
-                <h2 class="text-primary mb-4">Overview</h2>
-                <p>Hublink is a turn-key system for gathering, managing, and viewing data from multiple
-                    node and gateway devices. <strong>Nodes</strong> are any "edge" device that collect data,
-                    typically
-                    onto an SD card. <strong>Gateways</strong> are centralized devices (one or many) used for
-                    gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> endpoints to
-                    coordinate
-                    settings and data transfer to the cloud.</p>
-
-                <div class="text-center mb-5 mt-5">
-                    <img src="/static/img/hublink-flow.jpg" alt="Hublink System Diagram" class="img-fluid rounded">
-                </div>
-
-                <p><strong>The Hublink ecosystem streamlines the transfer of node data to the cloud (Amazon
-                        S3).</strong> It relies
-                    on node-based Bluetooth Low Energy, with stress-tested, efficient methods to collect those data with
-                    minimal radio usage.
-                </p>
-
-            </div>
-        </section>
-
-        <!-- Core Components Section -->
-        <section class="mb-5">
-            <h3 class="text-primary">Core Components</h3>
-            <p>The Hublink architecture includes these primary components:</p>
-            <ol class="pl-3">
-                <li>
-                    <strong>Hublink Node:</strong> An embedded, Arduino-based device (e.g., ESP32-S3) using the hublink
-                    library to mediate efficient file transfer
-                    over
-                    Bluetooth Low Energy.
-                </li>
-                <li>
-                    <strong>Hublink Gateway:</strong> Linux-based (e.g., Raspberry Pi) deployable hardware to find,
-                    connect,
-                    and manage
-                    data transfer from nodes and sync with cloud storage.
-                </li>
-                <li>
-                    <strong>Hublink.cloud:</strong> A web-based app to sync gateway settings and manage all aspects of
-                    the Hublink system.
-                </li>
-                <li>
-                    <strong>Hublink Client:</strong> A client library written in Python to interact, consume, and sync
-                    with Hublink-created
-                    Amazon S3 data.
-                </li>
-            </ol>
-        </section>
-
-        <!-- Features Section -->
-        <section class="mb-5 position-relative">
-            <div class="container position-relative">
-                <!-- Faded Background -->
-                <div class="bg-light rounded" style="opacity: 1; background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)); 
-                            padding: 3rem; position: absolute; top: 0; left: 0; right: 0; height: 100%; z-index: 0;">
-                </div>
-
-                <!-- Features Content -->
-                <div class="position-relative" style="z-index: 1;padding-top:15px;">
-                    <h2 class="text-center mb-5 font-weight-bold">Features</h2>
-                    <div class="row text-center">
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-cog fa-3x mb-3"></i>
-                                    <h5 class="card-title">Settings Config</h5>
-                                    <p class="card-text">Easily set credentials, file size limits, and other
-                                        configurations
-                                        to manage cloud storage.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-sync-alt fa-3x mb-3"></i>
-                                    <h5 class="card-title">Data Sync</h5>
-                                    <p class="card-text">Automatically back up experiment data to centralized cloud
-                                        storage for
-                                        easy access.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-tachometer-alt fa-3x mb-3"></i>
-                                    <h5 class="card-title">Dashboard</h5>
-                                    <p class="card-text">Monitor devices, receive alerts, and track experiment progress
-                                        in
-                                        real-time on an intuitive dashboard.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-plug fa-3x mb-3"></i>
-                                    <h5 class="card-title">REST API</h5>
-                                    <p class="card-text">Programmatically check file existence and output account
-                                        settings in
-                                        JSON format for integration.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <div class="row align-items-center mb-5 mt-5">
-            <!-- Feature Text Section -->
-            <div class="col-md-8">
-                <h3 class="">Mobile Ready</h3>
-                <p class="lead mt-3">Access Hublink on-the-go with the mobile-friendly web app. Manage devices, monitor
-                    data,
-                    and view real-time updates from your smartphone or tablet.</p>
-            </div>
-            <!-- Image Section -->
-            <div class="col-md-4 mb-4 text-center">
-                <img style="max-height: 400px;" src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp"
-                    class="img-fluid drop-shadow">
-            </div>
-        </div>
 
         <!-- Endpoint Summary Section -->
         <section class="mb-5">
-            <h2 class="text-primary">Endpoint Summary</h2>
-            <p>A high-level summary of available endpoints:</p>
-            <ul>
-                <li><strong>Account Dashboard:</strong> View specific account activity.
-                    (<code>/&lt;secret_url&gt;</code>)</li>
-                <li><strong>Account JSON API:</strong> Account settings in JSON.
-                    (<code>/&lt;secret_url&gt;.json</code>)</li>
-                <li><strong>Account Settings:</strong> View and update settings per account.
-                    (<code>/&lt;secret_url&gt;/settings</code>)</li>
-                <li><strong>Data Management:</strong> View collected data and download links.
-                    (<code>/&lt;secret_url&gt;/data</code>)</li>
-                <li><strong>File Existence API:</strong> Check if files exist in cloud.
-                    (<code>/&lt;secret_url&gt;/files</code>)</li>
+            <h2 class="text-primary border-bottom pb-2 mb-4">Endpoint Summary</h2>
+            <p>Here is an overview of the available API endpoints:</p>
+            <ul class="list-unstyled ms-3">
+                <li class="mb-2"><strong>Account Dashboard:</strong> View specific account activity.
+                    (<code>/&lt;account_url&gt;</code>)
+                </li>
+                <li class="mb-2"><strong>Account JSON API:</strong> Retrieve account settings in JSON format.
+                    (<code>/&lt;account_url&gt;.json</code>)
+                </li>
+                <li class="mb-2"><strong>Account Settings:</strong> View and update settings per account.
+                    (<code>/&lt;account_url&gt;/settings</code>)
+                </li>
+                <li class="mb-2"><strong>Data Management:</strong> Access collected data and download links.
+                    (<code>/&lt;account_url&gt;/data</code>)
+                </li>
+                <li class="mb-2"><strong>File Existence API:</strong> Check if specified files exist in the cloud.
+                    (<code>/&lt;account_url&gt;/files</code>)
+                </li>
+                <li class="mb-2"><strong>Sync:</strong> Force a sync of S3 data for an account.
+                    (<code>/&lt;account_url&gt;/sync</code>)
+                </li>
             </ul>
         </section>
 
-        <!-- Getting Started Section -->
-        <section class="mb-5 py-5 rounded" id="getting-started" style="background-color: #f0f8ff;">
-            <div class="container text-center">
-                <h3 class="text-dark mb-4">Ready to start?</h3>
-                <p class="lead">To start with Hublink, obtain a <code>&lt;secret_url&gt;</code> from the
-                    <a href="https://neurotechhub.wustl.edu/" class="text-primary font-weight-bold">Neurotech Hub</a>.
-                </p>
+        <!-- API Examples Section -->
+        <section class="mb-5">
+            <h2 class="text-primary border-bottom pb-2 mb-4">API Access Examples</h2>
+
+            <!-- JSON API Example -->
+            <h3 class="mt-4">Retrieve Account Settings (JSON)</h3>
+            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;.json</code></p>
+            <p>This endpoint retrieves the account settings in JSON format.</p>
+
+            <div class="p-3 border rounded">
+                <h4>Example cURL Request:</h4>
+                <pre><code>curl -X GET "https://yourdomain.com/&lt;account_url&gt;.json"</code></pre>
+
+                <h4>Example Python Request:</h4>
+                <pre><code>import requests
+
+response = requests.get("https://yourdomain.com/&lt;account_url&gt;.json")
+if response.status_code == 200:
+    data = response.json()
+    print(data)
+else:
+    print("Error:", response.status_code)
+</code></pre>
+            </div>
+
+            <!-- Update Settings Example -->
+            <h3 class="mt-5">Update Account Settings</h3>
+            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;/settings/update</code> (POST)</p>
+            <p>Updates account settings by submitting form data. Note: This requires specific fields such as AWS keys,
+                bucket name, and others.</p>
+
+            <div class="p-3 border rounded">
+                <h4>Example cURL Request:</h4>
+                <pre><code>curl -X POST "https://yourdomain.com/&lt;account_url&gt;/settings/update" \
+-H "Content-Type: application/x-www-form-urlencoded" \
+-d "aws_access_key_id=YOUR_KEY&aws_secret_access_key=YOUR_SECRET&bucket_name=YOUR_BUCKET"
+</code></pre>
+
+                <h4>Example Python Request:</h4>
+                <pre><code>import requests
+
+url = "https://yourdomain.com/&lt;account_url&gt;/settings/update"
+data = {
+    "aws_access_key_id": "YOUR_KEY",
+    "aws_secret_access_key": "YOUR_SECRET",
+    "bucket_name": "YOUR_BUCKET"
+}
+response = requests.post(url, data=data)
+print("Status:", response.status_code)
+</code></pre>
+            </div>
+
+            <!-- File Existence API Example -->
+            <h3 class="mt-5">Check File Existence</h3>
+            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;/files</code> (POST)</p>
+            <p>Check if specific files exist in the cloud storage for an account. Send a JSON array of files with
+                <code>filename</code> and <code>size</code> keys.
+            </p>
+
+            <div class="p-3 border rounded">
+                <h4>Example cURL Request:</h4>
+                <pre><code>curl -X POST "https://yourdomain.com/&lt;account_url&gt;/files" \
+-H "Content-Type: application/json" \
+-d '{"files": [{"filename": "example.txt", "size": 1024}]}'</code></pre>
+
+                <h4>Example Python Request:</h4>
+                <pre><code>import requests
+
+url = "https://yourdomain.com/&lt;account_url&gt;/files"
+data = {
+    "files": [
+        {"filename": "example.txt", "size": 1024}
+    ]
+}
+response = requests.post(url, json=data)
+print("Response:", response.json())
+</code></pre>
+            </div>
+
+            <!-- Sync Endpoint Example -->
+            <h3 class="mt-5">Sync Account Data</h3>
+            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;/sync</code> (GET)</p>
+            <p>Forces a sync with S3 for the account to update files in the cloud.</p>
+
+            <div class="p-3 border rounded">
+                <h4>Example cURL Request:</h4>
+                <pre><code>curl -X GET "https://yourdomain.com/&lt;account_url&gt;/sync"</code></pre>
+
+                <h4>Example Python Request:</h4>
+                <pre><code>import requests
+
+response = requests.get("https://yourdomain.com/&lt;account_url&gt;/sync")
+print("Status:", response.status_code)
+</code></pre>
             </div>
         </section>
-
     </div>
-
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </body>
 
 </html>

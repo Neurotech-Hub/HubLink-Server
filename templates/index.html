@@ -2,92 +2,229 @@
 <html lang="en">
 
 <head>
-    <!-- Hi, thanks for checking source :) -->
     {% include 'head.html' %}
     <style>
-        h1 {
-            font-size: 5rem;
-            font-weight: 900;
-            color: #333;
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            font-weight: 300;
-            color: #555;
-            margin-top: 1rem;
-            white-space: nowrap;
-            overflow: hidden;
-            border-right: .15em solid #555;
-            animation: typing 2s steps(13, end) 1, blink .75s step-end infinite;
-        }
-
-        .center-area {
-            position: relative;
-            top: -2rem;
-            /* Adjust this value as needed */
-        }
-
-
-        @keyframes typing {
-            0% {
-                width: 0;
-            }
-
-            100% {
-                width: 13ch;
-            }
-        }
-
         @keyframes blink {
             50% {
                 border-color: transparent;
             }
         }
-
-        /* Sleek button styling */
-        .learn-more-btn {
-            display: inline-block;
-            margin-top: 2rem;
-            padding: 1rem 3rem;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #333;
-            background-color: #fff;
-            border: none;
-            border-radius: 50px;
-            box-shadow: 0px 12px 24px rgba(0, 0, 0, 0.15);
-            transition: all 0.3s ease;
-            text-decoration: none;
-            text-align: center;
-        }
-
-        .learn-more-btn:hover {
-            box-shadow: 0px 16px 32px rgba(0, 0, 0, 0.25);
-            transform: translateY(-4px);
-            color: inherit;
-            /* Prevent color change on hover */
-            text-decoration: none;
-            /* Prevent underline on hover */
-        }
-
-        .learn-more-btn:focus {
-            outline: none;
-            box-shadow: 0px 16px 32px rgba(0, 0, 0, 0.25);
-        }
     </style>
 </head>
 
-<body>
+<body style="font-size: 1.15rem;">
     {% include 'nav.html' %}
 
     <div class="container-fluid center-area text-center">
-        <h1>hublink</h1>
-        <h2 class="typing-effect" onclick="toggleAccountForm()">&gt;&gt;collect data --now</h2>
+        <h1 class="tagline">The Gateway Manager</h1>
+        <h2 class="typing-effect subtagline">Efficiently manage, sync, and monitor data.</h2>
 
         <!-- Learn More Button -->
-        <a href="/docs" class="learn-more-btn">Learn More</a>
+        <a href="#more-content" class="learn-more-btn" id="learn-more-btn">Learn More</a>
     </div>
+
+    <!-- Hidden Content Section -->
+    <div id="more-content" class="container-fluid px-5">
+        <section class="mb-5">
+            <div class="container">
+                <div class="text-center mb-5 mt-5">
+                    <img src="/static/img/hublink-flow.png" alt="Hublink System Diagram" class="img-fluid rounded"
+                        style="max-width:90%">
+                </div>
+
+                <p class="lead">Hublink is a turn-key system for gathering, managing, and viewing data from multiple
+                    node and gateway devices.
+                <p><strong>Nodes</strong> are any "edge" device that collect data,
+                    typically
+                    onto an SD card. <strong>Gateways</strong> are centralized devices (one or many) used for
+                    gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> endpoints to
+                    coordinate
+                    settings and data transfer to the cloud (Amazon S3).</p>
+            </div>
+        </section>
+        <div class="card-deck mb-3 text-center">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Hobby</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">$19 <small class="text-muted">/ mo</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>Up to 5 Gateways</li>
+                        <li>10 GB of storage</li>
+                        <li>No support</li>
+                    </ul>
+                    <a href="#getting-started" class="btn btn-lg btn-block btn-light">Get Started</a>
+                </div>
+            </div>
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4 class="my-0 font-weight-normal">Pro</h4>
+                </div>
+                <div class="card-body">
+                    <h1 class="card-title pricing-card-title">$39 <small class="text-muted">/ mo</small></h1>
+                    <ul class="list-unstyled mt-3 mb-4">
+                        <li>Up to 25 Gateways</li>
+                        <li>50 GB of storage</li>
+                        <li>Phone & email support</li>
+                    </ul>
+                    <a href="#getting-started" class="btn btn-lg btn-block btn-primary">Get Started</a>
+                </div>
+            </div>
+        </div>
+        <!-- Pricing Note Section -->
+        <div class="text-center mt-2">
+            <p class="font-italic text-muted">Pre-configured ESP32-based nodes starting at <strong>$79</strong>;
+                pre-configured Raspberry Pi-based gateways starting at <strong>$299</strong>.</p>
+        </div>
+
+        <!-- Core Components Section -->
+        <section class="mb-5">
+            <h2 class="text-primary">Core Components</h2>
+            <p>The Hublink architecture is composed of:</p>
+            <ol>
+                <li>
+                    <strong>Hublink Node:</strong> An embedded, Arduino-based device (e.g., ESP32-S3) using the hublink
+                    library to mediate efficient file transfer
+                    over
+                    Bluetooth Low Energy.
+                </li>
+                <li>
+                    <strong>Hublink Gateway:</strong> Linux-based (e.g., Raspberry Pi) deployable hardware to find,
+                    connect,
+                    and manage
+                    data transfer from nodes and sync with cloud storage.
+                </li>
+                <li>
+                    <strong>Hublink.cloud:</strong> A web-based app to sync gateway settings and manage all aspects of
+                    the Hublink system.
+                </li>
+                <li>
+                    <strong>Hublink Client:</strong> A client library written in Python to interact, consume, and sync
+                    with Hublink-created
+                    Amazon S3 data.
+                </li>
+            </ol>
+        </section>
+
+        <!-- Features Section -->
+        <section class="mb-5 position-relative">
+            <div class="container position-relative">
+                <!-- Faded Background -->
+                <div class="bg-light rounded"
+                    style="opacity: 1; background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)); 
+                                    padding: 3rem; position: absolute; top: 0; left: 0; right: 0; height: 100%; z-index: 0;">
+                </div>
+
+                <!-- Features Content -->
+                <div class="position-relative" style="z-index: 1;padding-top:15px;">
+                    <h2 class="text-center mb-5 font-weight-bold">Features</h2>
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-cog fa-3x mb-3"></i>
+                                    <h5 class="card-title">Settings Config</h5>
+                                    <p class="card-text">Easily set credentials, file size limits, and other
+                                        configurations
+                                        to manage cloud storage.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-sync-alt fa-3x mb-3"></i>
+                                    <h5 class="card-title">Data Sync</h5>
+                                    <p class="card-text">Automatically back up experiment data to centralized cloud
+                                        storage for
+                                        easy access.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-tachometer-alt fa-3x mb-3"></i>
+                                    <h5 class="card-title">Dashboard</h5>
+                                    <p class="card-text">Monitor devices, receive alerts, and track experiment progress
+                                        in
+                                        real-time on an intuitive dashboard.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-4">
+                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <i class="fas fa-plug fa-3x mb-3"></i>
+                                    <h5 class="card-title">REST API</h5>
+                                    <p class="card-text">Programmatically check file existence and output account
+                                        settings in
+                                        JSON format for integration.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="row align-items-center mb-5 mt-5">
+            <!-- Feature Text Section -->
+            <div class="col-md-8">
+                <h3 class="">Mobile Native</h3>
+                <p class="lead mt-3">Access Hublink on-the-go with the mobile-friendly web app. Manage devices, monitor
+                    data,
+                    and view real-time updates from your smartphone or tablet.</p>
+            </div>
+            <!-- Image Section -->
+            <div class="col-md-4 mb-4 text-center">
+                <img style="max-height: 400px;" src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp"
+                    class="img-fluid drop-shadow">
+            </div>
+        </div>
+
+        <!-- Getting Started Section -->
+        <section class="mb-5 py-5 rounded" id="getting-started" style="background-color: #f0f8ff;">
+            <div class="container text-center">
+                <h3 class="text-dark mb-4">Ready to start?</h3>
+                <p class="lead">To start with Hublink, obtain a <code>&lt;secret_url&gt;</code> from the
+                    <a href="https://neurotechhub.wustl.edu/contact" class="text-primary font-weight-bold">Neurotech
+                        Hub</a>.
+                </p>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Click event for 'Learn More' button
+        document.getElementById('learn-more-btn').addEventListener('click', function (event) {
+            event.preventDefault();
+            const target = document.querySelector('#more-content');
+
+            // Smooth scroll to the section
+            target.scrollIntoView({ behavior: 'smooth' });
+
+            // Fade in the content after scrolling
+            setTimeout(() => {
+                target.classList.add('visible');
+            }, 500); // Delay for smooth fade-in effect
+        });
+
+        // Adjust opacity based on scroll position to enhance the preview effect
+        window.addEventListener('scroll', function () {
+            const target = document.getElementById('more-content');
+            const fadeHeight = 200; // Adjust height to control when the fade effect disappears
+            const scrollPos = window.scrollY || document.documentElement.scrollTop;
+
+            if (scrollPos > target.offsetTop - fadeHeight) {
+                target.classList.add('visible'); // Ensures it's fully visible once in view
+            } else {
+                target.classList.remove('visible'); // Hides if scrolled back up
+                target.style.opacity = 0.2 + (scrollPos / fadeHeight) * 0.8; // Gradual fade as you scroll down
+            }
+        });
+    </script>
 </body>
 
 </html>
