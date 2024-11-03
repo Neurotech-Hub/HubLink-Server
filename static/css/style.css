@@ -224,7 +224,7 @@ main {
 }
 
 .tagline {
-    font-size: 5rem;
+    font-size: 4rem;
     font-weight: 700;
     color: #333;
 }
@@ -234,8 +234,8 @@ main {
     font-weight: 300;
     color: #555;
     margin-top: 1rem;
-    white-space: nowrap;
-    overflow: hidden;
+    /* white-space: nowrap; */
+    /* overflow: hidden; */
     border-right: .15em solid #555;
     animation: blink 1s step-end infinite;
 }
