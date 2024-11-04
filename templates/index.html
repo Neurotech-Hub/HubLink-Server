@@ -17,17 +17,17 @@
 
     <div class="container-fluid center-area text-center">
         <h1 class="tagline">The #1 Gateway Manager</h1>
-        <h2 class="typing-effect subtagline">Efficiently manage, sync, and monitor data.</h2>
+        <h2 class="subtagline">Efficiently manage, sync, and monitor data.</h2>
 
         <!-- Learn More Button -->
         <a href="#more-content" class="learn-more-btn" id="learn-more-btn">Learn More</a>
     </div>
 
     <!-- Hidden Content Section -->
-    <div id="more-content" class="container-fluid px-5">
+    <div id="more-content" class="container-fluid px-5 mt-5">
         <section class="mb-5">
-            <div class="container">
-                <div class="text-center mb-5 mt-5">
+            <div class="container-fluid">
+                <div class="text-center mb-5">
                     <img src="/static/img/hublink-flow.png" alt="Hublink System Diagram" class="img-fluid rounded"
                         style="max-width:90%">
                 </div>
@@ -37,7 +37,7 @@
                 <p><strong>Nodes</strong> are any "edge" device that collect data,
                     typically
                     onto an SD card. <strong>Gateways</strong> are centralized devices (one or many) used for
-                    gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> endpoints to
+                    gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> API endpoints to
                     coordinate
                     settings and data transfer to the cloud (Amazon S3).</p>
             </div>
@@ -79,32 +79,53 @@
         </div>
 
         <!-- Core Components Section -->
-        <section class="mb-5 mt-5">
+        <section class="mb-5 mt-5 fs-6">
             <h2 class="text-primary">Core Components</h2>
-            <p>The Hublink architecture is composed of:</p>
-            <ol>
-                <li>
-                    <strong>Hublink Node:</strong> An embedded, Arduino-based device (e.g., ESP32-S3) using the hublink
-                    library to mediate efficient file transfer
-                    over
-                    Bluetooth Low Energy.
-                </li>
-                <li>
-                    <strong>Hublink Gateway:</strong> Linux-based (e.g., Raspberry Pi) deployable hardware to find,
-                    connect,
-                    and manage
-                    data transfer from nodes and sync with cloud storage.
-                </li>
-                <li>
-                    <strong>Hublink.cloud:</strong> A web-based app to sync gateway settings and manage all aspects of
-                    the Hublink system.
-                </li>
-                <li>
-                    <strong>Hublink Client:</strong> A client library written in Python to interact, consume, and sync
-                    with Hublink-created
-                    Amazon S3 data.
-                </li>
-            </ol>
+            <div class="container mt-4">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th style="width: 20%;">Component</th>
+                            <th style="width: 50%;">Description</th>
+                            <th style="width: 20%;">Technology</th>
+                            <th style="width: 10%;">Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Hublink Node</strong></td>
+                            <td>An embedded device using the Hublink library to mediate
+                                efficient
+                                file transfer.</td>
+                            <td>Arduino IDE, ESP32, Bluetooth Low Energy</td>
+                            <td><span class="badge bg-success rounded-pill me-2 text-white large-badge">Open</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hublink Gateway</strong></td>
+                            <td>A device used to find, connect, and manage data
+                                transfer from nodes to the cloud.</td>
+                            <td>Linux, Raspberry Pi</td>
+                            <td><span class="badge bg-danger rounded-pill me-2 text-white large-badge">Closed</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hublink.cloud</strong></td>
+                            <td>A web-app with API endpoints to sync gateway settings.</td>
+                            <td>Managed Server</td>
+                            <td><span class="badge bg-danger rounded-pill me-2 text-white large-badge">Closed</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Hublink Client</strong></td>
+                            <td>A client library to interact, consume, and sync with Hublink-created data.</td>
+                            <td>Amazon S3, Python</td>
+                            <td><span class="badge bg-success rounded-pill me-2 text-white large-badge">Open</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
         </section>
 
         <!-- Features Section -->
@@ -185,7 +206,7 @@
         </div>
 
         <!-- Getting Started Section -->
-        <section class="mb-5 py-5 rounded" id="getting-started" style="background-color: #f0f8ff;">
+        <section class="mb-5 py-5 rounded" id="getting-started" style="background-color: #ddedff;">
             <div class="container text-center">
                 <h3 class="text-dark mb-4">Ready to start?</h3>
                 <p class="lead">To start with Hublink, obtain a <code>&lt;secret_url&gt;</code> from the
