@@ -13,8 +13,24 @@
 
     <div class="container mt-5">
 
+        <h1 class="mb-5">Documentation</h1>
+
         <!-- Endpoint Summary Section -->
         <section class="mb-5">
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h2 class="card-title">Open-source Software</h2>
+                    <p class="card-text">You can get startd by looking at our open-source software on GitHub:</p>
+                    <ul>
+                        <li><a href="https://github.com/Neurotech-Hub/HublinkNode_ESP32" target="_blank">Hublink
+                                Node on GitHub</a></li>
+                        <li><a href="https://github.com/Neurotech-Hub/HubLink-Client" target="_blank">Hublink Client
+                                on GitHub</a></li>
+                    </ul>
+                </div>
+            </div>
+
             <h2 class="text-primary border-bottom pb-2 mb-4">Endpoint Summary</h2>
             <p>Here is an overview of the available API endpoints:</p>
             <ul class="list-unstyled ms-3">
@@ -136,6 +152,9 @@ print("Status:", response.status_code)
             </div>
         </section>
     </div>
+
+    {% include 'footer.html' %}
+
 </body>
 
 </html>

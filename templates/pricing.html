@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% include 'head.html' %}
+    <style>
+
+    </style>
+</head>
+
+<body>
+    {% include 'nav.html' %}
+
+    <div class="container mt-5">
+        <h1 class="mb-5">Pricing</h1>
+
+        {% include 'pricing-cards.html' %}
+
+        <section style="margin-bottom: 5rem;" class="mt-5">
+            <h2 class="text-primary border-bottom pb-2 mb-4">How it Works</h2>
+            <h3 class="mt-4">Nodes</h3>
+            <p>Hublink requires that you have <strong>ESP32-based</strong> nodes in order to communicate over Bluetooth
+                Low Energy (BLE) to gateways. This is made simple via the <strong>open-source</strong> <a
+                    target="_blank" href="https://github.com/Neurotech-Hub/ESP32_Link-Arduino">Hublink Node
+                    Library <i class="fa-solid fa-up-right-from-square"></i></a> for the Arduino IDE.</p>
+
+            <h3 class="mt-4">Gateways</h3>
+            <p>Hublink gateways are pre-configured <strong>Raspberry Pi</strong> devices that simply need a power outlet
+                and internet
+                connection. We
+                offer these <i>nearly</i> at cost! Your gateways will sync settings using our <a
+                    href="/">hublink.cloud</a> Dashboard to
+                enforce consistency across your deployment.</p>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Not using the cloud?</h5>
+                    <p class="card-text">Gateways can run in stand-alone mode and still collect node data. However,
+                        conflict resolution between gateways is done at the cloud-level, so you will need to develop (or
+                        hire us) a
+                        custom workflow.
+                    </p>
+                </div>
+            </div>
+
+            <h3 class="mt-4">Hublink Cloud</h3>
+            <p>The Hublink Cloud web-app is the primary link between <strong>nodes</strong>, <strong>gateways</strong>,
+                and <strong>cloud storage</strong>. We currently rely on <a href="https://aws.amazon.com/s3/"
+                    target="_blank">Amazon S3</a> for long-term, persistent,
+                reliable storage.
+                After your purchase of a Hublink gateway, we will provision your Amazon S3 bucket and you will own those
+                data.
+                Amazon S3 provides a rich API itself, which can be augemented with our open-source <a
+                    href="https://github.com/Neurotech-Hub/HubLink-Client" target="_blank">Hublink Client</a>.</p>
+
+            <h2 class="text-primary border-bottom pb-2 mb-4 mt-5">Ordering Hardware</h2>
+
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center">
+                                <thead class="bg-dark text-white">
+                                    <tr>
+                                        <th colspan="2">Nodes: Adafruit ESP32-S3 Feather</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1-5</td>
+                                        <td>$79 / node</td>
+                                    </tr>
+                                    <tr>
+                                        <td>6-10</td>
+                                        <td>$69 / node</td>
+                                    </tr>
+                                    <tr>
+                                        <td>>10</td>
+                                        <td>$59 / node</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-2">
+                            <p class="font-italic text-muted">We offer SD-card backpacks for $15 each.</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center">
+                                <thead class="bg-dark text-white">
+                                    <tr>
+                                        <th colspan="2">Gateways: CanaKit Raspberry Pi 5</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1-5</td>
+                                        <td>$299</td>
+                                    </tr>
+                                    <tr>
+                                        <td>6-10</td>
+                                        <td>$289</td>
+                                    </tr>
+                                    <tr>
+                                        <td>>10</td>
+                                        <td>$279</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="text-primary border-bottom pb-2 mb-4 mt-5">Self-hosted Services</h2>
+            <p><strong>Looking to get away from the monthly cost?</strong> We understand the need to lump-sum the cost
+                of the Hublink system. Please tell us more about your project using the form below for licensing and
+                white label applications for Hublink.</p>
+
+        </section>
+
+        <section class="mt-5">
+            {% include 'getting-started.html' %}
+        </section>
+
+
+    </div>
+</body>
+
+</html>

@@ -127,6 +127,16 @@ def docs():
         logging.error(f"Error loading documentation: {e}")
         return "There was an issue loading the documentation.", 500
     
+# Route to view pricing
+@app.route('/pricing', methods=['GET'])
+def pricing():
+    g.title = "Pricing"
+    try:
+        return render_template('pricing.html')
+    except Exception as e:
+        logging.error(f"Error loading pricing: {e}")
+        return "There was an issue loading the pricing.", 500
+    
 @app.route('/favicon.ico')
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))

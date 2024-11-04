@@ -29,7 +29,7 @@
             <div class="container-fluid">
                 <div class="text-center mb-5">
                     <img src="/static/img/hublink-flow.png" alt="Hublink System Diagram" class="img-fluid rounded"
-                        style="max-width:90%">
+                        style="max-width:80%">
                 </div>
 
                 <p class="lead">Hublink is a turn-key system for gathering, managing, and viewing data from multiple
@@ -42,91 +42,61 @@
                     settings and data transfer to the cloud (Amazon S3).</p>
             </div>
         </section>
-        <div class="card-deck mb-3 text-center">
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h4 class="my-0 font-weight-normal">Hobby</h4>
-                </div>
-                <div class="card-body">
-                    <h1 class="card-title pricing-card-title">$19 <small class="text-muted">/ mo</small></h1>
-                    <ul class="list-unstyled mt-3 mb-4">
-                        <li>Up to 5 Gateways</li>
-                        <li>10 GB of storage</li>
-                        <li>No support</li>
-                    </ul>
-                    <a href="#getting-started" class="btn btn-lg btn-block btn-light smooth-scroll">Get Started</a>
-                </div>
-            </div>
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h4 class="my-0 font-weight-normal">Pro</h4>
-                </div>
-                <div class="card-body">
-                    <h1 class="card-title pricing-card-title">$39 <small class="text-muted">/ mo</small></h1>
-                    <ul class="list-unstyled mt-3 mb-4">
-                        <li>Up to 25 Gateways</li>
-                        <li>50 GB of storage</li>
-                        <li>Phone & email support</li>
-                    </ul>
-                    <a href="#getting-started" class="btn btn-lg btn-block btn-primary smooth-scroll">Get Started</a>
-                </div>
-            </div>
-        </div>
-        <!-- Pricing Note Section -->
-        <div class="text-center mt-2">
-            <p class="font-italic text-muted">Pre-configured ESP32-based nodes starting at <strong>$79</strong>;
-                pre-configured Raspberry Pi-based gateways starting at <strong>$299</strong>.</p>
-        </div>
+
+        {% include 'pricing-cards.html' %}
 
         <!-- Core Components Section -->
         <section class="mb-5 mt-5 fs-6">
             <h2 class="text-primary">Core Components</h2>
-            <div class="container mt-4">
+            <div class="mt-4">
                 <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
-                                <th style="width: 20%;">Component</th>
-                                <th style="width: 45%;">Description</th>
-                                <th style="width: 20%;">Technology</th>
-                                <th class="text-center" style="width: 15%;">Source</th>
+                                <th style="width: 25%;">Component</th>
+                                <th style="width: 50%;">Description</th>
+                                <th style="width: 25%;">Technology</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><strong>Hublink Node</strong></td>
+                                <td>
+                                    <strong>Hublink Node</strong>
+                                    <div><span class="badge bg-success rounded-pill me-2 text-white large-badge">Open
+                                            Source</span></div>
+                                </td>
+
                                 <td>An embedded device using the Hublink library to mediate
                                     efficient
                                     file transfer.</td>
                                 <td>Arduino IDE, ESP32, Bluetooth Low Energy</td>
-                                <td class="text-center"><span
-                                        class="badge bg-success rounded-pill me-2 text-white large-badge">Open</span>
-                                </td>
                             </tr>
                             <tr>
-                                <td><strong>Hublink Gateway</strong></td>
+                                <td><strong>Hublink Gateway</strong>
+                                    <div><span
+                                            class="badge bg-danger rounded-pill me-2 text-white large-badge">Proprietary</span>
+                                    </div>
+                                </td>
                                 <td>A device used to find, connect, and manage data
                                     transfer from nodes to the cloud.</td>
                                 <td>Linux, Raspberry Pi</td>
-                                <td class="text-center"><span
-                                        class="badge bg-danger rounded-pill me-2 text-white large-badge">Closed</span>
-                                </td>
                             </tr>
                             <tr>
-                                <td><strong>Hublink.cloud</strong></td>
+                                <td><strong>Hublink.cloud</strong>
+                                    <div><span
+                                            class="badge bg-danger rounded-pill me-2 text-white large-badge">Proprietary</span>
+                                    </div>
+                                </td>
                                 <td>A web-app with API endpoints to sync gateway settings.</td>
                                 <td>Managed Server</td>
-                                <td class="text-center"><span
-                                        class="badge bg-danger rounded-pill me-2 text-white large-badge">Closed</span>
-                                </td>
                             </tr>
                             <tr>
-                                <td><strong>Hublink Client</strong></td>
+                                <td><strong>Hublink Client</strong>
+                                    <div><span class="badge bg-success rounded-pill me-2 text-white large-badge">Open
+                                            Source</span></div>
+                                </td>
                                 <td>A client library to interact, consume, and sync with Hublink-created data.</td>
                                 <td>Amazon S3, Python</td>
-                                <td class="text-center"><span
-                                        class="badge bg-success rounded-pill me-2 text-white large-badge">Open</span>
-                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -212,17 +182,11 @@
             </div>
         </div>
 
-        <!-- Getting Started Section -->
-        <section class="mb-5 py-5 rounded" id="getting-started" style="background-color: #ddedff;">
-            <div class="container text-center">
-                <h3 class="text-dark mb-4">Ready to start?</h3>
-                <p class="lead">To start with Hublink, obtain a <code>&lt;secret_url&gt;</code> from the
-                    <a href="https://neurotechhub.wustl.edu/contact" class="text-primary font-weight-bold">Neurotech
-                        Hub</a>.
-                </p>
-            </div>
-        </section>
+        {% include 'getting-started.html' %}
+
     </div>
+
+    {% include 'footer.html' %}
 
     <script>
         // Click event for 'Learn More' button
