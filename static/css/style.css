@@ -319,25 +319,34 @@ table td a {
     overflow-wrap: anywhere;
 }
 
-/* Mobile-friendly table styling */
+/* General table styling for mobile */
+.table {
+    max-width: 100%;
+    width: 100%;
+    table-layout: fixed;
+    /* Force columns to take up equal space */
+}
+
+/* Adjust for mobile */
 @media (max-width: 768px) {
 
-    /* Reduce font size and padding for table cells */
     .table th,
     .table td {
-        font-size: 0.85rem;
-        padding: 0.3rem;
-    }
-
-    /* Adjust badge size for better fit */
-    .table .badge {
         font-size: 0.75rem;
-        padding: 0.2rem 0.4rem;
+        /* Smaller text */
+        padding: 0.3rem;
+        /* Reduced padding */
     }
 
-    /* Word-wrap long text */
+    /* Reduce font size and padding for badges */
+    .table .badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.3rem;
+    }
+
+    /* Force word wrapping in table cells */
     .table td {
-        word-break: break-word;
+        word-wrap: break-word;
         white-space: normal;
     }
 }
