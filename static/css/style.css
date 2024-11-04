@@ -318,3 +318,26 @@ table td a {
     white-space: normal;
     overflow-wrap: anywhere;
 }
+
+/* Mobile-friendly table styling */
+@media (max-width: 768px) {
+
+    /* Reduce font size and padding for table cells */
+    .table th,
+    .table td {
+        font-size: 0.85rem;
+        padding: 0.3rem;
+    }
+
+    /* Adjust badge size for better fit */
+    .table .badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    /* Word-wrap long text */
+    .table td {
+        word-break: break-word;
+        white-space: normal;
+    }
+}
