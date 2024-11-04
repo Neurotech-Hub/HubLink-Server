@@ -120,7 +120,8 @@ def account_data(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        update_S3_files(settings)
+        # !! skip for now if process_sqs_messages works
+        # update_S3_files(settings)
         recent_files = get_latest_files(account.id)
         # Generate download links for each file
         for file in recent_files:
