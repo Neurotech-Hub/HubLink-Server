@@ -12,11 +12,11 @@
     </style>
 </head>
 
-<body style="font-size: 1.15rem;">
+<body>
     {% include 'nav.html' %}
 
     <div class="container-fluid center-area text-center">
-        <h1 class="tagline">The #1 Gateway Manager</h1>
+        <h1 class="tagline">The <span class="highlight royal">#1</span> Gateway Manager</h1>
         <h2 class="subtagline">Efficiently manage, sync, and monitor data.</h2>
 
         <!-- Learn More Button -->
@@ -24,7 +24,7 @@
     </div>
 
     <!-- Hidden Content Section -->
-    <div id="more-content" class="container-fluid px-5 mt-5">
+    <div style="font-size:1.15rem;" id="more-content" class="container-fluid px-5 mt-5">
         <section class="mb-5">
             <div class="container-fluid">
                 <div class="text-center mb-5">
@@ -47,7 +47,7 @@
 
         <!-- Core Components Section -->
         <section class="mb-5 mt-5 fs-6">
-            <h2 class="text-primary">Core Components</h2>
+            <h2>Core Components</h2>
             <div class="mt-4">
                 <div class="table-responsive">
                     <table class="table table-bordered">
@@ -106,17 +106,17 @@
         </section>
 
         <!-- Features Section -->
-        <section class="mb-5 position-relative">
+        <section class="position-relative" style="margin-bottom: 5rem;">
             <div class="container position-relative">
                 <!-- Faded Background -->
                 <div class="bg-light rounded"
                     style="opacity: 1; background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)); 
-                                    padding: 3rem; position: absolute; top: 0; left: 0; right: 0; height: 100%; z-index: 0;">
+                                    padding: 2rem; position: absolute; top: 0; left: 0; right: 0; height: 100%; z-index: 0;">
                 </div>
 
                 <!-- Features Content -->
                 <div class="position-relative" style="z-index: 1;padding-top:15px;">
-                    <h2 class="text-center mb-5 font-weight-bold">Features</h2>
+                    <h2 class="mb-4">Features</h2>
                     <div class="row text-center">
                         <div class="col-md-3 mb-4">
                             <div class="card bg-white text-dark border-0 shadow-sm h-100">
@@ -167,20 +167,36 @@
             </div>
         </section>
 
-        <div class="row align-items-center mb-5 mt-5">
-            <!-- Feature Text Section -->
-            <div class="col-md-8">
-                <h3 class="">Mobile Native</h3>
-                <p class="lead mt-3">Access Hublink on-the-go with the mobile-friendly web app. Manage devices, monitor
-                    data,
-                    and view real-time updates from your smartphone or tablet.</p>
+        <section class="mt-5">
+            <div class="row align-items-center mb-5 mt-5">
+                <!-- Feature Text Section -->
+                <div class="col-md-8">
+                    <h3>Ultra Shareable</h3>
+                    <p class="lead mt-3">Share your gateway dashboard anywhere, anytime once you have your
+                        <code>&lt;secret_url&gt;</code>.
+                    </p>
+
+                    <div class="card mb-4 text-dark">
+                        <div class="card-body">
+                            <p class="card-text">Your Hublink dashboard will appear at:
+                                <strong><code>https://hublink.cloud/&lt;secret_url&gt;</code></strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    <h3 class="">Mobile Native</h3>
+                    <p class="lead mt-3">Full access on-the-go with the mobile-friendly web app. Manage devices, monitor
+                        data,
+                        and view real-time updates from your smartphone or tablet.</p>
+                </div>
+                <!-- Image Section -->
+                <div class="col-md-4 mb-4 text-center">
+                    <img style="max-height: 500px;" src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp"
+                        class="img-fluid drop-shadow">
+                </div>
             </div>
-            <!-- Image Section -->
-            <div class="col-md-4 mb-4 text-center">
-                <img style="max-height: 400px;" src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp"
-                    class="img-fluid drop-shadow">
-            </div>
-        </div>
+
+        </section>
 
         {% include 'getting-started.html' %}
 

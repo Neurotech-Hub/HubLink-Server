@@ -229,6 +229,15 @@ main {
     color: #333;
 }
 
+.highlight {
+    font-weight: 900;
+    background: linear-gradient(280deg, #790596, #1b4ae9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
 .subtagline {
     font-size: 1.5rem;
     font-weight: 300;
@@ -349,4 +358,9 @@ table td a {
         word-wrap: break-word;
         white-space: normal;
     }
+}
+
+.bg-light-success {
+    background-color: #d4edda;
+    /* Light green similar to Bootstrap's success alert */
 }
