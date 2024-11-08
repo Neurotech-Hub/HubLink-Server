@@ -151,7 +151,7 @@ def process_sqs_messages(account_settings):
         region_name=os.getenv('AWS_REGION', 'us-east-1')
     )
     
-    queue_url = "https://sqs.us-east-1.amazonaws.com/557690613785/HublinkQueue"
+    queue_url = os.getenv('HUBLINK_QUEUE') # "https://sqs.us-east-1.amazonaws.com/557690613785/HublinkQueue"
     
     while True:
         try:

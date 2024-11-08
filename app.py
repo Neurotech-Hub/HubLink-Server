@@ -8,6 +8,9 @@ import random
 import string
 from datetime import datetime, timedelta, timezone  # Added timezone import
 from accounts import accounts_bp  # Importing Blueprint for account-specific routes
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
