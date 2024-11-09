@@ -10,6 +10,11 @@
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-5QRJ4H7XX4"></script>
 <script>
+    document.querySelectorAll('td[data-timestamp]').forEach(function (element) {
+        const timestamp = element.getAttribute('data-timestamp');
+        element.textContent = moment.utc(timestamp).local().format('LLL');  // Localizes to browser timezone
+    });
+
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());

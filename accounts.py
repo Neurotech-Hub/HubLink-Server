@@ -200,7 +200,7 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        gateways = Gateway.query.order_by(desc(Gateway.created_at)).all()
+        gateways = Gateway.query.order_by(desc(Gateway.created_at)).limit(20).all()
 
         # Sample data retrieval for file uploads over the last month
         today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)  # Start of today's date
