@@ -4,6 +4,33 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Device Filter Pills -->
+    <div class="mb-3">
+        <!-- All Devices pill -->
+        <span class="badge {{ 'bg-success' if device_id is none else 'bg-light' }}">
+            <a href="{{ url_for('accounts.account_data', account_url=account.url, total_limit=total_limit) }}"
+                class="text-decoration-none text-dark">
+                All Devices
+            </a>
+        </span>
+
+        <!-- Individual Device Pills -->
+        {% for device in unique_devices %}
+        <span class="badge {{ 'bg-success' if device_id == device else 'bg-light' }}">
+            <a href="{{ url_for('accounts.account_data', account_url=account.url, device_id=device, total_limit=total_limit) }}"
+                class="text-decoration-none text-dark">
+                {{ device }}
+            </a>
+        </span>
+        {% endfor %}
+    </div>
+
+    <!-- Limit Notice -->
+    {% if total_limit %}
+    <p class="small text-muted">Limited to {{ total_limit }} recent files</p>
+    {% endif %}
+
+    <!-- File Table -->
     <div class="row">
         <div class="col-12">
             <table class="table table-striped">
@@ -18,10 +45,12 @@
                     {% if recent_files and recent_files|length > 0 %}
                     {% for file in recent_files %}
                     <tr>
-                        <td><a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}"
-                                download>{{ file.key
-                                }}</a></td>
-
+                        <td>
+                            <a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}"
+                                download>
+                                {{ file.key }}
+                            </a>
+                        </td>
                         <td>{{ file.size | filesizeformat }}</td>
                         <td>{{ moment(file.last_modified).format('LLL') }}</td>
                     </tr>

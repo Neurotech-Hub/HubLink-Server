@@ -113,22 +113,30 @@ def delete_account(account_url):
         logging.error(f"There was an issue deleting the account: {e}")
         return "There was an issue deleting the account."
 
-# Route to view data for an account
 @accounts_bp.route('/<account_url>/data', methods=['GET'])
-def account_data(account_url):
+@accounts_bp.route('/<account_url>/data/<device_id>', methods=['GET'])
+def account_data(account_url, device_id=None):
     g.title = "Data"
+    total_limit = 100
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        #settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        # !! skip for now if process_sqs_messages works
-        # update_S3_files(settings)
-        recent_files = get_latest_files(account.id, 50)
-        # Generate download links for each file
-        # for file in recent_files:
-        #     file.download_link = generate_download_link(settings, file.key)
-        return render_template('data.html', account=account, recent_files=recent_files)
+        
+        # Get recent files for the account, optionally filtered by device_id
+        recent_files = get_latest_files(account.id, total=total_limit, device_id=device_id)
+        
+        # Retrieve a list of unique device IDs for display in the template
+        unique_devices = get_unique_devices(account.id)
+        
+        return render_template(
+            'data.html',
+            account=account,
+            recent_files=recent_files,
+            unique_devices=unique_devices,
+            device_id=device_id,
+            total_limit=total_limit
+        )
     except Exception as e:
-        logging.error(f"Error loading data for {account_url}: {e}")
+        logging.error(f"Error loading data for {account_url} and device {device_id}: {e}")
         return "There was an issue loading the data page.", 500
 
 @accounts_bp.route('/<account_url>/files', methods=['POST'])

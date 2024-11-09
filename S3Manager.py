@@ -109,7 +109,7 @@ def generate_download_link(account_settings, key, expires_in=3600):
         logging.error(f"Failed to generate download link for {key}: {e}")
         return None
 
-def get_latest_files(account_id, total=1000, days=None):
+def get_latest_files(account_id, total=1000, days=None, device_id=None):
     try:
         query = File.query.filter_by(account_id=account_id).order_by(File.last_modified.desc())
 
@@ -117,6 +117,11 @@ def get_latest_files(account_id, total=1000, days=None):
         if days is not None:
             date_limit = datetime.utcnow() - timedelta(days=days)
             query = query.filter(File.last_modified >= date_limit)
+
+        # Apply a device_id filter if specified, filtering by key prefix
+        if device_id is not None:
+            device_prefix = f"{device_id}/"
+            query = query.filter(File.key.like(f"{device_prefix}%"))
 
         # Limit the total number of files
         latest_files = query.limit(total).all()
@@ -126,7 +131,19 @@ def get_latest_files(account_id, total=1000, days=None):
         logging.error(f"Failed to retrieve latest files for account {account_id}: {e}")
         return []
 
-    
+def get_unique_devices(account_id):
+    # Query to get distinct device IDs based on the prefix structure in `File.key`
+    device_ids = (
+        File.query
+        .filter_by(account_id=account_id)
+        .with_entities(File.key)
+        .distinct()
+    )
+
+    # Extract and return only the part of the key before the first '/'
+    unique_devices = {key.key.split('/')[0] for key in device_ids}
+    return sorted(unique_devices)
+
 def do_files_exist(account_id, files):
     try:
         # Extract filenames from the provided list of dictionaries
