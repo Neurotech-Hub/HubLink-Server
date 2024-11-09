@@ -1,12 +1,10 @@
 import boto3
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from models import *
 import json
 from dateutil import parser
-
-from datetime import datetime, timezone
 
 def rebuild_S3_files(account_settings):
     retries = 3
@@ -111,13 +109,23 @@ def generate_download_link(account_settings, key, expires_in=3600):
         logging.error(f"Failed to generate download link for {key}: {e}")
         return None
 
-def get_latest_files(account_id, total=100):
+def get_latest_files(account_id, total=1000, days=None):
     try:
-        latest_files = File.query.filter_by(account_id=account_id).order_by(File.last_modified.desc()).limit(total).all()
+        query = File.query.filter_by(account_id=account_id).order_by(File.last_modified.desc())
+
+        # Apply a date filter if `days` is specified
+        if days is not None:
+            date_limit = datetime.utcnow() - timedelta(days=days)
+            query = query.filter(File.last_modified >= date_limit)
+
+        # Limit the total number of files
+        latest_files = query.limit(total).all()
         return latest_files
+
     except Exception as e:
         logging.error(f"Failed to retrieve latest files for account {account_id}: {e}")
         return []
+
     
 def do_files_exist(account_id, files):
     try:

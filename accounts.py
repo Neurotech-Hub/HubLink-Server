@@ -122,7 +122,7 @@ def account_data(account_url):
         #settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         # !! skip for now if process_sqs_messages works
         # update_S3_files(settings)
-        recent_files = get_latest_files(account.id)
+        recent_files = get_latest_files(account.id, 50)
         # Generate download links for each file
         # for file in recent_files:
         #     file.download_link = generate_download_link(settings, file.key)
@@ -205,7 +205,7 @@ def account_dashboard(account_url):
         # Sample data retrieval for file uploads over the last month
         today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)  # Start of today's date
         start_date = today - timedelta(days=30)
-        recent_files = get_latest_files(account.id)
+        recent_files = get_latest_files(account.id, 1000, 31)
 
         # Generate counts for each day in the last 30 days
         file_uploads_over_time = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(31)]
