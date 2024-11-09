@@ -9,18 +9,21 @@
             <table class="table table-striped">
                 <thead>
                     <tr>
-                        <th style="width: 60%;">Filename</th>
+                        <th style="width: 55%;">Filename</th>
                         <th style="width: 20%;">Size</th>
-                        <th style="width: 20%;">Last Modified</th>
+                        <th style="width: 35%;">Last Modified</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if recent_files and recent_files|length > 0 %}
                     {% for file in recent_files %}
                     <tr>
-                        <td><a href="{{ file.download_link }}" download>{{ file.key }}</a></td>
+                        <td><a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}"
+                                download>{{ file.key
+                                }}</a></td>
+
                         <td>{{ file.size | filesizeformat }}</td>
-                        <td>{{ file.last_modified }}</td>
+                        <td>{{ moment(file.last_modified).format('LLL') }}</td>
                     </tr>
                     {% endfor %}
                     {% else %}

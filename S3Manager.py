@@ -6,51 +6,49 @@ from models import *
 import json
 from dateutil import parser
 
-def update_S3_files(account_settings, force_update=False):
+from datetime import datetime, timezone
+
+def rebuild_S3_files(account_settings):
     retries = 3
     account_id = account_settings.account_id
 
-    # Check if the update has run in the past 5 minutes for this account unless force_update is True
-    account = Account.query.filter_by(id=account_id).first()
-    if not force_update:
-        if account and account.updated_at and datetime.now(timezone.utc) - account.updated_at.replace(tzinfo=timezone.utc) < timedelta(minutes=5):
-            logging.info(f"Skipping update for account {account_id}, as it was recently run.")
-            return
-
-    # Validate that required settings are not empty
+    # Validate required settings
     if not account_settings.aws_access_key_id or not account_settings.aws_secret_access_key or not account_settings.bucket_name:
         logging.error(f"Missing AWS credentials or bucket name for account {account_id}.")
         return
 
+    # Attempt to create S3 client
     try:
-        # Create S3 client using the access key provided by the account settings
         s3_client = boto3.client(
             's3',
             aws_access_key_id=account_settings.aws_access_key_id,
             aws_secret_access_key=account_settings.aws_secret_access_key,
-            region_name=os.getenv('AWS_REGION', 'us-east-1')  # Default to 'us-east-1' if not set
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
         )
     except Exception as e:
         logging.error(f"Failed to create S3 client: {e}")
         return
 
+    # Clear the current files for this account in the database
     File.query.filter_by(account_id=account_id).delete()
     db.session.commit()
 
-    continuation_token = None
-
     for attempt in range(retries):
         try:
-            while True:
-                if continuation_token:
-                    response = s3_client.list_objects_v2(
-                        Bucket=account_settings.bucket_name, Prefix='', ContinuationToken=continuation_token
-                    )
-                else:
-                    response = s3_client.list_objects_v2(Bucket=account_settings.bucket_name, Prefix='')
+            continuation_token = None
+            all_files = []  # Collect all files in one go to bulk insert at the end
 
+            while True:
+                # List objects in the S3 bucket with pagination handling
+                list_params = {'Bucket': account_settings.bucket_name, 'Prefix': ''}
+                if continuation_token:
+                    list_params['ContinuationToken'] = continuation_token
+
+                response = s3_client.list_objects_v2(**list_params)
+
+                # Check if there are any files to process
                 if 'Contents' in response:
-                    new_files = [
+                    all_files.extend([
                         File(
                             account_id=account_id,
                             key=obj['Key'],
@@ -58,21 +56,18 @@ def update_S3_files(account_settings, force_update=False):
                             size=obj['Size'],
                             last_modified=obj['LastModified']
                         ) for obj in response['Contents']
-                    ]
+                    ])
 
-                    # Add new files to the session
-                    db.session.bulk_save_objects(new_files)
-                    db.session.commit()
-
-                # Check if there are more files to list
+                # Pagination handling
                 if response.get('IsTruncated'):
                     continuation_token = response.get('NextContinuationToken')
                 else:
-                    break
+                    break  # No more files to list
 
-            # Update the last update timestamp for this account
-            account.updated_at = datetime.now(timezone.utc)
+            # Insert all new files at once after successful retrieval
+            db.session.bulk_save_objects(all_files)
             db.session.commit()
+            logging.info(f"Rebuilt files table for account {account_id}. Total files: {len(all_files)}")
             return
 
         except s3_client.exceptions.NoSuchBucket:

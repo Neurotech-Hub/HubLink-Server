@@ -119,13 +119,13 @@ def account_data(account_url):
     g.title = "Data"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        #settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         # !! skip for now if process_sqs_messages works
         # update_S3_files(settings)
         recent_files = get_latest_files(account.id)
         # Generate download links for each file
-        for file in recent_files:
-            file.download_link = generate_download_link(settings, file.key)
+        # for file in recent_files:
+        #     file.download_link = generate_download_link(settings, file.key)
         return render_template('data.html', account=account, recent_files=recent_files)
     except Exception as e:
         logging.error(f"Error loading data for {account_url}: {e}")
@@ -172,16 +172,27 @@ def sync(account_url):
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
-        # Call update_S3_files for the account with force_update set to True
-        # update_S3_files(settings, force_update=True)
-
         process_sqs_messages(settings)
 
         return jsonify({"message": "Sync completed successfully"}), 200
     except Exception as e:
         logging.error(f"Error during '/sync' endpoint: {e}")
         return jsonify({"error": "There was an issue processing the sync request."}), 500
-    
+
+@accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
+def rebuild(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+
+        # Call update_S3_files for the account with force_update set to True
+        rebuild_S3_files(settings)
+
+        return jsonify({"message": "Rebuild completed successfully"}), 200
+    except Exception as e:
+        logging.error(f"Error during '/rebuild' endpoint: {e}")
+        return jsonify({"error": "There was an issue processing the rebuild request."}), 500
+
 # Route to view the account dashboard by its unique URL
 @accounts_bp.route('/<account_url>', methods=['GET'])
 def account_dashboard(account_url):
@@ -247,8 +258,7 @@ def account_dashboard(account_url):
         # Handle other unexpected exceptions
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard.", 500
-    
-# Route to download a file
+
 @accounts_bp.route('/<account_url>/download/<int:file_id>', methods=['GET'])
 def download_file(account_url, file_id):
     try:

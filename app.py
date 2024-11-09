@@ -9,6 +9,7 @@ import string
 from datetime import datetime, timedelta, timezone  # Added timezone import
 from accounts import accounts_bp  # Importing Blueprint for account-specific routes
 from dotenv import load_dotenv
+from flask_moment import Moment
 
 load_dotenv(override=True)
 
@@ -25,6 +26,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL', 
     f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
 )
+
+# timezone handling
+moment = Moment(app)
 
 # security by obscurity
 new_route = os.getenv('NEW_ROUTE', 'new')
