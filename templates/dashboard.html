@@ -23,7 +23,7 @@
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-cloud-upload-alt"></i> File Uploads (last 30 days)</h5>
+                    <h5 class="card-title"><i class="fas fa-cloud-upload-alt"></i> File Uploads by Device</h5>
                     <div style="position: relative; height:400px;">
                         <canvas id="uploadsBarChart"></canvas>
                     </div>
@@ -62,7 +62,7 @@
 </div>
 
 <!-- Chart.js Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0.1"></script>
 <script>
     var fileUploadsLabels = {{ file_uploads_over_time | tojson | safe }};
     var uploadsData = {{ uploads_count | tojson | safe }};
@@ -84,6 +84,11 @@
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
         }
     });
 
@@ -96,7 +101,7 @@
         data: {
             labels: devices,
             datasets: [{
-                label: 'File Uploads per Device',
+                label: 'Device File Uploads (last 30 days)',
                 data: deviceUploadCounts,
                 backgroundColor: 'rgba(153, 102, 255, 0.6)',
                 borderColor: 'rgba(153, 102, 255, 1)',
@@ -110,14 +115,13 @@
                 y: {
                     beginAtZero: true
                 }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
             }
         }
-    });
-
-    // Convert and display timestamps in local timezone
-    document.querySelectorAll('td[data-timestamp]').forEach(function (element) {
-        const timestamp = element.getAttribute('data-timestamp');
-        element.textContent = moment(timestamp).format('LLL');  // Format as per user's local timezone
     });
 </script>
 
