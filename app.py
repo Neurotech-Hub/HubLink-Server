@@ -1,5 +1,5 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for
-from flask_migrate import Migrate
+from flask_migrate import Migrate, upgrade
 from models import db, Account, Setting # db locations
 from S3Manager import *
 import os
@@ -41,6 +41,14 @@ db.init_app(app)
 
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
+
+# Run migrations
+with app.app_context():
+    try:
+        upgrade()
+        logging.info("Database migrations completed successfully")
+    except Exception as e:
+        logging.error(f"Error running database migrations: {e}")
 
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)
