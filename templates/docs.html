@@ -199,6 +199,59 @@ device123/data.txt</code></pre>
                 </div>
             </div>
         </section>
+
+        <!-- SD Card Configuration -->
+        <section class="mb-5">
+            <h2 class="text-primary border-bottom pb-2 mb-4">SD Card Configuration</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p>Create a file named <code>hublink.node</code> on your SD card to configure node behavior. Each
+                        setting uses a key-value format, with one pair per line:</p>
+                    <div class="bg-light p-3 rounded">
+                        <pre
+                            class="mb-0"><code><div class="lh-base">node=Subject001</div><div class="lh-base">advertise=ESP32_NODE</div><div class="lh-base">interval=60000-30</div><div class="lh-base">disable=false</div></code></pre>
+                    </div>
+
+                    <h5 class="mt-4">Available Settings</h5>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Setting</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>node</code></td>
+                                <td>Base folder name for file storage</td>
+                                <td>Node's MAC address</td>
+                            </tr>
+                            <tr>
+                                <td><code>advertise</code></td>
+                                <td>BLE advertising name</td>
+                                <td>See library</td>
+                            </tr>
+                            <tr>
+                                <td><code>interval</code></td>
+                                <td>BLE connection timing (format: connectEvery-connectFor in milliseconds)</td>
+                                <td>See library</td>
+                            </tr>
+                            <tr>
+                                <td><code>disable</code></td>
+                                <td>Disable Hublink functionality</td>
+                                <td><code>false</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="mt-4">
+                        <small class="text-muted">Note: The configuration file is processed internally by the Hublink
+                            Node library. Changes require a device restart to take effect.</small>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
 
     {% include 'footer.html' %}
