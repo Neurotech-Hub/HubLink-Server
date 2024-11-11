@@ -118,6 +118,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="node_payload">Node Payload (format: key=value;key=value):</label>
+                    <input type="text" id="node_payload" name="node_payload" class="form-control"
+                        value="{{ settings.node_payload }}" pattern="^$|^[^=;]+=([^=;]+)(;[^=;]+=([^=;]+))*$"
+                        title="Format must be key=value or key=value;key=value">
+                    <small class="form-text text-muted">Example: name=device1;type=sensor</small>
+                </div>
+
+                <div class="form-group">
                     <label for="alert_file_starts_with">Alert File (Starts With):</label>
                     <input type="text" id="alert_file_starts_with" name="alert_file_starts_with" class="form-control"
                         value="{{ settings.alert_file_starts_with }}">
@@ -156,5 +164,22 @@
                 console.error('Could not copy text: ', err);
             });
         }
+
+        document.getElementById('node_payload').addEventListener('input', function (e) {
+            const input = e.target.value.trim();
+            if (input === '') return; // Allow empty value
+
+            const pairs = input.split(';');
+            const isValid = pairs.every(pair => {
+                const parts = pair.split('=');
+                return parts.length === 2 && parts[0].trim() !== '' && parts[1].trim() !== '';
+            });
+
+            if (!isValid) {
+                e.target.setCustomValidity('Please use format: key=value or key=value;key=value');
+            } else {
+                e.target.setCustomValidity('');
+            }
+        });
     </script>
     {% endblock %}

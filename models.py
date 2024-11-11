@@ -36,6 +36,7 @@ class Setting(db.Model):
     id_file_starts_with = db.Column(db.String(100), nullable=False, default="")
     alert_file_starts_with = db.Column(db.String(100), nullable=False, default="")
     alert_email = db.Column(db.String(100), nullable=True)
+    node_payload = db.Column(db.String(100), nullable=False, default="")
 
     def __repr__(self):
         return f"<Setting for Account {self.account_id}>"
@@ -54,7 +55,8 @@ class Setting(db.Model):
             'device_name_includes': self.device_name_includes,
             'id_file_starts_with': self.id_file_starts_with,
             'alert_file_starts_with': self.alert_file_starts_with,
-            'alert_email': self.alert_email
+            'alert_email': self.alert_email,
+            'node_payload': self.node_payload
         }
 
 # Define the files model

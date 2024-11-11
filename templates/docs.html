@@ -3,152 +3,200 @@
 
 <head>
     {% include 'head.html' %}
-    <style>
-
-    </style>
 </head>
 
 <body>
     {% include 'nav.html' %}
 
     <div class="container mt-5">
-
         <h1 class="mb-5">Documentation</h1>
 
-        <!-- Endpoint Summary Section -->
+        <!-- Quick Start Section -->
         <section class="mb-5">
-
+            <h2 class="text-primary border-bottom pb-2 mb-4">Quick Start</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <h2 class="card-title">Open-source Software</h2>
-                    <p class="card-text">You can get startd by looking at our open-source software on GitHub:</p>
+                    <ol>
+                        <li>Create an account to get your unique URL</li>
+                        <li>Configure your AWS S3 credentials in Settings</li>
+                        <li>Register your gateway using the Gateway Registration endpoint</li>
+                        <li>Start uploading files from your devices</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section class="mb-5">
+            <h2 class="text-primary border-bottom pb-2 mb-4">Available Settings</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h3 class="h5">Cloud Storage Settings</h3>
                     <ul>
-                        <li><a href="https://github.com/Neurotech-Hub/HublinkNode_ESP32" target="_blank">Hublink
-                                Node on GitHub</a></li>
-                        <li><a href="https://github.com/Neurotech-Hub/HubLink-Client" target="_blank">Hublink Client
-                                on GitHub</a></li>
+                        <li><strong>AWS Access Key & Secret:</strong> Credentials for S3 access</li>
+                        <li><strong>Bucket Name:</strong> S3 bucket for file storage</li>
+                        <li><strong>Use Cloud:</strong> Enable/disable cloud storage</li>
+                    </ul>
+
+                    <h3 class="h5 mt-4">File Management</h3>
+                    <ul>
+                        <li><strong>Max File Size:</strong> Maximum allowed file size in bytes</li>
+                        <li><strong>Delete Scans:</strong> Auto-delete old scans</li>
+                        <li><strong>Delete Conditions:</strong> Based on days old or storage percentage</li>
+                    </ul>
+
+                    <h3 class="h5 mt-4">Device Configuration</h3>
+                    <ul>
+                        <li><strong>Device Name Filter:</strong> Filter for device names (e.g., "ESP32")</li>
+                        <li><strong>Node Payload:</strong> Custom key-value pairs (format: key=value;key=value)</li>
+                        <li><strong>Alert Configuration:</strong> Email and file prefix settings for alerts</li>
                     </ul>
                 </div>
             </div>
-
-            <h2 class="text-primary border-bottom pb-2 mb-4">Endpoint Summary</h2>
-            <p>Here is an overview of the available API endpoints:</p>
-            <ul class="list-unstyled ms-3">
-                <li class="mb-2"><strong>Account Dashboard:</strong> View specific account activity.
-                    (<code>/&lt;account_url&gt;</code>)
-                </li>
-                <li class="mb-2"><strong>Account JSON API:</strong> Retrieve account settings in JSON format.
-                    (<code>/&lt;account_url&gt;.json</code>)
-                </li>
-                <li class="mb-2"><strong>Account Settings:</strong> View and update settings per account.
-                    (<code>/&lt;account_url&gt;/settings</code>)
-                </li>
-                <li class="mb-2"><strong>Data Management:</strong> Access collected data and download links.
-                    (<code>/&lt;account_url&gt;/data</code>)
-                </li>
-                <li class="mb-2"><strong>File Existence API:</strong> Check if specified files exist in the cloud.
-                    (<code>/&lt;account_url&gt;/files</code>)
-                </li>
-                <li class="mb-2"><strong>Sync:</strong> Force a sync of S3 data for an account.
-                    (<code>/&lt;account_url&gt;/sync</code>)
-                </li>
-            </ul>
         </section>
 
-        <!-- API Examples Section -->
+        <!-- API Endpoints Section -->
         <section class="mb-5">
-            <h2 class="text-primary border-bottom pb-2 mb-4">API Access Examples</h2>
+            <h2 class="text-primary border-bottom pb-2 mb-4">API Endpoints</h2>
+            <div class="card">
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-4">
+                            <strong>Settings Retrieval</strong><br>
+                            <code>GET /&lt;secret_url&gt;.json</code><br>
+                            <small class="text-muted">Retrieves account settings in JSON format</small>
+                        </li>
 
-            <!-- JSON API Example -->
-            <h3 class="mt-4">Retrieve Account Settings (JSON)</h3>
-            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;.json</code></p>
-            <p>This endpoint retrieves the account settings in JSON format.</p>
+                        <li class="mb-4">
+                            <strong>Gateway Registration</strong><br>
+                            <code>GET /&lt;secret_url&gt;.json/{gateway_name}</code><br>
+                            <small class="text-muted">Registers a gateway and returns settings</small>
+                        </li>
 
-            <div class="p-3 border rounded">
-                <h4>Example cURL Request:</h4>
-                <pre><code>curl -X GET "https://yourdomain.com/&lt;account_url&gt;.json"</code></pre>
-
-                <h4>Example Python Request:</h4>
-                <pre><code>import requests
-
-response = requests.get("https://yourdomain.com/&lt;account_url&gt;.json")
-if response.status_code == 200:
-    data = response.json()
-    print(data)
-else:
-    print("Error:", response.status_code)
-</code></pre>
-            </div>
-
-            <!-- Update Settings Example -->
-            <h3 class="mt-5">Update Account Settings</h3>
-            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;/settings/update</code> (POST)</p>
-            <p>Updates account settings by submitting form data. Note: This requires specific fields such as AWS keys,
-                bucket name, and others.</p>
-
-            <div class="p-3 border rounded">
-                <h4>Example cURL Request:</h4>
-                <pre><code>curl -X POST "https://yourdomain.com/&lt;account_url&gt;/settings/update" \
--H "Content-Type: application/x-www-form-urlencoded" \
--d "aws_access_key_id=YOUR_KEY&aws_secret_access_key=YOUR_SECRET&bucket_name=YOUR_BUCKET"
-</code></pre>
-
-                <h4>Example Python Request:</h4>
-                <pre><code>import requests
-
-url = "https://yourdomain.com/&lt;account_url&gt;/settings/update"
-data = {
-    "aws_access_key_id": "YOUR_KEY",
-    "aws_secret_access_key": "YOUR_SECRET",
-    "bucket_name": "YOUR_BUCKET"
-}
-response = requests.post(url, data=data)
-print("Status:", response.status_code)
-</code></pre>
-            </div>
-
-            <!-- File Existence API Example -->
-            <h3 class="mt-5">Check File Existence</h3>
-            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;/files</code> (POST)</p>
-            <p>Check if specific files exist in the cloud storage for an account. Send a JSON array of files with
-                <code>filename</code> and <code>size</code> keys.
-            </p>
-
-            <div class="p-3 border rounded">
-                <h4>Example cURL Request:</h4>
-                <pre><code>curl -X POST "https://yourdomain.com/&lt;account_url&gt;/files" \
--H "Content-Type: application/json" \
--d '{"files": [{"filename": "example.txt", "size": 1024}]}'</code></pre>
-
-                <h4>Example Python Request:</h4>
-                <pre><code>import requests
-
-url = "https://yourdomain.com/&lt;account_url&gt;/files"
-data = {
+                        <li class="mb-4">
+                            <strong>File Existence Check</strong><br>
+                            <code>POST /&lt;secret_url&gt;/files</code><br>
+                            <small class="text-muted">Checks if files exist in cloud storage</small>
+                            <div class="mt-1">
+                                <em>Request Body:</em>
+                                <pre><code>{
     "files": [
-        {"filename": "example.txt", "size": 1024}
+        {"filename": "device1/file1.txt", "size": 1234},
+        {"filename": "device2/file2.txt", "size": 5678}
     ]
-}
-response = requests.post(url, json=data)
-print("Response:", response.json())
-</code></pre>
+}</code></pre>
+                            </div>
+                        </li>
+
+                        <li class="mb-4">
+                            <strong>Force Sync</strong><br>
+                            <code>GET /&lt;secret_url&gt;/sync</code><br>
+                            <small class="text-muted">Forces synchronization with cloud storage</small>
+                        </li>
+
+                        <li class="mb-4">
+                            <strong>Rebuild Cloud Index</strong><br>
+                            <code>GET /&lt;secret_url&gt;/rebuild</code><br>
+                            <small class="text-muted">Rebuilds the cloud storage file index</small>
+                        </li>
+
+                        <li class="mb-4">
+                            <strong>File Download</strong><br>
+                            <code>GET /&lt;secret_url&gt;/download/{file_id}</code><br>
+                            <small class="text-muted">Generates a temporary download link for a specific file</small>
+                        </li>
+
+                        <li class="mb-4">
+                            <strong>View Account Data</strong><br>
+                            <code>GET /&lt;secret_url&gt;/data</code><br>
+                            <code>GET /&lt;secret_url&gt;/data/{device_id}</code><br>
+                            <small class="text-muted">Retrieves account data, optionally filtered by device ID</small>
+                        </li>
+
+                        <li class="mb-4">
+                            <strong>Settings Management</strong><br>
+                            <code>GET /&lt;secret_url&gt;/settings</code><br>
+                            <code>POST /&lt;secret_url&gt;/settings/update</code><br>
+                            <small class="text-muted">View and update account settings</small>
+                        </li>
+
+                        <li class="mb-4">
+                            <strong>Account Deletion</strong><br>
+                            <code>POST /&lt;secret_url&gt;/delete</code><br>
+                            <small class="text-muted">Deletes the account and associated settings</small>
+                        </li>
+                    </ul>
+                </div>
             </div>
+        </section>
 
-            <!-- Sync Endpoint Example -->
-            <h3 class="mt-5">Sync Account Data</h3>
-            <p><strong>Endpoint:</strong> <code>/&lt;account_url&gt;/sync</code> (GET)</p>
-            <p>Forces a sync with S3 for the account to update files in the cloud.</p>
+        <!-- File Structure Section -->
+        <section class="mb-5">
+            <h2 class="text-primary border-bottom pb-2 mb-4">File Structure</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p>Files in S3 are organized by device ID and time-based folders, following this structure:</p>
+                    <pre><code>bucket_name/
+├── device_id/                    # Unique device identifier
+│   ├── {datetime}/              # Time-based folder (optional)
+│   │   └── filename.txt         # Actual files
+│   └── filename.txt             # Direct files when datetime is disabled
+└── another_device/
+    └── ...</code></pre>
 
-            <div class="p-3 border rounded">
-                <h4>Example cURL Request:</h4>
-                <pre><code>curl -X GET "https://yourdomain.com/&lt;account_url&gt;/sync"</code></pre>
+                    <h5 class="mt-4">DateTime Folder Rules</h5>
+                    <p>The datetime folder structure is controlled by the <code>dt_rule</code> setting:</p>
+                    <ul>
+                        <li><code>seconds</code>: YYYYMMDDHHMMSS (e.g., 20240315143022)</li>
+                        <li><code>hours</code>: YYYYMMDDHH (e.g., 2024031514)</li>
+                        <li><code>days</code>: YYYYMMDD (e.g., 20240315)</li>
+                        <li><code>weeks</code>: YYYYWW (e.g., 202411)</li>
+                        <li><code>months</code>: YYYYMM (e.g., 202403)</li>
+                        <li><code>years</code>: YYYY (e.g., 2024)</li>
+                        <li><code>never</code>: No datetime folder used</li>
+                    </ul>
 
-                <h4>Example Python Request:</h4>
-                <pre><code>import requests
+                    <h5 class="mt-4">Example Paths</h5>
+                    <pre><code># With dt_rule = "days":
+device123/20240315/data.txt
 
-response = requests.get("https://yourdomain.com/&lt;account_url&gt;/sync")
-print("Status:", response.status_code)
-</code></pre>
+# With dt_rule = "never":
+device123/data.txt</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Node Payload Format -->
+        <section class="mb-5">
+            <h2 class="text-primary border-bottom pb-2 mb-4">Node Payload Format</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p>The node payload uses a key-value format with semicolon separators:</p>
+                    <pre><code>key1=value1;key2=value2;key3=value3</code></pre>
+
+                    <h5 class="mt-4">Special Tags</h5>
+                    <p>The following tags will be automatically replaced when sending to node devices. The node firmward
+                        has a special parser to utilize these values.</p>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Tag</th>
+                                <th>Replacement</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>{timestamp}</code></td>
+                                <td>Local Unix timestamp (integer)</td>
+                                <td><code>rtc={timestamp}</code> → <code>rtc=1710521468</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p class="mt-3">Example with tag:</p>
+                    <pre><code>name=sensor1;type=temperature;rtc={timestamp}</code></pre>
+                </div>
             </div>
         </section>
     </div>

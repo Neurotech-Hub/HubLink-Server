@@ -79,12 +79,13 @@ def update_settings(account_url):
         settings.id_file_starts_with = request.form['id_file_starts_with']
         settings.alert_file_starts_with = request.form['alert_file_starts_with']
         settings.alert_email = request.form['alert_email']
+        settings.node_payload = request.form['node_payload']
 
         # Check if any of the AWS settings were updated
         if (original_access_key != settings.aws_access_key_id or
                 original_secret_key != settings.aws_secret_access_key or
                 original_bucket_name != settings.bucket_name):
-            update_S3_files(settings, True)  # Call update_S3_files if any of the AWS settings changed
+            rebuild_S3_files(settings, True)  # Call update_S3_files if any of the AWS settings changed
 
         db.session.commit()
         flash("Settings updated successfully.", "success")
