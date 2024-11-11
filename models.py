@@ -33,7 +33,6 @@ class Setting(db.Model):
     delete_scans_days_old = db.Column(db.Integer, nullable=True)
     delete_scans_percent_remaining = db.Column(db.Integer, nullable=True)
     device_name_includes = db.Column(db.String(100), nullable=True)
-    id_file_starts_with = db.Column(db.String(100), nullable=False, default="")
     alert_file_starts_with = db.Column(db.String(100), nullable=False, default="")
     alert_email = db.Column(db.String(100), nullable=True)
     node_payload = db.Column(db.String(100), nullable=False, default="")
@@ -53,7 +52,6 @@ class Setting(db.Model):
             'delete_scans_days_old': self.delete_scans_days_old,
             'delete_scans_percent_remaining': self.delete_scans_percent_remaining,
             'device_name_includes': self.device_name_includes,
-            'id_file_starts_with': self.id_file_starts_with,
             'alert_file_starts_with': self.alert_file_starts_with,
             'alert_email': self.alert_email,
             'node_payload': self.node_payload

@@ -76,7 +76,6 @@ def update_settings(account_url):
         settings.delete_scans_days_old = int(request.form['delete_scans_days_old']) if request.form['delete_scans_days_old'] else None
         settings.delete_scans_percent_remaining = int(request.form['delete_scans_percent_remaining']) if request.form['delete_scans_percent_remaining'] else None
         settings.device_name_includes = request.form['device_name_includes']
-        settings.id_file_starts_with = request.form['id_file_starts_with']
         settings.alert_file_starts_with = request.form['alert_file_starts_with']
         settings.alert_email = request.form['alert_email']
         settings.node_payload = request.form['node_payload']

@@ -138,4 +138,3 @@ pip install -r requirements.txt
 ### Render Config
 Disks > /var/data
 Environment > DATABASE_URL = sqlite:////var/data/accounts.db
-Settings > Pre-deploy Command: flask db upgrade

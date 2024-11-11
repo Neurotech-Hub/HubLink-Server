@@ -73,7 +73,6 @@ def create_default_settings(account_id):
             delete_scans_days_old=-1,
             delete_scans_percent_remaining=-1,
             device_name_includes='ESP32',
-            id_file_starts_with='id_',
             alert_file_starts_with='alert_',
             alert_email=''
         )

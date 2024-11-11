@@ -112,17 +112,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="id_file_starts_with">Override MAC with ID File (Starts With):</label>
-                    <input type="text" id="id_file_starts_with" name="id_file_starts_with" class="form-control"
-                        value="{{ settings.id_file_starts_with }}">
-                </div>
-
-                <div class="form-group">
                     <label for="node_payload">Node Payload:</label>
                     <input type="text" id="node_payload" name="node_payload" class="form-control"
                         value="{{ settings.node_payload }}" pattern="^$|^[^=;]+=([^=;]+)(;[^=;]+=([^=;]+))*$"
                         title="Format must be key=value or key=value;key=value">
-                    <small class="form-text text-muted">Example: name=device1;type=sensor</small>
+                    <small class="form-text text-muted">Example: rtc={timestamp};type=sensor</small>
                 </div>
 
                 <div class="form-group">
