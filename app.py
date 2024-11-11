@@ -45,6 +45,12 @@ migrate = Migrate(app, db)
 # Run migrations
 with app.app_context():
     try:
+        # First, try to clean up any leftover temporary tables
+        with db.engine.connect() as conn:
+            conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_setting"))
+            conn.commit()
+        
+        # Now run the migration
         upgrade()
         logging.info("Database migrations completed successfully")
     except Exception as e:
