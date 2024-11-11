@@ -91,19 +91,25 @@ def generate_download_link(account_settings, key, expires_in=3600):
         return None
 
     try:
+        logging.debug(f"Attempting to generate download link for key: {key}")
+        logging.debug(f"Using bucket: {account_settings.bucket_name}")
+        
         # Create S3 client using the access key provided by the account settings
         s3_client = boto3.client(
             's3',
             aws_access_key_id=account_settings.aws_access_key_id,
             aws_secret_access_key=account_settings.aws_secret_access_key,
-            region_name=os.getenv('AWS_REGION', 'us-east-1')  # Default to 'us-east-1' if not set
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
         )
+        
         # Generate presigned URL for the given key
         pre_signed_url = s3_client.generate_presigned_url(
             'get_object',
             Params={'Bucket': account_settings.bucket_name, 'Key': key},
-            ExpiresIn=expires_in  # URL valid for given time in seconds
+            ExpiresIn=expires_in
         )
+        
+        logging.debug(f"Successfully generated presigned URL")
         return pre_signed_url
     except Exception as e:
         logging.error(f"Failed to generate download link for {key}: {e}")
