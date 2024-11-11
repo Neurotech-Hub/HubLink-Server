@@ -269,30 +269,22 @@ def account_dashboard(account_url):
 
 @accounts_bp.route('/<account_url>/download/<int:file_id>', methods=['GET'])
 def download_file(account_url, file_id):
-    print(f"Download requested for file_id: {file_id}")  # Direct console output
     try:
         # Ensure the account exists
         account = Account.query.filter_by(url=account_url).first_or_404()
-        print(f"Account found: {account.url}")  # Direct console output
         
         # Ensure the file belongs to the given account
         file = File.query.filter_by(id=file_id, account_id=account.id).first_or_404()
-        print(f"File found with key: {file.key}")  # Direct console output
-        
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        print(f"Settings found for bucket: {settings.bucket_name}")  # Direct console output
         
         # Generate a download link using the settings and file key
         download_link = generate_download_link(settings, file.key)
-        print(f"Download link generated: {download_link}")  # Direct console output
-        
         if not download_link:
-            print("Failed to generate download link")  # Direct console output
             return "There was an issue generating the download link.", 500
         
         return redirect(download_link)
     except Exception as e:
-        print(f"Error in download_file: {str(e)}")  # Direct console output
+        logging.error(f"Error downloading file {file_id} for account {account_url}: {e}")
         return "There was an issue downloading the file.", 500
 
 # Define error handler

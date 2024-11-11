@@ -14,19 +14,10 @@ from flask_moment import Moment
 load_dotenv(override=True)
 
 # Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()  # This will also show logs in console
-    ]
-)
-
-# Suppress verbose AWS logs
+logging.basicConfig(level=logging.DEBUG)
+# Suppress botocore and boto3 debugging logs
 logging.getLogger('botocore').setLevel(logging.WARNING)
 logging.getLogger('boto3').setLevel(logging.WARNING)
-logging.getLogger('urllib3').setLevel(logging.WARNING)  # Also suppress urllib3 logs
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
