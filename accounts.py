@@ -210,31 +210,24 @@ def account_dashboard(account_url):
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         gateways = Gateway.query.order_by(desc(Gateway.created_at)).limit(20).all()
 
-        # Sample data retrieval for file uploads over the last month
-        today = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)  # Start of today's date
+        # Use UTC for consistency
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         start_date = today - timedelta(days=30)
         recent_files = get_latest_files(account.id, 1000, 31)
 
-        # Generate counts for each day in the last 30 days
-        file_uploads_over_time = [(start_date + timedelta(days=i)).strftime("%Y-%m-%d") for i in range(31)]
-        uploads_count = [0] * 31
-
+        # Send timestamps to client for conversion
+        file_uploads = []
         device_uploads = {}
 
         for file in recent_files:
-            file_date = file.last_modified.replace(hour=0, minute=0, second=0, microsecond=0)  # Normalize to day
-            if start_date <= file_date <= today:
-                day_index = (file_date - start_date).days
-                uploads_count[day_index] += 1
+            # Store UTC timestamp
+            timestamp = file.last_modified.timestamp() * 1000  # Convert to milliseconds for JavaScript
+            file_uploads.append(timestamp)
 
-                # Extract device from the file key
-                device = file.key.split('/')[0]
-                if device in device_uploads:
-                    device_uploads[device] += 1
-                else:
-                    device_uploads[device] = 1
+            # Track device uploads
+            device = file.key.split('/')[0]
+            device_uploads[device] = device_uploads.get(device, 0) + 1
 
-        
         # Sort devices by number of uploads and take the top 10
         sorted_devices = sorted(device_uploads.items(), key=lambda x: x[1], reverse=True)[:10]
         devices = [device for device, count in sorted_devices]
@@ -250,11 +243,9 @@ def account_dashboard(account_url):
             'dashboard.html',
             account=account,
             settings=settings,
-            file_uploads_over_time=file_uploads_over_time,
-            uploads_count=uploads_count,
-            alerts=alerts,
-            devices=devices,
+            file_uploads=file_uploads,  # Send raw timestamps
             gateways=gateways,
+            devices=devices,
             device_upload_counts=device_upload_counts
         )
     except NotFound as e:

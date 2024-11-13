@@ -64,8 +64,35 @@
 <!-- Chart.js Scripts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.0.1"></script>
 <script>
-    var fileUploadsLabels = {{ file_uploads_over_time | tojson | safe }};
-    var uploadsData = {{ uploads_count | tojson | safe }};
+    // Get raw timestamps from server
+    var fileUploads = {{ file_uploads | tojson | safe }};
+
+    // Process timestamps into daily buckets using browser's local timezone
+    var dailyCounts = {};
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var startDate = new Date(today);
+    startDate.setDate(today.getDate() - 30);
+
+    // Initialize all dates with 0 counts
+    for (let i = 0; i < 31; i++) {
+        let date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
+        dailyCounts[date.toISOString().split('T')[0]] = 0;
+    }
+
+    // Count files per day in local timezone
+    fileUploads.forEach(timestamp => {
+        let date = new Date(timestamp);
+        let dateStr = date.toISOString().split('T')[0];
+        if (dateStr in dailyCounts) {
+            dailyCounts[dateStr]++;
+        }
+    });
+
+    // Prepare data for Chart.js
+    var fileUploadsLabels = Object.keys(dailyCounts);
+    var uploadsData = Object.values(dailyCounts);
 
     // Line Chart: File Uploads Over Time
     var ctxLine = document.getElementById('uploadsLineChart').getContext('2d');
