@@ -32,14 +32,14 @@
                         style="max-width:80%">
                 </div>
 
-                <p class="lead">Hublink is a turn-key system for gathering, managing, and viewing data from multiple
+                <p class="lead">Hublink is a turn-key system for managing, syncing, and monitoring data from multiple
                     node devices <em>through</em> gateway devices.
-                <p><strong>Nodes</strong> are any "edge" device that collect data,
-                    typically
-                    onto an SD card. <strong>Gateways</strong> are centralized devices (one or many) used for
+                <p><strong>Nodes</strong> are any "edge" device that collect data onto an SD card.
+                    <strong>Gateways</strong> are centralized devices (one or many) used for
                     gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> API endpoints to
                     coordinate
-                    settings and data transfer to the cloud (Amazon S3).</p>
+                    settings and data transfer to the cloud (e.g., Amazon S3).
+                </p>
             </div>
         </section>
 
@@ -50,7 +50,7 @@
             <h2>Full Stack Solution</h2>
             <p>
                 Hublink is the only full-stack solution for managing data from edge devices. By utilizing Bluetooth Low
-                Energy, Hublink nodes do not rely on power-hungry and complicated WiFi environments. Standalone or
+                Energy (BLE), Hublink nodes do not rely on power-hungry and complicated WiFi environments. Standalone or
                 grouped gateways make data transfer ultra-efficient and minimize complexity. The Hublink dashboard and
                 client software allow users to consume and analyze their data in multiple formats.
             </p>
@@ -75,7 +75,7 @@
                                 <td>An embedded device using the Hublink library to mediate
                                     efficient
                                     file transfer.</td>
-                                <td>Arduino IDE, ESP32, Bluetooth Low Energy</td>
+                                <td>Arduino IDE, ESP32, BLE</td>
                             </tr>
                             <tr>
                                 <td><strong>Hublink Gateway</strong>
@@ -85,7 +85,7 @@
                                 </td>
                                 <td>A device used to find, connect, and manage data
                                     transfer from nodes to the cloud.</td>
-                                <td>Linux, Raspberry Pi</td>
+                                <td>Linux, Raspberry Pi, BLE</td>
                             </tr>
                             <tr>
                                 <td><strong>Hublink.cloud</strong>
@@ -94,7 +94,7 @@
                                     </div>
                                 </td>
                                 <td>A web-app with API endpoints to sync gateway settings.</td>
-                                <td>Managed Server</td>
+                                <td>Managed Server, REST API</td>
                             </tr>
                             <tr>
                                 <td><strong>Hublink Client</strong>

@@ -17,10 +17,15 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <ol>
-                        <li>Create an account to get your unique URL</li>
-                        <li>Configure your AWS S3 credentials in Settings</li>
-                        <li>Register your gateway using the Gateway Registration endpoint</li>
-                        <li>Start uploading files from your devices</li>
+                        <li>Obtain an account, Hublink hardware, and a <code>&lt;secret_url&gt;</code>.</li>
+                        <li>Integrate the <a href="https://github.com/Neurotech-Hub/Hublink-Node"
+                                target="_blank">Hublink Node Library <i
+                                    class="fa-solid fa-up-right-from-square"></i></a> into your existing firmware.</li>
+                        <li>Start uploading files from your nodes.</li>
+                        <li>Use <a href="https://hublink.cloud">hublink.cloud</a> or the <a
+                                href="https://github.com/Neurotech-Hub/HubLink-Client" target="_blank">Hublink Client
+                                Library <i class="fa-solid fa-up-right-from-square"></i></a> to view and analyze data.
+                        </li>
                     </ol>
                 </div>
             </div>
@@ -146,22 +151,79 @@
 
                     <h5 class="mt-4">DateTime Folder Rules</h5>
                     <p>The datetime folder structure is controlled by the <code>dt_rule</code> setting:</p>
-                    <ul>
-                        <li><code>seconds</code>: YYYYMMDDHHMMSS (e.g., 20240315143022)</li>
-                        <li><code>hours</code>: YYYYMMDDHH (e.g., 2024031514)</li>
-                        <li><code>days</code>: YYYYMMDD (e.g., 20240315)</li>
-                        <li><code>weeks</code>: YYYYWW (e.g., 202411)</li>
-                        <li><code>months</code>: YYYYMM (e.g., 202403)</li>
-                        <li><code>years</code>: YYYY (e.g., 2024)</li>
-                        <li><code>never</code>: No datetime folder used</li>
-                    </ul>
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Rule</th>
+                                <th>Format</th>
+                                <th>Example</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>seconds</code></td>
+                                <td>YYYYMMDDHHMMSS</td>
+                                <td>20240315143022</td>
+                            </tr>
+                            <tr>
+                                <td><code>hours</code></td>
+                                <td>YYYYMMDDHH</td>
+                                <td>2024031514</td>
+                            </tr>
+                            <tr>
+                                <td><code>days</code></td>
+                                <td>YYYYMMDD</td>
+                                <td>20240315</td>
+                            </tr>
+                            <tr>
+                                <td><code>weeks</code></td>
+                                <td>YYYYWW</td>
+                                <td>202411</td>
+                            </tr>
+                            <tr>
+                                <td><code>months</code></td>
+                                <td>YYYYMM</td>
+                                <td>202403</td>
+                            </tr>
+                            <tr>
+                                <td><code>years</code></td>
+                                <td>YYYY</td>
+                                <td>2024</td>
+                            </tr>
+                            <tr>
+                                <td><code>never</code></td>
+                                <td>-</td>
+                                <td>No datetime folder used</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                    <h5 class="mt-4">Example Paths</h5>
-                    <pre><code># With dt_rule = "days":
-device123/20240315/data.txt
-
-# With dt_rule = "never":
-device123/data.txt</code></pre>
+                    <h5 class="mt-4">Resulting File Structure</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <code>dt_rule = "days"</code>
+                                </div>
+                                <div class="card-body">
+                                    <pre class="mb-0"><code>device123/
+└── 20240315/
+    └── data.txt</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <code>dt_rule = "never"</code>
+                                </div>
+                                <div class="card-body">
+                                    <pre class="mb-0"><code>device123/
+└── data.txt</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -171,7 +233,8 @@ device123/data.txt</code></pre>
             <h2 class="text-primary border-bottom pb-2 mb-4">Node Payload Format</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <p>The node payload uses a key-value format with semicolon separators:</p>
+                    <p>The node payload will be sent to your device immediately upon connection and serve to provide
+                        coordinated variables to all nodes. It uses a key-value format with semicolon separators:</p>
                     <pre><code>key1=value1;key2=value2;key3=value3</code></pre>
 
                     <h5 class="mt-4">Special Tags</h5>
@@ -209,7 +272,7 @@ device123/data.txt</code></pre>
                         setting uses a key-value format, with one pair per line:</p>
                     <div class="bg-light p-3 rounded">
                         <pre
-                            class="mb-0"><code><div class="lh-base">node=Subject001</div><div class="lh-base">advertise=ESP32_NODE</div><div class="lh-base">interval=60000-30</div><div class="lh-base">disable=false</div></code></pre>
+                            class="mb-0"><code><div class="lh-base">node=Subject001</div><div class="lh-base">advertise=ESP32_NODE</div><div class="lh-base">interval=60000,30</div><div class="lh-base">disable=false</div></code></pre>
                     </div>
 
                     <h5 class="mt-4">Available Settings</h5>
@@ -224,7 +287,7 @@ device123/data.txt</code></pre>
                         <tbody>
                             <tr>
                                 <td><code>node</code></td>
-                                <td>Base folder name for file storage</td>
+                                <td>Becomes the base folder name for file storage</td>
                                 <td>Node's MAC address</td>
                             </tr>
                             <tr>
@@ -234,7 +297,7 @@ device123/data.txt</code></pre>
                             </tr>
                             <tr>
                                 <td><code>interval</code></td>
-                                <td>BLE connection timing (format: connectEvery-connectFor in milliseconds)</td>
+                                <td>BLE connection timing (connectEvery,connectFor in milliseconds)</td>
                                 <td>See library</td>
                             </tr>
                             <tr>
@@ -247,7 +310,7 @@ device123/data.txt</code></pre>
 
                     <div class="mt-4">
                         <small class="text-muted">Note: The configuration file is processed internally by the Hublink
-                            Node library. Changes require a device restart to take effect.</small>
+                            Node Library. Changes require a device restart to take effect.</small>
                     </div>
                 </div>
             </div>
