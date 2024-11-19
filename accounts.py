@@ -84,7 +84,7 @@ def update_settings(account_url):
         if (original_access_key != settings.aws_access_key_id or
                 original_secret_key != settings.aws_secret_access_key or
                 original_bucket_name != settings.bucket_name):
-            rebuild_S3_files(settings, True)  # Call update_S3_files if any of the AWS settings changed
+            rebuild_S3_files(settings)  # Call update_S3_files if any of the AWS settings changed
 
         db.session.commit()
         flash("Settings updated successfully.", "success")
@@ -283,3 +283,31 @@ def download_file(account_url, file_id):
 def page_not_found(e):
     logging.error(f"404 error: {e}")
     return render_template('404.html'), 404
+
+@accounts_bp.route('/<account_url>/data', methods=['POST'])
+def delete_device_files(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        device_id = request.form.get('device_id')
+        
+        if not device_id:
+            flash("No device specified for deletion.", "error")
+            return redirect(url_for('accounts.account_data', account_url=account_url))
+        
+        # Delete files from S3 and database
+        success, error_message = delete_device_files_from_s3(settings, device_id)
+        
+        if success:
+            flash(f"Successfully deleted all files for device {device_id}.", "success")
+        else:
+            flash(f"Error deleting files: {error_message}", "error")
+
+        rebuild_S3_files(settings)
+            
+        return redirect(url_for('accounts.account_data', account_url=account_url))
+        
+    except Exception as e:
+        logging.error(f"Error deleting files for device {device_id} in account {account_url}: {e}")
+        flash("There was an error deleting the files.", "error")
+        return redirect(url_for('accounts.account_data', account_url=account_url))
