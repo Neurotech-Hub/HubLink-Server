@@ -61,11 +61,13 @@
                     {% if recent_files and recent_files|length > 0 %}
                     {% for file in recent_files %}
                     <tr>
-                        <td>
+                        <td class="d-flex justify-content-between align-items-center">
                             <a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}"
                                 download>
                                 {{ file.key }}
                             </a>
+                            <span class="badge border border-secondary text-secondary small fw-normal">v{{ file.version
+                                }}</span>
                         </td>
                         <td>{{ file.size | filesizeformat }}</td>
                         <td>{{ moment(file.last_modified).format('LLL') }}</td>

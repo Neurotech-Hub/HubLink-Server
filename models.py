@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
+from sqlalchemy import event
 
 db = SQLAlchemy()
 
@@ -65,6 +66,7 @@ class File(db.Model):
     url = db.Column(db.String(500), nullable=False)
     size = db.Column(db.Integer, nullable=False)
     last_modified = db.Column(db.DateTime, nullable=False)
+    version = db.Column(db.Integer, nullable=False, default=1)
 
     def __repr__(self):
         return f"<File {self.key} for Account {self.account_id}>"
@@ -75,8 +77,19 @@ class File(db.Model):
             'key': self.key,
             'url': self.url,
             'size': self.size,
-            'last_modified': self.last_modified.isoformat()
+            'last_modified': self.last_modified.isoformat(),
+            'version': self.version
         }
+
+# Event listener to increment version when last_modified changes
+@event.listens_for(File, 'before_update')
+def increment_version(mapper, connection, target):
+    # Check if last_modified has changed
+    state = db.inspect(target)
+    history = state.attrs.last_modified.history
+    if history.has_changes():
+        # Increment version
+        target.version += 1
 
 # Define the device model with ip_address instead of mac_address
 class Gateway(db.Model):

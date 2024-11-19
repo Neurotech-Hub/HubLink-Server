@@ -270,10 +270,12 @@
                 <div class="card-body">
                     <p>Create a file named <code>hublink.node</code> on your SD card to configure node behavior. Each
                         setting uses a key-value format, with one pair per line:</p>
-                    <div class="bg-light p-3 rounded">
+                    <div class="bg-light p-3 rounded mb-3">
                         <pre
                             class="mb-0"><code><div class="lh-base">node=Subject001</div><div class="lh-base">advertise=ESP32_NODE</div><div class="lh-base">interval=60000,30</div><div class="lh-base">disable=false</div></code></pre>
                     </div>
+                    <p>By default, the node firmware will transfer <code>*.node</code> files, so you may also add and
+                        "meta" data you want to track here.</p>
 
                     <h5 class="mt-4">Available Settings</h5>
                     <table class="table table-bordered">
