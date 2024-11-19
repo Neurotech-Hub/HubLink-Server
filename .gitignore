@@ -56,3 +56,6 @@ coverage/
 
 # Render specific
 .rendersettings/
+
+# SSH keys
+*.pub
