@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
-from sqlalchemy import event
 
 db = SQLAlchemy()
 
@@ -80,16 +79,6 @@ class File(db.Model):
             'last_modified': self.last_modified.isoformat(),
             'version': self.version
         }
-
-# Event listener to increment version when last_modified changes
-@event.listens_for(File, 'before_update')
-def increment_version(mapper, connection, target):
-    # Check if last_modified has changed
-    state = db.inspect(target)
-    history = state.attrs.last_modified.history
-    if history.has_changes():
-        # Increment version
-        target.version += 1
 
 # Define the device model with ip_address instead of mac_address
 class Gateway(db.Model):

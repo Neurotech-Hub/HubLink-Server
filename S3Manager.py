@@ -27,15 +27,13 @@ def rebuild_S3_files(account_settings):
         logging.error(f"Failed to create S3 client: {e}")
         return
 
-    # Clear the current files for this account in the database
-    File.query.filter_by(account_id=account_id).delete()
-    db.session.commit()
-
     for attempt in range(retries):
         try:
-            continuation_token = None
-            all_files = []  # Collect all files in one go to bulk insert at the end
+            # Get all current files in database for this account
+            db_files = {file.key: file for file in File.query.filter_by(account_id=account_id).all()}
+            s3_files = set()  # Track S3 files we've seen
 
+            continuation_token = None
             while True:
                 # List objects in the S3 bucket with pagination handling
                 list_params = {'Bucket': account_settings.bucket_name, 'Prefix': ''}
@@ -44,28 +42,44 @@ def rebuild_S3_files(account_settings):
 
                 response = s3_client.list_objects_v2(**list_params)
 
-                # Check if there are any files to process
+                # Process each file from S3
                 if 'Contents' in response:
-                    all_files.extend([
-                        File(
-                            account_id=account_id,
-                            key=obj['Key'],
-                            url=f"s3://{account_settings.bucket_name}/{obj['Key']}",
-                            size=obj['Size'],
-                            last_modified=obj['LastModified']
-                        ) for obj in response['Contents']
-                    ])
+                    for obj in response['Contents']:
+                        file_key = obj['Key']
+                        s3_files.add(file_key)
 
-                # Pagination handling
+                        if file_key in db_files:
+                            # Update existing file if needed
+                            existing_file = db_files[file_key]
+                            if existing_file.size != obj['Size'] or existing_file.last_modified != obj['LastModified']:
+                                existing_file.size = obj['Size']
+                                existing_file.last_modified = obj['LastModified']
+                                existing_file.version += 1
+                        else:
+                            # Add new file
+                            new_file = File(
+                                account_id=account_id,
+                                key=file_key,
+                                url=f"s3://{account_settings.bucket_name}/{file_key}",
+                                size=obj['Size'],
+                                last_modified=obj['LastModified'],
+                                version=1
+                            )
+                            db.session.add(new_file)
+
+                # Handle pagination
                 if response.get('IsTruncated'):
                     continuation_token = response.get('NextContinuationToken')
                 else:
-                    break  # No more files to list
+                    break
 
-            # Insert all new files at once after successful retrieval
-            db.session.bulk_save_objects(all_files)
+            # Remove files that exist in DB but not in S3
+            for key in db_files:
+                if key not in s3_files:
+                    db.session.delete(db_files[key])
+
             db.session.commit()
-            logging.info(f"Rebuilt files table for account {account_id}. Total files: {len(all_files)}")
+            logging.info(f"Successfully synchronized files for account {account_id}")
             return
 
         except s3_client.exceptions.NoSuchBucket:
@@ -218,6 +232,7 @@ def process_sqs_messages(account_settings):
                                 # Update existing file details if necessary
                                 existing_file.size = file_size
                                 existing_file.last_modified = last_modified
+                                existing_file.version += 1  # Increment version when updating last_modified
                                 db.session.commit()
                             else:
                                 logging.debug(f"Inserting new file record: {file_key}")
@@ -227,7 +242,8 @@ def process_sqs_messages(account_settings):
                                     key=file_key,
                                     url=f"s3://{bucket_name}/{file_key}",
                                     size=file_size,
-                                    last_modified=last_modified
+                                    last_modified=last_modified,
+                                    version=1  # Set initial version for new files
                                 )
                                 db.session.add(new_file)
                                 db.session.commit()
