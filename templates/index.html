@@ -9,6 +9,201 @@
                 border-color: transparent;
             }
         }
+
+        .timeline-point {
+            width: 12px;
+            height: 12px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .steps {
+            position: relative;
+            margin-left: 45px;
+        }
+
+        .step-item {
+            position: relative;
+            padding-bottom: 1rem;
+        }
+
+        .step-item:not(:last-child):before {
+            content: '';
+            position: absolute;
+            left: -30px;
+            top: 30px;
+            bottom: 0;
+            width: 2px;
+            background: #e9ecef;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: #616161;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            position: absolute;
+            left: -45px;
+            top: 0;
+            z-index: 1;
+        }
+
+        .step-content {
+            margin-left: 15px;
+        }
+
+        .flow-container {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            gap: 1rem;
+            padding: 0.5rem;
+        }
+
+        .flow-item {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            align-items: center;
+        }
+
+        .flow-arrow {
+            margin: 0 1rem;
+            color: #616161;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .flow-item:last-child .flow-arrow {
+            display: none;
+        }
+
+        /* Optional hover effect */
+        .step-item:hover .step-number {
+            transform: scale(1.1);
+            transition: transform 0.2s;
+        }
+
+        /* Optional: make the line primary color when hovering over step */
+        .step-item:hover:before {
+            background: #616161;
+            transition: background 0.2s;
+        }
+
+        .badge {
+            color: white !important;
+            /* Force white text */
+            font-weight: 500;
+            /* Slightly bolder for better readability */
+        }
+
+        .toggle-container {
+            padding: 10px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 300px;
+            height: 40px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            padding: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .switch-handle {
+            position: absolute;
+            left: 4px;
+            width: 150px;
+            height: 32px;
+            background: #616161;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-switch.active .switch-handle {
+            left: calc(100% - 154px);
+        }
+
+        .switch-label {
+            position: absolute;
+            width: 150px;
+            text-align: center;
+            line-height: 32px;
+            font-weight: 500;
+            z-index: 1;
+            transition: all 0.3s ease;
+        }
+
+        .switch-label.left {
+            left: 0;
+            color: white;
+        }
+
+        .switch-label.right {
+            right: 0;
+            color: #666;
+        }
+
+        .toggle-switch.active .switch-label.left {
+            color: #666;
+        }
+
+        .toggle-switch.active .switch-label.right {
+            color: white;
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 576px) {
+            .steps {
+                margin-left: 30px;
+            }
+
+            .step-content {
+                margin-left: 10px;
+            }
+
+            .step-number {
+                width: 24px;
+                height: 24px;
+                font-size: 0.9rem;
+                left: -35px;
+            }
+
+            .step-item:not(:last-child):before {
+                left: -23px;
+            }
+
+            .card-body {
+                padding: 0.75rem;
+            }
+
+            .badge {
+                font-size: 0.7rem;
+            }
+
+            .card-title {
+                font-size: 1.1rem;
+            }
+
+            .card-text {
+                font-size: 0.85rem;
+            }
+
+            .text-muted small {
+                font-size: 0.75rem;
+            }
+
+            .step-item {
+                padding-bottom: 0.75rem;
+            }
+        }
     </style>
 </head>
 
@@ -51,127 +246,218 @@
             <p>
                 Hublink is the only full-stack solution for managing data from edge devices. By utilizing Bluetooth Low
                 Energy (BLE), Hublink nodes do not rely on power-hungry and complicated WiFi environments. Standalone or
-                grouped gateways make data transfer ultra-efficient and minimize complexity. The Hublink dashboard and
-                client software allow users to consume and analyze their data in multiple formats.
+                grouped gateways make data transfer ultra-efficient and minimize complexity.
             </p>
             <div class="mt-4">
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%;">Component</th>
-                                <th style="width: 50%;">Description</th>
-                                <th style="width: 25%;">Technology</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <strong>Hublink Node</strong>
-                                    <div><span class="badge bg-success rounded-pill me-2 text-white large-badge">Open
-                                            Source</span></div>
-                                </td>
-
-                                <td>An embedded device using the Hublink library to mediate
-                                    efficient
-                                    file transfer.</td>
-                                <td>Arduino IDE, ESP32, BLE</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Hublink Gateway</strong>
-                                    <div><span
-                                            class="badge bg-danger rounded-pill me-2 text-white large-badge">Proprietary</span>
+                <div class="steps">
+                    <!-- Hublink Node -->
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                                        <h5 class="card-title mb-2 mb-sm-0">Hublink Node</h5>
+                                        <span class="badge bg-success text-white rounded-pill">Open Source</span>
                                     </div>
-                                </td>
-                                <td>A device used to find, connect, and manage data
-                                    transfer from nodes to the cloud.</td>
-                                <td>Linux, Raspberry Pi, BLE</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Hublink.cloud</strong>
-                                    <div><span
-                                            class="badge bg-danger rounded-pill me-2 text-white large-badge">Proprietary</span>
+                                    <p class="card-text small mb-1">An embedded device using the Hublink library to
+                                        mediate efficient file transfer.</p>
+                                    <div class="text-muted">
+                                        <small>Arduino IDE • ESP32 • BLE</small>
                                     </div>
-                                </td>
-                                <td>A web-app with API endpoints to sync gateway settings.</td>
-                                <td>Managed Server, REST API</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Hublink Client</strong>
-                                    <div><span class="badge bg-success rounded-pill me-2 text-white large-badge">Open
-                                            Source</span></div>
-                                </td>
-                                <td>A client library to interact, consume, and sync with Hublink-created data.</td>
-                                <td>Amazon S3, Python</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- Features Section -->
-        <section class="position-relative" style="margin-bottom: 5rem;">
-            <div class="container position-relative">
-                <!-- Faded Background -->
-                <div class="bg-light rounded"
-                    style="opacity: 1; background: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 1)); 
-                                    padding: 2rem; position: absolute; top: 0; left: 0; right: 0; height: 100%; z-index: 0;">
-                </div>
-
-                <!-- Features Content -->
-                <div class="position-relative" style="z-index: 1;padding-top:15px;">
-                    <h2 class="mb-4">Features</h2>
-                    <div class="row text-center">
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-cog fa-3x mb-3"></i>
-                                    <h5 class="card-title">Settings Config</h5>
-                                    <p class="card-text">Easily set credentials, file size limits, and other
-                                        configurations
-                                        to manage cloud storage.</p>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-sync-alt fa-3x mb-3"></i>
-                                    <h5 class="card-title">Data Sync</h5>
-                                    <p class="card-text">Automatically back up experiment data to centralized cloud
-                                        storage for
-                                        easy access.</p>
+                    </div>
+
+                    <!-- Hublink Gateway -->
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                                        <h5 class="card-title mb-2 mb-sm-0">Hublink Gateway</h5>
+                                        <span class="badge bg-danger text-white rounded-pill">Proprietary</span>
+                                    </div>
+                                    <p class="card-text small mb-1">A device used to find, connect, and manage data
+                                        transfer from nodes to the cloud.</p>
+                                    <div class="text-muted">
+                                        <small>Linux • Raspberry Pi • BLE</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-tachometer-alt fa-3x mb-3"></i>
-                                    <h5 class="card-title">Dashboard</h5>
-                                    <p class="card-text">Monitor devices, receive alerts, and track experiment progress
-                                        in
-                                        real-time on an intuitive dashboard.</p>
+                    </div>
+
+                    <!-- Hublink.cloud -->
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                                        <h5 class="card-title mb-2 mb-sm-0">Hublink.cloud</h5>
+                                        <span class="badge bg-danger text-white rounded-pill">Proprietary</span>
+                                    </div>
+                                    <p class="card-text small mb-1">A dashboard web-app with API endpoints to sync
+                                        gateway settings.</p>
+                                    <div class="text-muted">
+                                        <small>Managed Server • REST API • Amazon S3</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3 mb-4">
-                            <div class="card bg-white text-dark border-0 shadow-sm h-100">
-                                <div class="card-body">
-                                    <i class="fas fa-plug fa-3x mb-3"></i>
-                                    <h5 class="card-title">REST API</h5>
-                                    <p class="card-text">Programmatically check file existence and output account
-                                        settings in
-                                        JSON format for integration.</p>
+                    </div>
+
+                    <!-- Hublink Client -->
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                                        <h5 class="card-title mb-2 mb-sm-0">Hublink Client</h5>
+                                        <span class="badge bg-success text-white rounded-pill">Open Source</span>
+                                    </div>
+                                    <p class="card-text small mb-1">A client library to interact, consume, and sync with
+                                        Hublink-created data.</p>
+                                    <div class="text-muted">
+                                        <small>Amazon S3 • Python</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
         </section>
+
+        <!-- Table Selector and Tables Container -->
+        <div class="px-4"> <!-- Added padding to container -->
+            <!-- Table Selector -->
+            <div class="d-flex justify-content-center align-items-center my-4">
+                <div class="toggle-container">
+                    <div class="toggle-switch">
+                        <div class="switch-label left">Technology</div>
+                        <div class="switch-label right">Platform</div>
+                        <div class="switch-handle"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technology Table -->
+            <div id="technologyTable" class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <colgroup>
+                        <col style="width: 40%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                    </colgroup>
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Feature</th>
+                            <th scope="col" class="text-center">BLE</th>
+                            <th scope="col" class="text-center">WiFi</th>
+                            <th scope="col" class="text-center">LoRa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Battery-Efficient</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Built-in Security</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                        <tr>
+                            <td>No Internet Required</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                        <tr>
+                            <td>File Transfer Support</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Range (~100m)</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Platform Table -->
+            <div id="platformTable" class="table-responsive d-none">
+                <table class="table table-hover align-middle">
+                    <colgroup>
+                        <col style="width: 40%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15%;">
+                    </colgroup>
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Feature</th>
+                            <th scope="col" class="text-center">Hublink</th>
+                            <th scope="col" class="text-center">ThingsBoard</th>
+                            <th scope="col" class="text-center">AWS IoT</th>
+                            <th scope="col" class="text-center">Balena</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Built-in BLE Support</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Ready-to-use Dashboard</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Mobile Web Interface</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Open Source Node SDK</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                        <tr>
+                            <td>S3 Integration</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
         <section class="mt-5">
             <div class="row align-items-center mb-5 mt-5">
@@ -195,7 +481,7 @@
                         your smartphone or tablet.</p>
                 </div>
                 <!-- Image Section -->
-                <div class="col-md-4 mb-4 text-center">
+                <div class="col-md-4 mb-4 mt-4 text-center">
                     <img style="max-height: 500px;" src="/static/img/hublink-mobile.png" alt="Hublink Mobile Webapp"
                         class="img-fluid drop-shadow">
                 </div>
@@ -235,6 +521,22 @@
             } else {
                 target.classList.remove('visible'); // Hides if scrolled back up
                 target.style.opacity = 0.2 + (scrollPos / fadeHeight) * 0.8; // Gradual fade as you scroll down
+            }
+        });
+
+        const toggleSwitch = document.querySelector('.toggle-switch');
+        const techTable = document.getElementById('technologyTable');
+        const platTable = document.getElementById('platformTable');
+
+        toggleSwitch.addEventListener('click', function () {
+            this.classList.toggle('active');
+
+            if (this.classList.contains('active')) {
+                techTable.classList.add('d-none');
+                platTable.classList.remove('d-none');
+            } else {
+                techTable.classList.remove('d-none');
+                platTable.classList.add('d-none');
             }
         });
     </script>
