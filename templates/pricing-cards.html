@@ -30,16 +30,11 @@
 </div>
 <!-- Pricing Note Section -->
 <div class="text-center mt-2">
-    {% if request.path == '/pricing' %}
     <p class="font-italic text-muted">
-        Pre-configured nodes starting at <strong>$79</strong>;
-        pre-configured gateways starting at <strong>$299</strong>.
-    </p>
-    {% else %}
-    <p class="font-italic text-muted">
-        Pre-configured nodes starting at <strong>$79</strong>;
-        pre-configured gateways starting at <strong>$299</strong>.
+        Pre-configured nodes starting at <strong>$89</strong>;
+        pre-configured gateways starting at <strong>$399</strong>.
+        {% if request.path != '/pricing' %}
         <a href="{{ url_for('pricing') }}">View Pricing →</a>
+        {% endif %}
     </p>
-    {% endif %}
 </div>
