@@ -48,15 +48,8 @@ def rebuild_S3_files(account_settings):
                         file_key = obj['Key']
                         s3_files.add(file_key)
 
-                        if file_key in db_files:
-                            # Update existing file if needed
-                            existing_file = db_files[file_key]
-                            if existing_file.size != obj['Size'] or existing_file.last_modified != obj['LastModified']:
-                                existing_file.size = obj['Size']
-                                existing_file.last_modified = obj['LastModified']
-                                existing_file.version += 1
-                        else:
-                            # Add new file
+                        if file_key not in db_files:
+                            # Only add new files that don't exist in database
                             new_file = File(
                                 account_id=account_id,
                                 key=file_key,
