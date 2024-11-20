@@ -177,9 +177,11 @@
     function showFileDetails(fileId, fileName, fileSize, lastModified, version, lastChecked) {
         document.getElementById('modalFileName').textContent = fileName;
         document.getElementById('modalFileSize').textContent = fileSize;
-        document.getElementById('modalLastModified').textContent = lastModified ? moment(lastModified).format('LLL') : 'Never';
+        document.getElementById('modalLastModified').textContent = lastModified ?
+            moment.utc(lastModified).local().format('LLL') : 'Never';
         document.getElementById('modalVersion').textContent = 'v' + version;
-        document.getElementById('modalLastChecked').textContent = lastChecked === ' Never' ? 'Never' : moment(lastChecked).format('LLL');
+        document.getElementById('modalLastChecked').textContent = lastChecked === ' Never' ?
+            'Never' : moment.utc(lastModified).local().format('LLL');
 
         const modal = new bootstrap.Modal(document.getElementById('fileDetailsModal'));
         modal.show();
