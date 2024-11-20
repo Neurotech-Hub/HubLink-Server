@@ -56,6 +56,7 @@ def rebuild_S3_files(account_settings):
                                 url=f"s3://{account_settings.bucket_name}/{file_key}",
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
+                                last_checked=datetime.now(timezone.utc),
                                 version=1
                             )
                             db.session.add(new_file)
