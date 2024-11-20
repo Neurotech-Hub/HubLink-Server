@@ -204,6 +204,17 @@
                 padding-bottom: 0.75rem;
             }
         }
+
+        @media (max-width: 576px) {
+            .table th {
+                font-size: 0.8rem;
+                /* Smaller font on mobile */
+                line-height: 1.2;
+                /* Tighter line height */
+                padding: 0.5rem 0.25rem;
+                /* Reduced padding */
+            }
+        }
     </style>
 </head>
 
@@ -335,7 +346,7 @@
         </section>
 
         <!-- Table Selector and Tables Container -->
-        <div class="px-4"> <!-- Added padding to container -->
+        <div class="px-2 px-sm-2 px-md-4"> <!-- Responsive padding -->
             <!-- Table Selector -->
             <div class="d-flex justify-content-center align-items-center my-4">
                 <div class="toggle-container">
@@ -360,10 +371,10 @@
                     <thead class="table-light">
                         <tr>
                             <th scope="col">Feature</th>
-                            <th scope="col" class="text-center">Hublink</th>
-                            <th scope="col" class="text-center">ThingsBoard</th>
-                            <th scope="col" class="text-center">AWS IoT</th>
-                            <th scope="col" class="text-center">Balena</th>
+                            <th scope="col" class="text-center px-1">Hublink</th>
+                            <th scope="col" class="text-center px-1">Things Board</th>
+                            <th scope="col" class="text-center px-1">AWS IoT</th>
+                            <th scope="col" class="text-center px-1">Balena</th>
                         </tr>
                     </thead>
                     <tbody>
