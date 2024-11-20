@@ -379,23 +379,6 @@ table td a {
     }
 }
 
-/* For the label/legend */
-span.fileActive {
-    animation: pulse-green 2s infinite;
-}
-
-/* For table rows */
-.table-striped>tbody>tr.fileActive {
-    position: relative;
-}
-
-.table-striped>tbody>tr.fileActive::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
+.fileActive {
     animation: pulse-green 2s infinite;
 }
