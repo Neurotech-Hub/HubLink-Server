@@ -364,3 +364,22 @@ table td a {
     background-color: #d4edda;
     /* Light green similar to Bootstrap's success alert */
 }
+
+@keyframes pulse-green {
+    0% {
+        background-color: transparent;
+    }
+
+    50% {
+        background-color: rgba(212, 237, 218, 0.5);
+        /* Light green with transparency */
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.fileActive {
+    animation: pulse-green 2s infinite;
+}

@@ -142,13 +142,8 @@ def account_data(account_url, device_id=None):
 @accounts_bp.route('/<account_url>/files', methods=['POST'])
 def check_files(account_url):
     try:
-        # Log the incoming request
         logging.debug(f"Received request for checking files for account: {account_url}")
-        
-        # Get the account details
         account = Account.query.filter_by(url=account_url).first_or_404()
-
-        # Get the list of filenames and sizes from the request JSON body
         request_data = request.get_json()
         logging.debug(f"Request data: {request_data}")
 
@@ -161,11 +156,21 @@ def check_files(account_url):
             logging.error("Invalid input structure for 'files'. Must be a list of dictionaries with 'filename' and 'size'.")
             return jsonify({"error": "Invalid input. 'files' must be a list of dictionaries with 'filename' and 'size' keys."}), 400
 
+        # Get the current time in UTC
+        current_time = datetime.now(timezone.utc)
+        
+        # Update last_checked for all files being checked
+        for file_data in files:
+            file = File.query.filter_by(account_id=account.id, key=file_data['filename']).first()
+            if file:
+                file.last_checked = current_time
+        
+        db.session.commit()
+
         # Delegate to existing function to check file existence
         result = do_files_exist(account.id, files)
         logging.debug(f"File existence result: {result}")
 
-        # Return the results as a list of booleans
         return jsonify({"exists": result})
 
     except Exception as e:
@@ -311,3 +316,24 @@ def delete_device_files(account_url):
         logging.error(f"Error deleting files for device {device_id} in account {account_url}: {e}")
         flash("There was an error deleting the files.", "error")
         return redirect(url_for('accounts.account_data', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/recent-checks', methods=['GET'])
+def get_recent_checks(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get files checked in last 30 minutes, excluding null last_checked values
+        threshold = datetime.now(timezone.utc) - timedelta(minutes=30)
+        recent_files = File.query.filter(
+            File.account_id == account.id,
+            File.last_checked.isnot(None),
+            File.last_checked >= threshold
+        ).all()
+        
+        # Return list of file keys that were recently checked
+        return jsonify({
+            "recent_files": [file.key for file in recent_files]
+        })
+    except Exception as e:
+        logging.error(f"Error getting recent checks for {account_url}: {e}")
+        return jsonify({"error": "There was an issue processing your request."}), 500
