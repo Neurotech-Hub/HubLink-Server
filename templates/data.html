@@ -7,7 +7,7 @@
     <!-- Device Filter Pills -->
     <div class="mb-3">
         <!-- All Devices pill -->
-        <span class="badge {{ 'bg-success' if device_id is none else 'bg-light' }}">
+        <span class="badge {{ 'bg-primary' if device_id is none else 'bg-light' }}">
             <a href="{{ url_for('accounts.account_data', account_url=account.url, total_limit=total_limit) }}"
                 class="text-decoration-none text-dark">
                 All Devices
@@ -16,7 +16,7 @@
 
         <!-- Individual Device Pills -->
         {% for device in unique_devices %}
-        <span class="badge {{ 'bg-success' if device_id == device else 'bg-light' }}">
+        <span class="badge {{ 'bg-primary' if device_id == device else 'bg-light' }}">
             <a href="{{ url_for('accounts.account_data', account_url=account.url, device_id=device, total_limit=total_limit) }}"
                 class="text-decoration-none text-dark">
                 {{ device }}
@@ -69,11 +69,21 @@
                                 download>
                                 {{ file.key }}
                             </a>
-                            <span class="badge border border-secondary text-secondary small fw-normal">v{{ file.version
-                                }}</span>
+                            <span class="badge border border-secondary text-secondary small fw-normal" role="button"
+                                onclick="showFileDetails(
+                                    '{{ file.id }}',
+                                    '{{ file.key | replace("'", "\\'") }}',
+                                    '{{ file.size | filesizeformat }}',
+                                    '{{ file.last_modified.isoformat() if file.last_modified else "" }}',
+                                    '{{ file.version }}',
+                                    '{{ file.last_checked.isoformat() if file.last_checked else " Never" }}' )"
+                                style="cursor: pointer;">
+                                v{{ file.version }}
+                            </span>
                         </td>
                         <td>{{ file.size | filesizeformat }}</td>
-                        <td>{{ moment(file.last_modified).format('LLL') }}</td>
+                        <td>{{ moment(file.last_modified | default('', true)).format('LLL') | default('Never', true) }}
+                        </td>
                     </tr>
                     {% endfor %}
                     {% else %}
@@ -95,6 +105,46 @@
                 </form>
             </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- File Details Modal -->
+<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="fileDetailsModalLabel">File Details</h5>
+                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-sm">
+                    <tbody>
+                        <tr>
+                            <th scope="row">Filename</th>
+                            <td id="modalFileName" style="word-break: break-all;"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Size</th>
+                            <td id="modalFileSize"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Last Modified</th>
+                            <td id="modalLastModified"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Version</th>
+                            <td id="modalVersion"></td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Last Checked</th>
+                            <td id="modalLastChecked"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -123,5 +173,16 @@
     // Update immediately and then every minute
     updateActiveFiles();
     setInterval(updateActiveFiles, 60000);
+
+    function showFileDetails(fileId, fileName, fileSize, lastModified, version, lastChecked) {
+        document.getElementById('modalFileName').textContent = fileName;
+        document.getElementById('modalFileSize').textContent = fileSize;
+        document.getElementById('modalLastModified').textContent = lastModified ? moment(lastModified).format('LLL') : 'Never';
+        document.getElementById('modalVersion').textContent = 'v' + version;
+        document.getElementById('modalLastChecked').textContent = lastChecked === ' Never' ? 'Never' : moment(lastChecked).format('LLL');
+
+        const modal = new bootstrap.Modal(document.getElementById('fileDetailsModal'));
+        modal.show();
+    }
 </script>
 {% endblock %}

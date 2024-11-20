@@ -382,3 +382,37 @@ table td a {
 .fileActive {
     animation: pulse-green 2s infinite;
 }
+
+/* Modal close button styling */
+.modal .close {
+    padding: 1rem;
+    margin: -1rem -1rem -1rem auto;
+    background: transparent;
+    border: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
+    opacity: .5;
+}
+
+.modal .close:hover {
+    color: #000;
+    opacity: .75;
+}
+
+/* Modal content styling */
+.modal td {
+    word-break: break-all;
+    /* Ensures long filenames wrap */
+    vertical-align: top;
+    /* Aligns content to top when wrapping */
+}
+
+.modal th {
+    white-space: nowrap;
+    /* Keeps labels on one line */
+    width: 120px;
+    /* Gives consistent space for labels */
+}
