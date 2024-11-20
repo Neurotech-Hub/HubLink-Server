@@ -380,6 +380,7 @@ table td a {
     }
 }
 
-.fileActive {
+.table-striped>tbody>tr.fileActive:nth-of-type(odd),
+.table-striped>tbody>tr.fileActive:nth-of-type(even) {
     animation: pulse-green 2s infinite;
 }
