@@ -372,7 +372,6 @@ table td a {
 
     50% {
         background-color: rgba(40, 167, 69, 0.2);
-        /* Bootstrap's success color with high transparency */
     }
 
     100% {
@@ -380,6 +379,12 @@ table td a {
     }
 }
 
+/* For the label/legend */
+span.fileActive {
+    animation: pulse-green 2s infinite;
+}
+
+/* For table rows */
 .table-striped>tbody>tr.fileActive {
     position: relative;
 }
