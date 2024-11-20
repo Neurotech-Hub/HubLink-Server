@@ -340,67 +340,15 @@
             <div class="d-flex justify-content-center align-items-center my-4">
                 <div class="toggle-container">
                     <div class="toggle-switch">
-                        <div class="switch-label left">Technology</div>
-                        <div class="switch-label right">Platform</div>
+                        <div class="switch-label left">Platform</div>
+                        <div class="switch-label right">Technology</div>
                         <div class="switch-handle"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- Technology Table -->
-            <div id="technologyTable" class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <colgroup>
-                        <col style="width: 40%;">
-                        <col style="width: 20%;">
-                        <col style="width: 20%;">
-                        <col style="width: 20%;">
-                    </colgroup>
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">Feature</th>
-                            <th scope="col" class="text-center">BLE</th>
-                            <th scope="col" class="text-center">WiFi</th>
-                            <th scope="col" class="text-center">LoRa</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>Battery-Efficient</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Built-in Security</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>No Internet Required</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                        </tr>
-                        <tr>
-                            <td>File Transfer Support</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                        </tr>
-                        <tr>
-                            <td>Range (~100m)</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Platform Table -->
-            <div id="platformTable" class="table-responsive d-none">
+            <!-- Platform Table (shown by default) -->
+            <div id="platformTable" class="table-responsive">
                 <table class="table table-hover align-middle">
                     <colgroup>
                         <col style="width: 40%;">
@@ -453,6 +401,58 @@
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Technology Table (hidden by default) -->
+            <div id="technologyTable" class="table-responsive d-none">
+                <table class="table table-hover align-middle">
+                    <colgroup>
+                        <col style="width: 40%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
+                    </colgroup>
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Feature</th>
+                            <th scope="col" class="text-center">BLE</th>
+                            <th scope="col" class="text-center">WiFi</th>
+                            <th scope="col" class="text-center">LoRa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Battery-Efficient</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Built-in Security</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                        <tr>
+                            <td>No Internet Required</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                        </tr>
+                        <tr>
+                            <td>File Transfer Support</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        </tr>
+                        <tr>
+                            <td>Range (~100m)</td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                         </tr>
                     </tbody>
                 </table>
@@ -525,18 +525,18 @@
         });
 
         const toggleSwitch = document.querySelector('.toggle-switch');
-        const techTable = document.getElementById('technologyTable');
         const platTable = document.getElementById('platformTable');
+        const techTable = document.getElementById('technologyTable');
 
         toggleSwitch.addEventListener('click', function () {
             this.classList.toggle('active');
 
             if (this.classList.contains('active')) {
-                techTable.classList.add('d-none');
-                platTable.classList.remove('d-none');
-            } else {
-                techTable.classList.remove('d-none');
                 platTable.classList.add('d-none');
+                techTable.classList.remove('d-none');
+            } else {
+                platTable.classList.remove('d-none');
+                techTable.classList.add('d-none');
             }
         });
     </script>
