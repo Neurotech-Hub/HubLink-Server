@@ -117,8 +117,10 @@ def delete_account(account_url):
 @accounts_bp.route('/<account_url>/data/<device_id>', methods=['GET'])
 def account_data(account_url, device_id=None):
     g.title = "Data"
-    total_limit = 100
     try:
+        # Get total_limit from URL parameters, default to 100 if not provided
+        total_limit = request.args.get('total_limit', 100, type=int)
+        
         account = Account.query.filter_by(url=account_url).first_or_404()
         
         # Get recent files for the account, optionally filtered by device_id

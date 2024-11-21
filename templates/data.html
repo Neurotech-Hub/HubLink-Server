@@ -181,7 +181,7 @@
             moment.utc(lastModified).local().format('LLL') : 'Never';
         document.getElementById('modalVersion').textContent = 'v' + version;
         document.getElementById('modalLastChecked').textContent = lastChecked === ' Never' ?
-            'Never' : moment.utc(lastModified).local().format('LLL');
+            'Never' : moment.utc(lastChecked).local().format('LLL');
 
         const modal = new bootstrap.Modal(document.getElementById('fileDetailsModal'));
         modal.show();

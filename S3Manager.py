@@ -237,6 +237,7 @@ def process_sqs_messages(account_settings):
                                     url=f"s3://{bucket_name}/{file_key}",
                                     size=file_size,
                                     last_modified=last_modified,
+                                    last_checked=datetime.now(timezone.utc),
                                     version=1  # Set initial version for new files
                                 )
                                 db.session.add(new_file)
