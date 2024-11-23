@@ -1,0 +1,18 @@
+<!-- Device Filter Pills -->
+<div class="mb-3">
+    <span class="badge {{ 'bg-primary' if device_id is none else 'bg-light' }}">
+        <a href="{{ url_for('accounts.account_data', account_url=account.url, total_limit=total_limit) }}"
+            class="text-decoration-none text-dark">
+            All Devices
+        </a>
+    </span>
+
+    {% for device in unique_devices %}
+    <span class="badge {{ 'bg-primary' if device_id == device else 'bg-light' }}">
+        <a href="{{ url_for('accounts.account_data', account_url=account.url, device_id=device, total_limit=total_limit) }}"
+            class="text-decoration-none text-dark">
+            {{ device }}
+        </a>
+    </span>
+    {% endfor %}
+</div>

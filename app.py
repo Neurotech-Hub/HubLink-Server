@@ -80,7 +80,8 @@ def create_default_settings(account_id):
             delete_scans_percent_remaining=-1,
             device_name_includes='ESP32',
             alert_file_starts_with='alert_',
-            alert_email=''
+            alert_email='',
+            node_payload=''
         )
         db.session.add(new_setting)
         db.session.commit()
@@ -105,7 +106,6 @@ def add_route_handler():
     all_accounts = Account.query.all()
     return render_template('new.html', accounts=all_accounts, new_route=new_route)
 
-# !! need to make new route include new_route
 # Route to submit a new account
 @app.route(f'/{new_route}', methods=['POST'])
 def submit():

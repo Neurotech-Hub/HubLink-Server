@@ -113,30 +113,69 @@ def delete_account(account_url):
         logging.error(f"There was an issue deleting the account: {e}")
         return "There was an issue deleting the account."
 
+@accounts_bp.route('/<account_url>/data/pills')
+def device_pills(account_url):
+    account = Account.query.filter_by(url=account_url).first_or_404()
+    unique_devices = get_unique_devices(account.id)
+    total_limit = request.args.get('total_limit', 100, type=int)
+    device_id = request.args.get('device_id')
+    
+    return render_template('partials/device_pills.html',
+                         account=account,
+                         unique_devices=unique_devices,
+                         device_id=device_id,
+                         total_limit=total_limit)
+
+@accounts_bp.route('/<account_url>/data/table')
+def file_table(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        device_id = request.args.get('device_id')
+        total_limit = request.args.get('total_limit', 100, type=int)
+        
+        recent_files = get_latest_files(account.id, total=total_limit, device_id=device_id)
+        now = datetime.now(timezone.utc)
+        
+        logging.debug(f"File table request - Account: {account_url}, Device: {device_id}, Files count: {len(recent_files)}")
+        
+        return render_template('partials/file_table.html',
+                             account=account,
+                             recent_files=recent_files,
+                             now=now)
+    except Exception as e:
+        logging.error(f"Error in file_table route: {e}")
+        return f"Error loading file table: {str(e)}", 500
+
+# Update your main data route
 @accounts_bp.route('/<account_url>/data', methods=['GET'])
 @accounts_bp.route('/<account_url>/data/<device_id>', methods=['GET'])
 def account_data(account_url, device_id=None):
     g.title = "Data"
     try:
-        # Get total_limit from URL parameters, default to 100 if not provided
         total_limit = request.args.get('total_limit', 100, type=int)
-        
         account = Account.query.filter_by(url=account_url).first_or_404()
         
-        # Get recent files for the account, optionally filtered by device_id
+        # For initial page load
         recent_files = get_latest_files(account.id, total=total_limit, device_id=device_id)
-        
-        # Retrieve a list of unique device IDs for display in the template
         unique_devices = get_unique_devices(account.id)
+        now = datetime.now(timezone.utc)
         
-        return render_template(
-            'data.html',
-            account=account,
-            recent_files=recent_files,
-            unique_devices=unique_devices,
-            device_id=device_id,
-            total_limit=total_limit
-        )
+        # Check if it's an HTMX request
+        if request.headers.get('HX-Request'):
+            # Return only the updated content
+            return render_template('partials/file_table.html',
+                                account=account,
+                                recent_files=recent_files,
+                                now=now)
+        
+        # Return full page for initial load
+        return render_template('data.html',
+                             account=account,
+                             recent_files=recent_files,
+                             unique_devices=unique_devices,
+                             device_id=device_id,
+                             total_limit=total_limit,
+                             now=now)
     except Exception as e:
         logging.error(f"Error loading data for {account_url} and device {device_id}: {e}")
         return "There was an issue loading the data page.", 500
