@@ -10,32 +10,89 @@
 
     <div class="container-fluid center-area">
         <div class="container mt-5">
-            <div class="card">
+            <!-- Create Account Card -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Create New Account</h5>
+                </div>
                 <div class="card-body">
                     <form action="/{{ new_route }}" method="POST">
                         <div class="form-group">
-                            <input type="text" id="name" name="name" class="form-control" required>
+                            <label for="name" class="form-label">Account Name</label>
+                            <input type="text" id="name" name="name" class="form-control"
+                                placeholder="Enter account name" required>
                         </div>
                         <div class="text-center">
-                            <button type="submit" class="btn btn-success mt-3 shadow-sm px-4">Create
-                                Account</button>
+                            <button type="submit" class="btn btn-success mt-3 shadow-sm px-4">
+                                Create Account
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
+
+            <!-- Existing Accounts List -->
             <div class="mt-4">
-                <h4 class="text-center text-dark">Accounts</h2>
-                    <ul class="list-group mt-3 shadow-sm">
-                        <!-- Assuming this list will be dynamically populated -->
-                        {% for account in accounts %}
-                        <li class="list-group-item text-dark">
-                            <a href="/{{ account.url }}">{{ account.name }}</a>
-                        </li>
-                        {% endfor %}
-                    </ul>
+                <div class="card shadow-sm">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">Existing Accounts</h5>
+                        <span class="badge">{{ accounts|length }} total</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if accounts and accounts|length > 0 %}
+                        <div class="list-group list-group-flush">
+                            {% for account in accounts %}
+                            <div class="list-group-item py-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-0">{{ account.name }}</h6>
+                                        <small class="text-muted d-flex align-items-center">
+                                            Last updated: {{ moment(account.updated_at).fromNow() }}
+                                        </small>
+                                        <small class="text-muted d-flex align-items-center">
+                                            <span id="url-{{ account.id }}" class="text-break cursor-pointer"
+                                                onclick="copyToClipboard('{{ account.id }}')" title="Click to copy URL">
+                                                {{ url_for('accounts.account_dashboard', account_url=account.url,
+                                                _external=True) }}
+                                            </span>
+                                            <span id="copySuccess-{{ account.id }}" class="ms-3 text-success px-2"
+                                                style="display: none;">
+                                                Copied!
+                                            </span>
+                                        </small>
+                                    </div>
+                                    <a href="/{{ account.url }}" class="btn btn-link text-muted ms-3">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-muted mb-0">No accounts found</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    {% include 'footer.html' %}
+
+    <script>
+        function copyToClipboard(accountId) {
+            var copyText = document.getElementById("url-" + accountId).innerText;
+            navigator.clipboard.writeText(copyText).then(function () {
+                var copySuccess = document.getElementById("copySuccess-" + accountId);
+                copySuccess.style.display = "inline";
+                setTimeout(function () {
+                    copySuccess.style.display = "none";
+                }, 2000);
+            });
+        }
+    </script>
 </body>
 
 </html>

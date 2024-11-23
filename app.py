@@ -80,7 +80,8 @@ def create_default_settings(account_id):
             delete_scans_percent_remaining=-1,
             device_name_includes='ESP32',
             alert_file_starts_with='alert_',
-            alert_email=''
+            alert_email='',
+            node_payload=''
         )
         db.session.add(new_setting)
         db.session.commit()
