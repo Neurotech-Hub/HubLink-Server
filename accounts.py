@@ -215,11 +215,8 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        gateways = Gateway.query.order_by(desc(Gateway.created_at)).limit(20).all()
+        gateways = Gateway.query.filter_by(account_id=account.id).order_by(desc(Gateway.created_at)).limit(20).all()
 
-        # Use UTC for consistency
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        start_date = today - timedelta(days=30)
         recent_files = get_latest_files(account.id, 1000, 31)
 
         # Send timestamps to client for conversion

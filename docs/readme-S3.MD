@@ -1,0 +1,77 @@
+# S3 and IAM Configuration for Secure File Access
+
+This guide outlines the steps to configure an Amazon S3 bucket and IAM user for secure file uploads, downloads, and listing operations in your web application.
+
+## 1. Create an S3 Bucket
+
+1. Log in to the [AWS Management Console](https://aws.amazon.com/console/)
+2. Navigate to the **S3 Dashboard**
+3. Click **Create bucket** and configure:
+   - **Bucket Name**: Choose a unique name (e.g., `my-app-files`)
+   - **Region**: Select a region closest to your application
+   - **Permissions**:  
+     - Ensure **Block all public access** is **enabled** (recommended)
+     - Leave other settings as default
+4. Click **Create bucket**
+
+## 2. Set Up IAM User for Bucket Access
+
+1. Navigate to the [IAM Dashboard](https://console.aws.amazon.com/iam/)
+2. Click **Users** → **Add users**:
+   - **User Name**: Use a descriptive name (e.g., `neurotechhub`)
+   - **Policies**: If prompted, you may select to copy policies from an existing user and modify them.
+   - **Click Create Access Key** (select *Application running outside AWS*)
+   - **Set Tag Description**: `primary`
+   - Download the Access Key .csv file and archive it
+3. Click **Next: Permissions**
+
+### Assign Permissions
+
+1. Create a Policy using the JSON Editor:
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:ListBucket"
+          ],
+          "Resource": "arn:aws:s3:::neurotechhub-000"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject"
+          ],
+          "Resource": "arn:aws:s3:::neurotechhub-000/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "sqs:ReceiveMessage",
+            "sqs:DeleteMessage",
+            "sqs:GetQueueAttributes"
+          ],
+          "Resource": "arn:aws:sqs:us-east-1:557690613785:HublinkQueue"
+        }
+      ]
+    }
+    ```
+2. Name the policy: `user-access-s3`
+3. Run the `test_s3.py` script to verify the user has access to the bucket
+
+## Error Handling
+
+The `test_s3.py` script includes error handling for:
+- Missing or invalid credential files
+- CSV parsing errors
+- Invalid bucket names
+- File operations failures
+- S3 upload failures
+- AWS configuration issues
+- Resource cleanup errors
+
+If any errors occur, the script will display a detailed error message and exit with status code 1.
