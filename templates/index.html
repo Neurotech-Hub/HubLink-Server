@@ -215,57 +215,6 @@
                 /* Reduced padding */
             }
         }
-
-        .table th.highlight-column,
-        .table td:nth-child(2) {
-            /* 2nd column in both tables */
-            background-color: #fffcde;
-            position: relative;
-        }
-
-        /* Optional: Add a subtle border */
-        .table th.highlight-column,
-        .table td:nth-child(2) {
-            box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Add this to your existing styles */
-        .highlight-column {
-            position: relative;
-            background: linear-gradient(to bottom, #fffcde 0%, #fff9c4 100%);
-        }
-
-        /* Subtle glow effect */
-        .highlight-column::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            box-shadow: 0 0 20px rgba(255, 252, 222, 0.8);
-            pointer-events: none;
-        }
-
-        /* Golden borders */
-        .highlight-column::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border-left: 1px solid rgba(218, 165, 32, 0.2);
-            border-right: 1px solid rgba(218, 165, 32, 0.2);
-            pointer-events: none;
-        }
-
-        /* Header styling for highlighted columns */
-        .table th.highlight-header {
-            background: linear-gradient(45deg, #fff9c4, #fffde7);
-            position: relative;
-            font-weight: 600;
-        }
     </style>
 </head>
 
@@ -415,54 +364,54 @@
                 <table class="table table-hover align-middle">
                     <colgroup>
                         <col style="width: 40%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15%;">
+                        <col style="width: 15%;">
                         <col class="highlight-column" style="width: 15%;">
-                        <col style="width: 15%;">
-                        <col style="width: 15%;">
-                        <col style="width: 15%;">
                     </colgroup>
                     <thead class="table-light">
                         <tr>
                             <th scope="col">Feature</th>
-                            <th scope="col" class="text-center px-1 highlight-header">Hublink</th>
                             <th scope="col" class="text-center px-1">Things Board</th>
                             <th scope="col" class="text-center px-1">AWS IoT</th>
                             <th scope="col" class="text-center px-1">Balena</th>
+                            <th scope="col" class="text-center px-1 highlight-header">Hublink</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr></tr>
-                        <td>Open Source Node SDK</td>
-                        <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                        <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                        <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                        <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                        <tr>
+                            <td>Open Source Node SDK</td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                         </tr>
                         <tr>
                             <td>Built-in BLE Support</td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
                         </tr>
                         <tr>
                             <td>S3 Integration</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                         </tr>
                         <tr>
-                            <td>Ready-to-use Dashboard</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td>Data Download Dashboard</td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                         </tr>
                         <tr>
                             <td>Mobile Web Interface</td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                         </tr>
                     </tbody>
@@ -474,16 +423,16 @@
                 <table class="table table-hover align-middle">
                     <colgroup>
                         <col style="width: 40%;">
+                        <col style="width: 20%;">
+                        <col style="width: 20%;">
                         <col class="highlight-column" style="width: 20%;">
-                        <col style="width: 20%;">
-                        <col style="width: 20%;">
                     </colgroup>
                     <thead class="table-light">
                         <tr>
                             <th scope="col">Feature</th>
-                            <th scope="col" class="text-center highlight-header">BLE</th>
-                            <th scope="col" class="text-center">WiFi</th>
                             <th scope="col" class="text-center">LoRa</th>
+                            <th scope="col" class="text-center">WiFi</th>
+                            <th scope="col" class="text-center highlight-header">BLE</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -495,9 +444,9 @@
                         </tr>
                         <tr>
                             <td>High Speed Data Transfer</td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                             <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
+                            <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
                         </tr>
                         <tr>
                             <td>No Internet Required</td>
@@ -507,9 +456,9 @@
                         </tr>
                         <tr>
                             <td>Easily Reconfigured</td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
+                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
                             <td class="text-center"><i class="bi bi-check-circle-fill text-success"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
-                            <td class="text-center"><i class="bi bi-x-circle-fill text-danger"></i></td>
                         </tr>
                         <tr>
                             <td>Range (~100m)</td>
