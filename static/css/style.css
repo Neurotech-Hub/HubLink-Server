@@ -416,3 +416,10 @@ table td a {
     width: 120px;
     /* Gives consistent space for labels */
 }
+
+/* Hide footer on mobile devices */
+@media (max-width: 768px) {
+    footer {
+        display: none;
+    }
+}
