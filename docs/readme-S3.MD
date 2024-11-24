@@ -13,6 +13,11 @@ This guide outlines the steps to configure an Amazon S3 bucket and IAM user for 
      - Ensure **Block all public access** is **enabled** (recommended)
      - Leave other settings as default
 4. Click **Create bucket**
+5. Register Event notifications for the bucket:
+    - **Name**: `hublink-events`
+    - **Event Types**: `All object create events, All object removal events`
+    - **Destination**: `SQS Queue`
+    - **Queue**: `HublinkQueue`
 
 ## 2. Set Up IAM User for Bucket Access
 
