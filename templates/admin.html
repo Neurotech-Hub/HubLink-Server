@@ -8,15 +8,43 @@
 <body>
     {% include 'nav.html' %}
 
-    <div class="container-fluid center-area">
-        <div class="container mt-5">
+    <div class="container-fluid">
+        <div class="container mt-5 mb-5">
+            <!-- Analytics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-2">Total Accounts</h6>
+                            <h3 class="mb-0">{{ accounts|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-2">Total Files</h6>
+                            <h3 class="mb-0">{{ total_files }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <h6 class="card-title text-muted mb-2">Gateway Pings</h6>
+                            <h3 class="mb-0">{{ total_gateways }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Create Account Card -->
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
                     <h5 class="card-title mb-0">Create New Account</h5>
                 </div>
                 <div class="card-body">
-                    <form action="/{{ new_route }}" method="POST">
+                    <form action="/{{ admin_route }}" method="POST">
                         <div class="form-group">
                             <label for="name" class="form-label">Account Name</label>
                             <input type="text" id="name" name="name" class="form-control"

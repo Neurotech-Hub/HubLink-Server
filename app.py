@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for
 from flask_migrate import Migrate, upgrade
-from models import db, Account, Setting # db locations
+from models import db, Account, Setting, File, Gateway # db locations
 from S3Manager import *
 import os
 import logging
@@ -31,7 +31,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 moment = Moment(app)
 
 # security by obscurity
-new_route = os.getenv('NEW_ROUTE', 'new')
+admin_route = os.getenv('ADMIN_ROUTE', 'admin')
 
 logging.info(f"SQLALCHEMY_DATABASE_URI is set to: {app.config['SQLALCHEMY_DATABASE_URI']}")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -101,14 +101,25 @@ def index():
         return "There was an issue loading the homepage.", 500
 
 # Define location dynamically
-@app.route(f'/{new_route}', methods=['GET'])
+@app.route(f'/{admin_route}', methods=['GET'])
 def add_route_handler():
-    all_accounts = Account.query.all()
-    return render_template('new.html', accounts=all_accounts, new_route=new_route)
+    try:
+        all_accounts = Account.query.all()
+        total_files = db.session.query(db.func.count(File.id)).scalar()
+        total_gateways = db.session.query(db.func.count(Gateway.id)).scalar()
+        
+        return render_template('admin.html', 
+                             accounts=all_accounts,
+                             admin_route=admin_route,
+                             total_files=total_files,
+                             total_gateways=total_gateways)
+    except Exception as e:
+        logging.error(f"Error loading new account page: {e}")
+        return "There was an issue loading the page.", 500
 
-# !! need to make new route include new_route
+# !! need to make new route include admin_route
 # Route to submit a new account
-@app.route(f'/{new_route}', methods=['POST'])
+@app.route(f'/{admin_route}', methods=['POST'])
 def submit():
     user_name = request.form['name']
     unique_path = generate_random_string()
