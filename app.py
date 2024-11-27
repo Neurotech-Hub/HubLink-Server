@@ -105,18 +105,17 @@ def index():
 def add_route_handler():
     try:
         all_accounts = Account.query.all()
-        total_page_loads = db.session.query(db.func.sum(Account.count_page_loads)).scalar() or 0
         
-        # Get active accounts (those with page loads)
-        active_accounts = db.session.query(Account).filter(Account.count_page_loads > 0).count()
+        # Count unique gateway names
+        total_gateways = db.session.query(Gateway.name).distinct().count()
         
         analytics = {
             'total_accounts': len(all_accounts),
-            'total_gateways': db.session.query(db.func.count(Gateway.id)).scalar(),
-            'total_page_loads': total_page_loads,
-            'active_accounts': active_accounts,
-            'total_file_downloads': db.session.query(db.func.sum(Account.count_file_downloads)).scalar() or 0,
+            'total_gateways': total_gateways,  # Now counts unique gateways
             'total_gateway_pings': db.session.query(db.func.sum(Account.count_gateway_pings)).scalar() or 0,
+            'total_page_loads': db.session.query(db.func.sum(Account.count_page_loads)).scalar() or 0,
+            'active_accounts': db.session.query(Account).filter(Account.count_page_loads > 0).count(),
+            'total_file_downloads': db.session.query(db.func.sum(Account.count_file_downloads)).scalar() or 0,
             'total_settings_updated': db.session.query(db.func.sum(Account.count_settings_updated)).scalar() or 0,
             'total_uploaded_files': db.session.query(db.func.sum(Account.count_uploaded_files)).scalar() or 0
         }
