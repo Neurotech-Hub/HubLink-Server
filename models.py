@@ -10,6 +10,13 @@ class Account(db.Model):
     url = db.Column(db.String(200), nullable=False, unique=True)
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
+    # Add new tracking columns with default value of 0
+    count_gateway_pings = db.Column(db.Integer, nullable=False, default=0)
+    count_uploaded_files = db.Column(db.Integer, nullable=False, default=0)
+    count_page_loads = db.Column(db.Integer, nullable=False, default=0)
+    count_file_downloads = db.Column(db.Integer, nullable=False, default=0)
+    count_settings_updated = db.Column(db.Integer, nullable=False, default=0)
+
     # Define relationship with settings
     settings = db.relationship('Setting', backref='account', uselist=False, cascade="all, delete-orphan")
 

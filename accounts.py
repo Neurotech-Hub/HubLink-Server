@@ -10,13 +10,15 @@ from sqlalchemy import desc
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
 
-# Route to output account settings as JSON
+# Route to output account settings as JSON (gateway ping)
 @accounts_bp.route('/<account_url>.json', methods=['GET'])
 @accounts_bp.route('/<account_url>.json/<gateway_name>', methods=['GET'])
 def get_account(account_url, gateway_name=None):
     g.title = "API"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_gateway_pings += 1
+        db.session.commit()
         setting = Setting.query.filter_by(account_id=account.id).first()
         if setting:
             # Extract client IP address
@@ -42,12 +44,14 @@ def get_account(account_url, gateway_name=None):
         logging.error(f"Error generating JSON for {account_url}: {e}")
         return "There was an issue generating the JSON.", 500
 
-# Route to view the settings for an account
+# Route to view the settings for an account (page load)
 @accounts_bp.route('/<account_url>/settings', methods=['GET'])
 def account_settings(account_url):
     g.title = "Settings"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        db.session.commit()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         return render_template('settings.html', account=account, settings=settings)
     except Exception as e:
@@ -58,8 +62,9 @@ def account_settings(account_url):
 @accounts_bp.route('/<account_url>/settings/update', methods=['POST'])
 def update_settings(account_url):
     account = Account.query.filter_by(url=account_url).first_or_404()
-    settings = Setting.query.filter_by(account_id=account.id).first_or_404()
     try:
+        account.count_settings_updated += 1
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         # Track original values
         original_access_key = settings.aws_access_key_id
         original_secret_key = settings.aws_secret_access_key
@@ -118,10 +123,11 @@ def delete_account(account_url):
 def account_data(account_url, device_id=None):
     g.title = "Data"
     try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        db.session.commit()
         # Get total_limit from URL parameters, default to 100 if not provided
         total_limit = request.args.get('total_limit', 100, type=int)
-        
-        account = Account.query.filter_by(url=account_url).first_or_404()
         
         # Get recent files for the account, optionally filtered by device_id
         recent_files = get_latest_files(account.id, total=total_limit, device_id=device_id)
@@ -200,20 +206,29 @@ def rebuild(account_url):
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
-        # Call update_S3_files for the account with force_update set to True
-        rebuild_S3_files(settings)
+        # Get count of new files from rebuild operation
+        new_files = rebuild_S3_files(settings)
+        if new_files > 0:
+            account.count_uploaded_files += new_files
+            logging.info(f"Added {new_files} new files for account {account.id}")
+            db.session.commit()
 
-        return jsonify({"message": "Rebuild completed successfully"}), 200
+        return jsonify({
+            "message": "Rebuild completed successfully",
+            "new_files": new_files
+        }), 200
     except Exception as e:
         logging.error(f"Error during '/rebuild' endpoint: {e}")
         return jsonify({"error": "There was an issue processing the rebuild request."}), 500
 
-# Route to view the account dashboard by its unique URL
+# Route to view the account dashboard by its unique URL (page load)
 @accounts_bp.route('/<account_url>', methods=['GET'])
 def account_dashboard(account_url):
     g.title = "Dashboard"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        db.session.commit()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         gateways = Gateway.query.filter_by(account_id=account.id).order_by(desc(Gateway.created_at)).limit(20).all()
 
@@ -265,6 +280,9 @@ def account_dashboard(account_url):
 @accounts_bp.route('/<account_url>/download/<int:file_id>', methods=['GET'])
 def download_file(account_url, file_id):
     try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_file_downloads += 1
+        db.session.commit()
         # Ensure the account exists
         account = Account.query.filter_by(url=account_url).first_or_404()
         

@@ -9,13 +9,13 @@ from dateutil import parser
 def rebuild_S3_files(account_settings):
     retries = 3
     account_id = account_settings.account_id
+    new_files_count = 0  # Track number of new files
 
     # Validate required settings
     if not account_settings.aws_access_key_id or not account_settings.aws_secret_access_key or not account_settings.bucket_name:
         logging.error(f"Missing AWS credentials or bucket name for account {account_id}.")
-        return
+        return 0
 
-    # Attempt to create S3 client
     try:
         s3_client = boto3.client(
             's3',
@@ -25,7 +25,7 @@ def rebuild_S3_files(account_settings):
         )
     except Exception as e:
         logging.error(f"Failed to create S3 client: {e}")
-        return
+        return 0
 
     for attempt in range(retries):
         try:
@@ -35,7 +35,6 @@ def rebuild_S3_files(account_settings):
 
             continuation_token = None
             while True:
-                # List objects in the S3 bucket with pagination handling
                 list_params = {'Bucket': account_settings.bucket_name, 'Prefix': ''}
                 if continuation_token:
                     list_params['ContinuationToken'] = continuation_token
@@ -48,8 +47,18 @@ def rebuild_S3_files(account_settings):
                         file_key = obj['Key']
                         s3_files.add(file_key)
 
-                        if file_key not in db_files:
-                            # Only add new files that don't exist in database
+                        if file_key in db_files:
+                            # File exists - check if size has changed
+                            existing_file = db_files[file_key]
+                            if existing_file.size != obj['Size']:
+                                logging.info(f"File {file_key} size changed from {existing_file.size} to {obj['Size']}")
+                                existing_file.size = obj['Size']
+                                existing_file.last_modified = obj['LastModified']
+                                existing_file.last_checked = datetime.now(timezone.utc)
+                                existing_file.version += 1  # Increment version when size changes
+                                db.session.add(existing_file)
+                        else:
+                            # New file - create new entry
                             new_file = File(
                                 account_id=account_id,
                                 key=file_key,
@@ -57,9 +66,10 @@ def rebuild_S3_files(account_settings):
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
                                 last_checked=datetime.now(timezone.utc),
-                                version=1
+                                version=1  # Initial version for new files
                             )
                             db.session.add(new_file)
+                            new_files_count += 1
 
                 # Handle pagination
                 if response.get('IsTruncated'):
@@ -74,23 +84,14 @@ def rebuild_S3_files(account_settings):
 
             db.session.commit()
             logging.info(f"Successfully synchronized files for account {account_id}")
-            return
+            return new_files_count
 
-        except s3_client.exceptions.NoSuchBucket:
-            logging.error(f"Bucket '{account_settings.bucket_name}' does not exist.")
-            return
-        except s3_client.exceptions.ClientError as e:
-            error_code = e.response['Error']['Code']
-            logging.error(f"Client error ({error_code}) accessing S3 bucket: {e}")
-            if error_code == 'AccessDenied':
-                logging.error("Access to the bucket was denied.")
-                return
         except Exception as e:
             logging.error(f"Attempt {attempt + 1} failed accessing S3 bucket: {e}")
             if attempt < retries - 1:
                 logging.debug("Retrying...")
             else:
-                return
+                return 0
 
 def generate_download_link(account_settings, key, expires_in=3600):
     # Validate that required settings are not empty

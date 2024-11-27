@@ -11,28 +11,68 @@
     <div class="container-fluid">
         <div class="container mt-5 mb-5">
             <!-- Analytics Cards -->
-            <div class="row mb-4">
-                <div class="col-md-4">
-                    <div class="card shadow-sm">
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card shadow-sm h-100">
                         <div class="card-body">
-                            <h6 class="card-title text-muted mb-2">Total Accounts</h6>
-                            <h3 class="mb-0">{{ accounts|length }}</h3>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="text-muted fw-normal mb-0">Accounts</h6>
+                                    <h4 class="mb-0">{{ analytics.total_accounts }}</h4>
+                                    <small class="text-muted">{{ analytics.total_settings_updated }} updates</small>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-people text-primary fs-3"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card shadow-sm">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card shadow-sm h-100">
                         <div class="card-body">
-                            <h6 class="card-title text-muted mb-2">Total Files</h6>
-                            <h3 class="mb-0">{{ total_files }}</h3>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="text-muted fw-normal mb-0">File Uploads</h6>
+                                    <h4 class="mb-0">{{ analytics.total_uploaded_files }}</h4>
+                                    <small class="text-muted">{{ analytics.total_file_downloads }} downloads</small>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-file-earmark text-success fs-3"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card shadow-sm">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card shadow-sm h-100">
                         <div class="card-body">
-                            <h6 class="card-title text-muted mb-2">Gateway Pings</h6>
-                            <h3 class="mb-0">{{ total_gateways }}</h3>
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="text-muted fw-normal mb-0">Gateways</h6>
+                                    <h4 class="mb-0">{{ analytics.total_gateways }}</h4>
+                                    <small class="text-muted">{{ analytics.total_gateway_pings }} pings</small>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-hdd-network text-info fs-3"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center">
+                                <div class="flex-grow-1">
+                                    <h6 class="text-muted fw-normal mb-0">Page Loads</h6>
+                                    <h4 class="mb-0">{{ analytics.total_page_loads }}</h4>
+                                    <small class="text-muted">{{ analytics.active_accounts }} active today</small>
+                                </div>
+                                <div class="ms-3">
+                                    <i class="bi bi-graph-up text-warning fs-3"></i>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

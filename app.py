@@ -105,47 +105,47 @@ def index():
 def add_route_handler():
     try:
         all_accounts = Account.query.all()
-        total_files = db.session.query(db.func.count(File.id)).scalar()
-        total_gateways = db.session.query(db.func.count(Gateway.id)).scalar()
+        total_page_loads = db.session.query(db.func.sum(Account.count_page_loads)).scalar() or 0
+        
+        # Get active accounts (those with page loads)
+        active_accounts = db.session.query(Account).filter(Account.count_page_loads > 0).count()
+        
+        analytics = {
+            'total_accounts': len(all_accounts),
+            'total_gateways': db.session.query(db.func.count(Gateway.id)).scalar(),
+            'total_page_loads': total_page_loads,
+            'active_accounts': active_accounts,
+            'total_file_downloads': db.session.query(db.func.sum(Account.count_file_downloads)).scalar() or 0,
+            'total_gateway_pings': db.session.query(db.func.sum(Account.count_gateway_pings)).scalar() or 0,
+            'total_settings_updated': db.session.query(db.func.sum(Account.count_settings_updated)).scalar() or 0,
+            'total_uploaded_files': db.session.query(db.func.sum(Account.count_uploaded_files)).scalar() or 0
+        }
         
         return render_template('admin.html', 
                              accounts=all_accounts,
                              admin_route=admin_route,
-                             total_files=total_files,
-                             total_gateways=total_gateways)
+                             analytics=analytics)
     except Exception as e:
         logging.error(f"Error loading new account page: {e}")
         return "There was an issue loading the page.", 500
 
-# !! need to make new route include admin_route
 # Route to submit a new account
 @app.route(f'/{admin_route}', methods=['POST'])
 def submit():
     user_name = request.form['name']
     unique_path = generate_random_string()
-
-    # Check if user_name contains '|', indicating a specified unique_path
-    if "|" in user_name:
-        parts = user_name.split("|", 1)
-        if len(parts) == 2:
-            user_name, unique_path = parts[0], parts[1]
-
     new_account = Account(name=user_name, url=unique_path)
 
     try:
         db.session.add(new_account)
-        db.session.flush()  # Flush to get the new account ID without committing
-
-        # Create default settings for the new account
+        db.session.flush()
         create_default_settings(new_account.id)
-
-        # Commit the changes for both the account and settings
         db.session.commit()
-
+        
         logging.debug(f"New account created: {new_account} with URL: {new_account.url}")
-        return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))  # Updated for Blueprint
+        return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
     except Exception as e:
-        db.session.rollback()  # Roll back the transaction on error
+        db.session.rollback()
         logging.error(f"There was an issue adding your account: {e}")
         return "There was an issue adding your account."
 
