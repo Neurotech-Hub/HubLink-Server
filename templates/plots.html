@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Sources Management Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Data Sources</h5>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourceModal">
+                    <i class="bi bi-plus-lg"></i> Add Source
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>File Filter</th>
+                            <th>Columns</th>
+                            <th>Data Points</th>
+                            <th>Tail Only</th>
+                            <th>Last Updated</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for source in sources %}
+                        <tr>
+                            <td>{{ source.name }}</td>
+                            <td><code>{{ source.file_filter }}</code></td>
+                            <td><code>{{ source.include_columns }}</code></td>
+                            <td>{{ source.data_points }}</td>
+                            <td>{{ "Yes" if source.tail_only else "No" }}</td>
+                            <td>{{ source.last_updated | datetime if source.last_updated else 'Never' }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    onclick='editSource({{ source.to_dict() | tojson }})'>
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <form action="/{{ account.url }}/source/{{ source.id }}/delete" method="POST"
+                                    class="d-inline"
+                                    onsubmit="return confirm('Are you sure you want to delete this source?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plot Areas -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Plot Area 1</h5>
+                    <div style="position: relative; height:400px;">
+                        <p class="text-muted">Placeholder for future plot</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Source Modal -->
+<div class="modal fade" id="sourceModal" tabindex="-1" aria-labelledby="sourceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="sourceModalLabel">Add Source</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="sourceForm" action="/{{ account.url }}/source" method="POST" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" id="sourceId" name="source_id">
+                    <div class="mb-3">
+                        <label for="sourceName" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="sourceName" name="name" required pattern=".+"
+                            title="Name cannot be empty">
+                        <div class="invalid-feedback">Please provide a name.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="fileFilter" class="form-label">File Filter <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="fileFilter" name="file_filter" value="*" required
+                            pattern="[^<>:&quot;|?*]+">
+                        <div class="form-text">Filter pattern for matching files (e.g., "device1/*.csv").
+                            Wildcards (*) are allowed.</div>
+                        <div class="invalid-feedback">Please provide a valid file filter pattern.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="includeColumns" class="form-label">Include Columns <span
+                                class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="includeColumns" name="include_columns" value="*"
+                            required pattern="^\*$|^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$">
+                        <div class="form-text">Comma-separated list of columns to include (e.g.,
+                            "timestamp,temperature,humidity")
+                            or "*" for all columns. No spaces in column names.</div>
+                        <div class="invalid-feedback">Please provide valid column names (no spaces, comma-separated).
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="dataPoints" class="form-label">Data Points <span
+                                class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="dataPoints" name="data_points" value="100"
+                            required min="1" max="1000">
+                        <div class="form-text">Number of data points to collect (1-1000)</div>
+                        <div class="invalid-feedback">Please enter a number between 1 and 1000.</div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only">
+                        <label class="form-check-label" for="tailOnly">Tail Only</label>
+                        <div class="form-text">Only process the end of files</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    function editSource(source) {
+        // Update form action
+        const form = document.getElementById('sourceForm');
+        form.action = `/{{ account.url }}/source/${source.id}/edit`;
+
+        // Update modal title
+        document.getElementById('sourceModalLabel').textContent = 'Edit Source';
+
+        // Fill form fields
+        document.getElementById('sourceId').value = source.id;
+        document.getElementById('sourceName').value = source.name;
+        document.getElementById('fileFilter').value = source.file_filter;
+        document.getElementById('includeColumns').value = source.include_columns;
+        document.getElementById('dataPoints').value = source.data_points;
+        document.getElementById('tailOnly').checked = source.tail_only;
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('sourceModal'));
+        modal.show();
+    }
+
+    // Add reset function for "Add Source" button
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function () {
+            const form = document.getElementById('sourceForm');
+            form.reset();
+            form.action = `/{{ account.url }}/source`;
+            document.getElementById('sourceModalLabel').textContent = 'Add Source';
+            document.getElementById('sourceId').value = '';
+        });
+
+        // Enable Bootstrap form validation
+        var forms = document.querySelectorAll('.needs-validation');
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+
+        // Additional custom validation for columns
+        const columnsInput = document.getElementById('includeColumns');
+        columnsInput.addEventListener('input', function () {
+            const value = this.value.trim();
+            if (value === '*') return;
+
+            const columns = value.split(',');
+            const hasInvalidColumns = columns.some(col => /\s/.test(col.trim()));
+
+            if (hasInvalidColumns) {
+                this.setCustomValidity('Column names cannot contain spaces');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -7,20 +7,25 @@
     </div>
 </footer>
 
-<!-- Bootstrap Bundle with Popper -->
+<!-- Core JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Google tag (gtag.js) -->
+<!-- Utilities -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.42/moment-timezone-with-data.min.js"></script>
+{{ moment.include_moment() }}
+
+<!-- Icons (defer loading) -->
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/js/all.min.js"></script>
+
+<!-- Custom JS -->
+<script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+<!-- Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-5QRJ4H7XX4"></script>
 <script>
-    document.querySelectorAll('td[data-timestamp]').forEach(function (element) {
-        const timestamp = element.getAttribute('data-timestamp');
-        element.textContent = moment.utc(timestamp).local().format('LLL');  // Localizes to browser timezone
-    });
-
     window.dataLayer = window.dataLayer || [];
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
-
     gtag('config', 'G-5QRJ4H7XX4');
 </script>

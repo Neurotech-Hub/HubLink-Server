@@ -108,3 +108,32 @@ class Gateway(db.Model):
             'name': self.name,
             'created_at': self.created_at.isoformat()
         }
+
+# Define the source model
+class Source(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    file_filter = db.Column(db.String(200), nullable=False, default="*")
+    include_columns = db.Column(db.String(500), nullable=False, default="*")
+    data_points = db.Column(db.Integer, nullable=False, default=0)
+    tail_only = db.Column(db.Boolean, nullable=False, default=False)
+    last_updated = db.Column(db.DateTime, nullable=True)
+
+    # Add relationship to Account
+    account = db.relationship('Account', backref=db.backref('sources', lazy=True))
+
+    def __repr__(self):
+        return f"<Source {self.name} for Account {self.account_id}>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'account_id': self.account_id,
+            'name': self.name,
+            'file_filter': self.file_filter,
+            'include_columns': self.include_columns,
+            'data_points': self.data_points,
+            'tail_only': self.tail_only,
+            'last_updated': self.last_updated.isoformat() if self.last_updated else None
+        }

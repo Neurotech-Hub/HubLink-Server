@@ -1,11 +1,13 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
-from models import db, Account, Setting, File, Gateway
-from datetime import datetime, timedelta
+from models import db, Account, Setting, File, Gateway, Source
+from datetime import datetime, timedelta, timezone
 import logging
 from S3Manager import *
 import traceback
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, BadRequest
 from sqlalchemy import desc
+from sqlalchemy.exc import IntegrityError
+import re
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -354,3 +356,128 @@ def get_recent_checks(account_url):
     except Exception as e:
         logging.error(f"Error getting recent checks for {account_url}: {e}")
         return jsonify({"error": "There was an issue processing your request."}), 500
+
+@accounts_bp.route('/<account_url>/plots', methods=['GET'])
+def account_plots(account_url):
+    g.title = "Plots"
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        
+        # Get all sources for this account
+        sources = Source.query.filter_by(account_id=account.id).all()
+        
+        db.session.commit()
+        return render_template('plots.html', account=account, sources=sources)
+    except Exception as e:
+        logging.error(f"Error loading plots for {account_url}: {e}")
+        return "There was an issue loading the plots page.", 500
+
+def validate_source_data(data):
+    errors = []
+    
+    # Validate name
+    name = data.get('name', '').strip()
+    if not name:
+        errors.append("Name cannot be empty")
+    
+    # Validate file_filter
+    file_filter = data.get('file_filter', '*').strip()
+    try:
+        re.compile(file_filter.replace('*', '.*'))
+    except re.error:
+        errors.append("File filter must be a valid pattern")
+    
+    # Validate include_columns
+    include_columns = data.get('include_columns', '*').strip()
+    if include_columns != '*':
+        columns = [col.strip() for col in include_columns.split(',')]
+        invalid_columns = [col for col in columns if not col or ' ' in col]
+        if invalid_columns:
+            errors.append("Column names cannot be empty or contain spaces")
+    
+    # Validate data_points
+    try:
+        data_points = int(data.get('data_points', 0))
+        if not 1 <= data_points <= 1000:
+            errors.append("Data points must be between 1 and 1000")
+    except ValueError:
+        errors.append("Data points must be a valid number")
+    
+    if errors:
+        raise BadRequest(', '.join(errors))
+    
+    return {
+        'name': name,
+        'file_filter': file_filter,
+        'include_columns': include_columns,
+        'data_points': data_points,
+        'tail_only': data.get('tail_only') == 'true'
+    }
+
+@accounts_bp.route('/<account_url>/source', methods=['POST'])
+def create_source(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Validate input data
+        validated_data = validate_source_data(request.form)
+        
+        source = Source(
+            account_id=account.id,
+            **validated_data
+        )
+        
+        db.session.add(source)
+        db.session.commit()
+        
+        flash('Source created successfully.', 'success')
+    except BadRequest as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error creating source.', 'error')
+        logging.error(f"Error creating source: {e}")
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/delete', methods=['POST'])
+def delete_source(account_url, source_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        
+        db.session.delete(source)
+        db.session.commit()
+        
+        flash('Source deleted successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting source.', 'error')
+        logging.error(f"Error deleting source: {e}")
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/edit', methods=['POST'])
+def edit_source(account_url, source_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        
+        # Validate input data
+        validated_data = validate_source_data(request.form)
+        
+        # Update source fields
+        for key, value in validated_data.items():
+            setattr(source, key, value)
+        
+        db.session.commit()
+        flash('Source updated successfully.', 'success')
+    except BadRequest as e:
+        flash(str(e), 'error')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error updating source.', 'error')
+        logging.error(f"Error updating source: {e}")
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))

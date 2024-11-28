@@ -19,48 +19,65 @@
                         <li class="nav-item">
                             <a class="nav-link {% if request.path == '/' + account.url %}active{% endif %}"
                                 href="/{{ account.url }}">
-                                <i class="fa fa-home"></i> Dashboard
+                                <i class="fa fa-home"></i>
+                                <span>Dashboard</span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.path == '/' + account.url + '/settings' %}active{% endif %}"
                                 href="/{{ account.url }}/settings">
-                                <i class="fa fa-cog"></i> Settings
+                                <i class="fa fa-cog"></i>
+                                <span>Settings</span>
                             </a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if request.path == '/' + account.url + '/data' %}active{% endif %}"
                                 href="/{{ account.url }}/data">
-                                <i class="fa fa-database"></i> Data
+                                <i class="fa fa-database"></i>
+                                <span>Data</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/' + account.url + '/plots' %}active{% endif %}"
+                                href="/{{ account.url }}/plots">
+                                <i class="fa fa-chart-line"></i>
+                                <span>Plots</span>
                             </a>
                         </li>
                     </ul>
                 </div>
             </nav>
 
-            <!-- Mobile Icon Navbar -->
-            <nav class="mobile-nav d-md-none">
+            <nav class="mobile-nav d-md-none fixed-bottom bg-light">
                 <ul class="nav justify-content-around">
                     <li class="nav-item">
-                        <a class="nav-link" href="/{{ account.url }}" aria-label="Dashboard">
+                        <a class="nav-link {% if request.path == '/' + account.url %}active{% endif %}"
+                            href="/{{ account.url }}" aria-label="Dashboard">
                             <i class="fa fa-home"></i>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/{{ account.url }}/settings" aria-label="Settings">
+                        <a class="nav-link {% if request.path == '/' + account.url + '/settings' %}active{% endif %}"
+                            href="/{{ account.url }}/settings" aria-label="Settings">
                             <i class="fa fa-cog"></i>
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/{{ account.url }}/data" aria-label="Data">
+                        <a class="nav-link {% if request.path == '/' + account.url + '/data' %}active{% endif %}"
+                            href="/{{ account.url }}/data" aria-label="Data">
                             <i class="fa fa-database"></i>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/' + account.url + '/plots' %}active{% endif %}"
+                            href="/{{ account.url }}/plots" aria-label="Plots">
+                            <i class="fa fa-chart-line"></i>
                         </a>
                     </li>
                 </ul>
             </nav>
 
-
-            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+            <main role="main" class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="content mt-4">
                     {% block content %}
                     {% endblock %}
