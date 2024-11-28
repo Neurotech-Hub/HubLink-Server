@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for
 from flask_migrate import Migrate, upgrade
-from models import db, Account, Setting, File, Gateway # db locations
+from models import db, Account, Setting, File, Gateway, Source # db locations
 from S3Manager import *
 import os
 import logging
@@ -177,6 +177,37 @@ def favicon():
 def page_not_found(e):
     logging.error(f"404 error: {e}")
     return render_template('404.html'), 404
+
+# Route to get sources by bucket name
+@app.route('/source/<bucket_name>')
+def get_sources_by_bucket(bucket_name):
+    try:
+        # Find the account_id from Settings using the bucket_name
+        setting = Setting.query.filter_by(bucket_name=bucket_name).first()
+        
+        if not setting:
+            return jsonify({
+                'error': 'Bucket not found',
+                'status': 404
+            }), 404
+        
+        # Get all sources for this account
+        sources = Source.query.filter_by(account_id=setting.account_id).all()
+        
+        # Convert sources to dictionary format
+        sources_data = [source.to_dict() for source in sources]
+        
+        return jsonify({
+            'bucket': bucket_name,
+            'account_id': setting.account_id,
+            'sources': sources_data
+        })
+    except Exception as e:
+        logging.error(f"Error getting sources for bucket {bucket_name}: {e}")
+        return jsonify({
+            'error': 'Internal server error',
+            'status': 500
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

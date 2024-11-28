@@ -3,13 +3,13 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid py-4">
     <!-- Line Chart Section: File Uploads Over Time -->
-    <div class="row">
-        <div class="col-12 mb-4">
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-history"></i> File Uploads Over Time</h5>
+                    <h5 class="card-title"><i class="bi bi-graph-up"></i> File Uploads Over Time</h5>
                     <div style="position: relative; height:400px;">
                         <canvas id="uploadsLineChart"></canvas>
                     </div>
@@ -18,24 +18,27 @@
         </div>
     </div>
 
-    <!-- Side by Side Section: Uploads vs Device & Alerts Table -->
+    <!-- Side by Side Section: Uploads vs Device & Gateways Table -->
     <div class="row">
+        <!-- Device Upload Chart -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-cloud-upload-alt"></i> File Uploads by Device</h5>
+                    <h5 class="card-title"><i class="bi bi-device-hdd"></i> File Uploads by Device</h5>
                     <div style="position: relative; height:400px;">
                         <canvas id="uploadsBarChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Gateway Activity Table -->
         <div class="col-md-6 mb-4">
-            <div class="card">
+            <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title"><i class="fas fa-network-wired"></i> Gateway Activity</h5>
-                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                        <table class="table table-sm table-striped gateways-table">
+                    <h5 class="card-title"><i class="bi bi-router"></i> Gateway Activity</h5>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover">
                             <thead>
                                 <tr>
                                     <th>IP Address</th>
@@ -48,7 +51,8 @@
                                 <tr>
                                     <td>{{ gateway.ip_address }}</td>
                                     <td>{{ gateway.name }}</td>
-                                    <td data-timestamp="{{ gateway.created_at.isoformat() }}">{{ gateway.created_at }}
+                                    <td data-timestamp="{{ gateway.created_at.isoformat() }}">
+                                        {{ gateway.created_at }}
                                     </td>
                                 </tr>
                                 {% endfor %}
