@@ -1,3 +1,4 @@
+@ -1,196 +0,0 @@
 {% extends "base.html" %}
 
 {% block content %}
@@ -6,7 +7,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5>Data Sources</h5>
+                <h5>Sources</h5>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourceModal">
                     <i class="bi bi-plus-lg"></i> Add Source
                 </button>
@@ -34,14 +35,18 @@
                             <td>{{ "Yes" if source.tail_only else "No" }}</td>
                             <td>{{ source.last_updated | datetime if source.last_updated else 'Never' }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="Refresh data"
+                                    onclick="refreshSource({{ source.id }})">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Edit source"
                                     onclick='editSource({{ source.to_dict() | tojson }})'>
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <form action="/{{ account.url }}/source/{{ source.id }}/delete" method="POST"
                                     class="d-inline"
                                     onsubmit="return confirm('Are you sure you want to delete this source?');">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete source">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -133,6 +138,11 @@
 {% block scripts %}
 {{ super() }}
 <script>
+    function refreshSource(sourceId) {
+        console.log('Refresh source:', sourceId);
+        // TODO: Implement refresh functionality
+    }
+
     function editSource(source) {
         // Update form action
         const form = document.getElementById('sourceForm');

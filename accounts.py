@@ -412,7 +412,7 @@ def validate_source_data(data):
         'file_filter': file_filter,
         'include_columns': include_columns,
         'data_points': data_points,
-        'tail_only': data.get('tail_only') == 'true'
+        'tail_only': 'tail_only' in data
     }
 
 @accounts_bp.route('/<account_url>/source', methods=['POST'])
