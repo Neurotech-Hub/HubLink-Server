@@ -80,3 +80,47 @@ The `test_s3.py` script includes error handling for:
 - Resource cleanup errors
 
 If any errors occur, the script will display a detailed error message and exit with status code 1.
+
+## 3. Create a Lambda Function and Policy/Role
+
+1. Navigate to the [Lambda Dashboard](https://console.aws.amazon.com/lambda/home)
+2. Click **Create function**
+3. Configure the function with the following settings:
+    - **Function Name**: `hublink-source`
+    - **Runtime**: `Python 3.11`
+    - **Role**: `Create new role with basic Lambda permissions`
+    - **Existing role**: `lambda-basic-execution`
+4. Enable **Function URL** and allow anonymous access.
+
+### Create a Policy for the Lambda Function
+
+1. Goto IAM Dashboard
+2. Click **Policies**
+3. Click **Create policy**
+4. Click **JSON**
+5. Paste the policy:
+
+    ```json
+    {
+        "Version": "2012-10-17",
+        "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:ListBucket",
+                "s3:GetObject",
+                "s3:PutObject"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
+    ```
+
+6. Name the policy `LambdaS3AccessPolicy`
+7. Click **Create policy**
+8. Attach the policy to the role created in step 3.
+  - Click **Roles**
+  - Permissions > Add permissions > Attach policies
+  - Search for `LambdaS3AccessPolicy` and select it
+  
