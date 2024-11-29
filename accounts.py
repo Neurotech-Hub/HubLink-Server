@@ -493,6 +493,7 @@ def edit_source(account_url, source_id):
 @accounts_bp.route('/<account_url>/source/<int:source_id>/refresh', methods=['POST'])
 def refresh_source(account_url, source_id):
     try:
+        print(f"Starting refresh for source {source_id} in account {account_url}")
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
@@ -508,22 +509,26 @@ def refresh_source(account_url, source_id):
                 'bucket_name': settings.bucket_name
             }
         }
+        print(f"Prepared payload: {payload}")
         
         # Reset source status
         source.success = False
         source.error = None
         db.session.commit()
+        print("Reset source status")
         
         lambda_url = os.environ.get('LAMBDA_URL')
         if not lambda_url:
             raise ValueError("LAMBDA_URL environment variable not set")
             
-        response = requests.post(lambda_url, json=payload)
-        response.raise_for_status()
+        print(f"Sending request to Lambda: {lambda_url}")
+        requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
+        print("Request sent to Lambda")
         
         flash('Source refresh initiated.', 'success')
         
     except Exception as e:
+        print(f"Error in refresh_source: {str(e)}")
         logging.error(f"Error refreshing source {source_id}: {e}")
         flash(f'Error refreshing source: {str(e)}', 'error')
     

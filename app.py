@@ -189,8 +189,12 @@ def page_not_found(e):
 @app.route('/source', methods=['POST'])
 def create_source():
     try:
+        print("Received source update request")
         data = request.get_json()
+        print(f"Request data: {data}")
+        
         if not data or 'name' not in data or 'success' not in data:
+            print("Missing required fields in request")
             return jsonify({
                 'error': 'Missing required fields',
                 'status': 400
@@ -199,14 +203,18 @@ def create_source():
         # Find the source by name
         source = Source.query.filter_by(name=data['name']).first()
         if not source:
+            print(f"Source not found: {data['name']}")
             return jsonify({
                 'error': f"Source '{data['name']}' not found",
                 'status': 404
             }), 404
         
+        print(f"Found source: {source.name} (ID: {source.id})")
+        
         # Get or create the File record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
         if not file:
+            print(f"Creating new file record for key: {data['key']}")
             file = File(
                 account_id=source.account_id,
                 key=data['key'],
@@ -216,19 +224,25 @@ def create_source():
                 version=1
             )
             db.session.add(file)
-            db.session.flush()  # Get the file.id before updating source
+            db.session.flush()
+            print(f"Created new file record with ID: {file.id}")
+        else:
+            print(f"Found existing file record: {file.id}")
         
         # Update the source
+        print(f"Updating source {source.id} with success={data['success']} and file_id={file.id}")
         source.success = data['success']
         source.file_id = file.id
         source.last_updated = datetime.now(timezone.utc)
         db.session.commit()
+        print("Successfully committed changes to database")
         
         return jsonify({
             'message': 'Source updated successfully',
             'status': 200
         })
     except Exception as e:
+        print(f"Error in create_source: {str(e)}")
         logging.error(f"Error updating source status: {e}")
         return jsonify({
             'error': 'Internal server error',

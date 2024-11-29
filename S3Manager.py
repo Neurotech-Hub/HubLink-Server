@@ -45,9 +45,6 @@ def rebuild_S3_files(account_settings):
                 if 'Contents' in response:
                     for obj in response['Contents']:
                         file_key = obj['Key']
-                        # Skip files starting with '.'
-                        if file_key.split('/')[-1].startswith('.'):
-                            continue
                             
                         s3_files.add(file_key)
 
@@ -87,6 +84,10 @@ def rebuild_S3_files(account_settings):
 
             db.session.commit()
             logging.info(f"Successfully synchronized files for account {account_id}")
+
+            # After successful rebuild, sync source files
+            sync_source_files(account_settings)
+            
             return new_files_count
 
         except Exception as e:
@@ -125,7 +126,7 @@ def get_latest_files(account_id, total=1000, days=None, device_id=None):
     try:
         # Add filter to exclude files starting with '.'
         query = File.query.filter_by(account_id=account_id)\
-            .filter(~File.key.like('%/.%'))\
+            .filter(~File.key.like('.%'))\
             .order_by(File.last_modified.desc())
         
         # Apply a date filter if `days` is specified
@@ -314,3 +315,45 @@ def delete_device_files_from_s3(account_settings, device_id):
 def generate_s3_url(bucket_name, key):
     """Generate a standardized S3 URL for a given bucket and key"""
     return f"s3://{bucket_name}/{key}"
+
+def sync_source_files(account_settings):
+    """Sync source files with their corresponding .hublink/source/ files"""
+    try:
+        print(f"Starting source file sync for account {account_settings.account_id}")
+        
+        # Get all source files from S3 that match the pattern
+        source_files = File.query.filter_by(account_id=account_settings.account_id)\
+            .filter(File.key.like('.hublink/source/%.csv'))\
+            .all()
+        print(f"Found {len(source_files)} source files in S3")
+        
+        # Get all sources for this account
+        sources = Source.query.filter_by(account_id=account_settings.account_id).all()
+        print(f"Found {len(sources)} sources in database")
+        
+        # Create a mapping of source names to their files
+        source_file_map = {
+            file.key.split('/')[-1].replace('.csv', ''): file
+            for file in source_files
+        }
+        print(f"Source file mapping: {list(source_file_map.keys())}")
+        
+        # Update source.file_id for matching files
+        for source in sources:
+            if source.name in source_file_map:
+                file = source_file_map[source.name]
+                source.file_id = file.id
+                source.success = True  # override the success status on rebuild
+                source.last_updated = file.last_modified
+                print(f"Updated source {source.name} with file {file.key}, last_modified: {file.last_modified}")
+            else:
+                source.file_id = None
+                source.success = False
+                print(f"No matching file found for source {source.name}")
+                
+        db.session.commit()
+        logging.info(f"Successfully synced source files for account {account_settings.account_id}")
+        
+    except Exception as e:
+        logging.error(f"Error syncing source files: {e}")
+        db.session.rollback()
