@@ -499,12 +499,14 @@ def refresh_source(account_url, source_id):
         
         # Prepare payload for lambda
         payload = {
-            'name': source.name,
-            'file_filter': source.file_filter,
-            'include_columns': source.include_columns,
-            'data_points': source.data_points,
-            'tail_only': source.tail_only,
-            'bucket_name': settings.bucket_name
+            'source': {
+                'name': source.name,
+                'file_filter': source.file_filter,
+                'include_columns': source.include_columns,
+                'data_points': source.data_points,
+                'tail_only': source.tail_only,
+                'bucket_name': settings.bucket_name
+            }
         }
         
         # Reset source status
