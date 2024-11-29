@@ -52,7 +52,7 @@
                             <td>
                                 <form action="/{{ account.url }}/source/{{ source.id }}/refresh" method="POST"
                                     class="d-inline">
-                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Refresh data">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Refresh source">
                                         <i class="bi bi-arrow-clockwise"></i>
                                     </button>
                                 </form>
@@ -124,13 +124,11 @@
                     <div class="mb-3">
                         <label for="includeColumns" class="form-label">Include Columns <span
                                 class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="includeColumns" name="include_columns" value="*"
-                            required pattern="^\*$|^[a-zA-Z0-9_]+(,[a-zA-Z0-9_]+)*$">
+                        <input type="text" class="form-control" id="includeColumns" name="include_columns" required
+                            pattern="^[^,]+(,[^,]+)*$">
                         <div class="form-text">Comma-separated list of columns to include (e.g.,
-                            "timestamp,temperature,humidity")
-                            or "*" for all columns. No spaces in column names.</div>
-                        <div class="invalid-feedback">Please provide valid column names (no spaces, comma-separated).
-                        </div>
+                            "MM:DD:YYYY hh:mm:ss,Battery Voltage,Temperature").</div>
+                        <div class="invalid-feedback">Please provide a comma-separated list of column names.</div>
                     </div>
                     <div class="mb-3">
                         <label for="dataPoints" class="form-label">Data Points <span
@@ -200,22 +198,6 @@
                 }
                 form.classList.add('was-validated');
             }, false);
-        });
-
-        // Additional custom validation for columns
-        const columnsInput = document.getElementById('includeColumns');
-        columnsInput.addEventListener('input', function () {
-            const value = this.value.trim();
-            if (value === '*') return;
-
-            const columns = value.split(',');
-            const hasInvalidColumns = columns.some(col => /\s/.test(col.trim()));
-
-            if (hasInvalidColumns) {
-                this.setCustomValidity('Column names cannot contain spaces');
-            } else {
-                this.setCustomValidity('');
-            }
         });
     });
 </script>

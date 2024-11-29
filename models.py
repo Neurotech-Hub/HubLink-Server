@@ -115,7 +115,7 @@ class Source(db.Model):
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     file_filter = db.Column(db.String(200), nullable=False, default="*")
-    include_columns = db.Column(db.String(500), nullable=False, default="*")
+    include_columns = db.Column(db.String(500), nullable=False, default="")
     data_points = db.Column(db.Integer, nullable=False, default=0)
     tail_only = db.Column(db.Boolean, nullable=False, default=False)
     last_updated = db.Column(db.DateTime, nullable=True)

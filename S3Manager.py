@@ -58,7 +58,6 @@ def rebuild_S3_files(account_settings):
                                 logging.info(f"File {file_key} size changed from {existing_file.size} to {obj['Size']}")
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
-                                existing_file.last_checked = datetime.now(timezone.utc)
                                 existing_file.version += 1  # Increment version when size changes
                                 db.session.add(existing_file)
                         else:
@@ -69,7 +68,7 @@ def rebuild_S3_files(account_settings):
                                 url=generate_s3_url(account_settings.bucket_name, file_key),
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
-                                last_checked=datetime.now(timezone.utc),
+                                last_checked=None,
                                 version=1  # Initial version for new files
                             )
                             db.session.add(new_file)
@@ -124,8 +123,11 @@ def generate_download_link(account_settings, key, expires_in=3600):
 
 def get_latest_files(account_id, total=1000, days=None, device_id=None):
     try:
-        query = File.query.filter_by(account_id=account_id).order_by(File.last_modified.desc())
-
+        # Add filter to exclude files starting with '.'
+        query = File.query.filter_by(account_id=account_id)\
+            .filter(~File.key.like('%/.%'))\
+            .order_by(File.last_modified.desc())
+        
         # Apply a date filter if `days` is specified
         if days is not None:
             date_limit = datetime.now(datetime.UTC) - timedelta(days=days)
@@ -242,7 +244,7 @@ def process_sqs_messages(account_settings):
                                     url=f"s3://{bucket_name}/{file_key}",
                                     size=file_size,
                                     last_modified=last_modified,
-                                    last_checked=datetime.now(timezone.utc),
+                                    last_checked=None,
                                     version=1  # Set initial version for new files
                                 )
                                 db.session.add(new_file)

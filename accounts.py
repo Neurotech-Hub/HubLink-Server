@@ -393,12 +393,16 @@ def validate_source_data(data):
         errors.append("File filter must be a valid pattern")
     
     # Validate include_columns
-    include_columns = data.get('include_columns', '*').strip()
-    if include_columns != '*':
+    include_columns = data.get('include_columns', '').strip()
+    if not include_columns:
+        errors.append("Include columns must specify a list of column names")
+    else:
         columns = [col.strip() for col in include_columns.split(',')]
-        invalid_columns = [col for col in columns if not col or ' ' in col]
+        if '*' in columns:
+            errors.append("Wildcard (*) is not allowed. Please specify exact column names")
+        invalid_columns = [col for col in columns if not col]  # Only check for empty columns
         if invalid_columns:
-            errors.append("Column names cannot be empty or contain spaces")
+            errors.append("Column names cannot be empty")
     
     # Validate data_points
     try:
