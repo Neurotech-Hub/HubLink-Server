@@ -101,26 +101,26 @@ If any errors occur, the script will display a detailed error message and exit w
 5. Paste the policy:
 
     ```json
-{
+  {
     "Version": "2012-10-17",
     "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "s3:ListBucket",
-                "s3:GetObject",
-                "s3:PutObject"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Effect": "Allow",
-            "Action": "lambda:InvokeFunction",
-            "Resource": "arn:aws:lambda:us-east-1:557690613785:function:hublink-source"
-        }
+      {
+        "Effect": "Allow",
+        "Action": [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ],
+        "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": "lambda:InvokeFunction",
+        "Resource": "arn:aws:lambda:us-east-1:557690613785:function:hublink-source"
+      }
     ]
-}
-
+  }
     ```
 
 6. Name the policy `LambdaS3AccessPolicy`

@@ -509,20 +509,22 @@ def refresh_source(account_url, source_id):
                 'bucket_name': settings.bucket_name
             }
         }
-        print(f"Prepared payload: {payload}")
         
         # Reset source status
         source.success = False
         source.error = None
         db.session.commit()
-        print("Reset source status")
         
         lambda_url = os.environ.get('LAMBDA_URL')
         if not lambda_url:
             raise ValueError("LAMBDA_URL environment variable not set")
             
         print(f"Sending request to Lambda: {lambda_url}")
-        requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
+        try:
+            requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
+        except requests.exceptions.Timeout:
+            # This is expected, ignore it
+            pass
         print("Request sent to Lambda")
         
         flash('Source refresh initiated.', 'success')
