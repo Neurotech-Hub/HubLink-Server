@@ -209,5 +209,59 @@ def get_sources_by_bucket(bucket_name):
             'status': 500
         }), 500
 
+@app.route('/source', methods=['POST'])
+def create_source():
+    try:
+        data = request.get_json()
+        if not data or 'name' not in data or 'success' not in data:
+            return jsonify({
+                'error': 'Missing required fields',
+                'status': 400
+            }), 400
+        
+        # Find the account by name
+        account = Account.query.filter_by(name=data['name']).first()
+        if not account:
+            return jsonify({
+                'error': f"Account '{data['name']}' not found",
+                'status': 404
+            }), 404
+        
+        # Get or create the File record
+        file = File.query.filter_by(account_id=account.id, key=data['key']).first()
+        if not file:
+            file = File(
+                account_id=account.id,
+                key=data['key'],
+                url=generate_s3_url(account.settings.bucket_name, data['key']),
+                size=data['size'],
+                last_modified=datetime.now(datetime.UTC),
+                version=1
+            )
+            db.session.add(file)
+            db.session.flush()  # Get the file.id before creating source
+            
+        # Create the source with the file reference
+        source = Source(
+            account_id=account.id,
+            name=data['name'],
+            success=data['success'],
+            file_id=file.id
+            # ... other source fields ...
+        )
+        db.session.add(source)
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Source updated successfully',
+            'status': 200
+        })
+    except Exception as e:
+        logging.error(f"Error updating source status: {e}")
+        return jsonify({
+            'error': 'Internal server error',
+            'status': 500
+        }), 500
+
 if __name__ == '__main__':
     app.run(debug=True)

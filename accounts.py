@@ -8,6 +8,8 @@ from werkzeug.exceptions import NotFound, BadRequest
 from sqlalchemy import desc
 from sqlalchemy.exc import IntegrityError
 import re
+import requests
+import os
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -380,6 +382,8 @@ def validate_source_data(data):
     name = data.get('name', '').strip()
     if not name:
         errors.append("Name cannot be empty")
+    elif not re.match(r'^[a-zA-Z0-9_-]+$', name):
+        errors.append("Name can only contain letters, numbers, hyphens, and underscores")
     
     # Validate file_filter
     file_filter = data.get('file_filter', '*').strip()
@@ -479,5 +483,42 @@ def edit_source(account_url, source_id):
         db.session.rollback()
         flash('Error updating source.', 'error')
         logging.error(f"Error updating source: {e}")
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/refresh', methods=['POST'])
+def refresh_source(account_url, source_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Prepare payload for lambda
+        payload = {
+            'name': source.name,
+            'file_filter': source.file_filter,
+            'include_columns': source.include_columns,
+            'data_points': source.data_points,
+            'tail_only': source.tail_only,
+            'bucket_name': settings.bucket_name
+        }
+        
+        # Reset source status
+        source.success = False
+        source.error = None
+        db.session.commit()
+        
+        lambda_url = os.environ.get('LAMBDA_URL')
+        if not lambda_url:
+            raise ValueError("LAMBDA_URL environment variable not set")
+            
+        response = requests.post(lambda_url, json=payload)
+        response.raise_for_status()
+        
+        flash('Source refresh initiated.', 'success')
+        
+    except Exception as e:
+        logging.error(f"Error refreshing source {source_id}: {e}")
+        flash(f'Error refreshing source: {str(e)}', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))

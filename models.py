@@ -119,6 +119,10 @@ class Source(db.Model):
     data_points = db.Column(db.Integer, nullable=False, default=0)
     tail_only = db.Column(db.Boolean, nullable=False, default=False)
     last_updated = db.Column(db.DateTime, nullable=True)
+    success = db.Column(db.Boolean, nullable=False, default=False)
+    error = db.Column(db.String(500), nullable=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
+    file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
     # Add relationship to Account
     account = db.relationship('Account', backref=db.backref('sources', lazy=True))
@@ -127,13 +131,27 @@ class Source(db.Model):
         return f"<Source {self.name} for Account {self.account_id}>"
 
     def to_dict(self):
-        return {
+        """Convert source to dictionary with dynamic state"""
+        data = {
             'id': self.id,
-            'account_id': self.account_id,
             'name': self.name,
             'file_filter': self.file_filter,
             'include_columns': self.include_columns,
             'data_points': self.data_points,
             'tail_only': self.tail_only,
-            'last_updated': self.last_updated.isoformat() if self.last_updated else None
+            'last_updated': self.last_updated.isoformat() if self.last_updated else None,
+            'success': self.success,
+            'error': self.error
         }
+        
+        # Add dynamic state based on conditions
+        if not self.last_updated:
+            data['state'] = 'created'
+        elif not self.success and self.error:
+            data['state'] = 'error'
+        elif self.success:
+            data['state'] = 'success'
+        else:
+            data['state'] = 'running'
+            
+        return data

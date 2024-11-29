@@ -22,6 +22,7 @@
                             <th>Data Points</th>
                             <th>Tail Only</th>
                             <th>Last Updated</th>
+                            <th>State</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -35,10 +36,26 @@
                             <td>{{ "Yes" if source.tail_only else "No" }}</td>
                             <td>{{ source.last_updated | datetime if source.last_updated else 'Never' }}</td>
                             <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary" title="Refresh data"
-                                    onclick="refreshSource({{ source.id }})">
-                                    <i class="bi bi-arrow-clockwise"></i>
-                                </button>
+                                {% if source.to_dict().state == 'created' %}
+                                <span class="badge bg-secondary">Created</span>
+                                {% elif source.to_dict().state == 'running' %}
+                                <span class="badge bg-primary">Running</span>
+                                {% elif source.to_dict().state == 'success' %}
+                                <a href="/{{ account.url }}/download/{{ source.file_id }}"
+                                    class="badge bg-success text-decoration-none">
+                                    Success <i class="bi bi-download"></i>
+                                </a>
+                                {% else %}
+                                <span class="badge bg-danger" title="{{ source.error }}">Error</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="/{{ account.url }}/source/{{ source.id }}/refresh" method="POST"
+                                    class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary" title="Refresh data">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                </form>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" title="Edit source"
                                     onclick='editSource({{ source.to_dict() | tojson }})'>
                                     <i class="bi bi-pencil"></i>
@@ -87,9 +104,13 @@
                     <input type="hidden" id="sourceId" name="source_id">
                     <div class="mb-3">
                         <label for="sourceName" class="form-label">Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="sourceName" name="name" required pattern=".+"
-                            title="Name cannot be empty">
-                        <div class="invalid-feedback">Please provide a name.</div>
+                        <input type="text" class="form-control" id="sourceName" name="name" required
+                            pattern="^[a-zA-Z0-9_-]+$"
+                            title="Name can only contain letters, numbers, hyphens, and underscores">
+                        <div class="form-text">Only letters, numbers, hyphens (-), and underscores (_) allowed. No
+                            spaces.</div>
+                        <div class="invalid-feedback">Please provide a valid name using only letters, numbers, hyphens,
+                            and underscores.</div>
                     </div>
                     <div class="mb-3">
                         <label for="fileFilter" class="form-label">File Filter <span
@@ -138,11 +159,6 @@
 {% block scripts %}
 {{ super() }}
 <script>
-    function refreshSource(sourceId) {
-        console.log('Refresh source:', sourceId);
-        // TODO: Implement refresh functionality
-    }
-
     function editSource(source) {
         // Update form action
         const form = document.getElementById('sourceForm');

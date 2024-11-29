@@ -45,6 +45,10 @@ def rebuild_S3_files(account_settings):
                 if 'Contents' in response:
                     for obj in response['Contents']:
                         file_key = obj['Key']
+                        # Skip files starting with '.'
+                        if file_key.split('/')[-1].startswith('.'):
+                            continue
+                            
                         s3_files.add(file_key)
 
                         if file_key in db_files:
@@ -62,7 +66,7 @@ def rebuild_S3_files(account_settings):
                             new_file = File(
                                 account_id=account_id,
                                 key=file_key,
-                                url=f"s3://{account_settings.bucket_name}/{file_key}",
+                                url=generate_s3_url(account_settings.bucket_name, file_key),
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
                                 last_checked=datetime.now(timezone.utc),
@@ -124,7 +128,7 @@ def get_latest_files(account_id, total=1000, days=None, device_id=None):
 
         # Apply a date filter if `days` is specified
         if days is not None:
-            date_limit = datetime.utcnow() - timedelta(days=days)
+            date_limit = datetime.now(datetime.UTC) - timedelta(days=days)
             query = query.filter(File.last_modified >= date_limit)
 
         # Apply a device_id filter if specified, filtering by key prefix
@@ -304,3 +308,7 @@ def delete_device_files_from_s3(account_settings, device_id):
         error_msg = f"Error deleting files from S3: {str(e)}"
         logging.error(error_msg)
         return False, error_msg
+
+def generate_s3_url(bucket_name, key):
+    """Generate a standardized S3 URL for a given bucket and key"""
+    return f"s3://{bucket_name}/{key}"
