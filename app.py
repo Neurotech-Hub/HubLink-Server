@@ -59,6 +59,14 @@ with app.app_context():
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)
 
+# Add custom filters
+@app.template_filter('datetime')
+def format_datetime(value):
+    if value is None:
+        return ''
+    # Return ISO format for moment.js to parse and format on client side
+    return value.isoformat()
+
 # Function to generate random URL strings
 def generate_random_string(length=24):
     characters = string.ascii_letters + string.digits
@@ -178,37 +186,6 @@ def page_not_found(e):
     logging.error(f"404 error: {e}")
     return render_template('404.html'), 404
 
-# Route to get sources by bucket name
-@app.route('/source/<bucket_name>')
-def get_sources_by_bucket(bucket_name):
-    try:
-        # Find the account_id from Settings using the bucket_name
-        setting = Setting.query.filter_by(bucket_name=bucket_name).first()
-        
-        if not setting:
-            return jsonify({
-                'error': 'Bucket not found',
-                'status': 404
-            }), 404
-        
-        # Get all sources for this account
-        sources = Source.query.filter_by(account_id=setting.account_id).all()
-        
-        # Convert sources to dictionary format
-        sources_data = [source.to_dict() for source in sources]
-        
-        return jsonify({
-            'bucket': bucket_name,
-            'account_id': setting.account_id,
-            'sources': sources_data
-        })
-    except Exception as e:
-        logging.error(f"Error getting sources for bucket {bucket_name}: {e}")
-        return jsonify({
-            'error': 'Internal server error',
-            'status': 500
-        }), 500
-
 @app.route('/source', methods=['POST'])
 def create_source():
     try:
@@ -219,37 +196,32 @@ def create_source():
                 'status': 400
             }), 400
         
-        # Find the account by name
-        account = Account.query.filter_by(name=data['name']).first()
-        if not account:
+        # Find the source by name
+        source = Source.query.filter_by(name=data['name']).first()
+        if not source:
             return jsonify({
-                'error': f"Account '{data['name']}' not found",
+                'error': f"Source '{data['name']}' not found",
                 'status': 404
             }), 404
         
         # Get or create the File record
-        file = File.query.filter_by(account_id=account.id, key=data['key']).first()
+        file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
         if not file:
             file = File(
-                account_id=account.id,
+                account_id=source.account_id,
                 key=data['key'],
-                url=generate_s3_url(account.settings.bucket_name, data['key']),
+                url=generate_s3_url(source.account.settings.bucket_name, data['key']),
                 size=data['size'],
-                last_modified=datetime.now(datetime.UTC),
+                last_modified=datetime.now(timezone.utc),
                 version=1
             )
             db.session.add(file)
-            db.session.flush()  # Get the file.id before creating source
-            
-        # Create the source with the file reference
-        source = Source(
-            account_id=account.id,
-            name=data['name'],
-            success=data['success'],
-            file_id=file.id
-            # ... other source fields ...
-        )
-        db.session.add(source)
+            db.session.flush()  # Get the file.id before updating source
+        
+        # Update the source
+        source.success = data['success']
+        source.file_id = file.id
+        source.last_updated = datetime.now(timezone.utc)
         db.session.commit()
         
         return jsonify({
