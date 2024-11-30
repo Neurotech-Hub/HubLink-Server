@@ -535,3 +535,19 @@ def refresh_source(account_url, source_id):
         flash(f'Error refreshing source: {str(e)}', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/source/sync', methods=['GET'])
+def sync_sources(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Call the sync function
+        sync_source_files(settings)
+        
+        flash('Source files synced successfully.', 'success')
+    except Exception as e:
+        logging.error(f"Error syncing source files for account {account_url}: {e}")
+        flash('Error syncing source files.', 'error')
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
