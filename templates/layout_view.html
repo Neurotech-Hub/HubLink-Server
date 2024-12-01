@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack.min.css" rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>{{ layout.name }}</h2>
+            <a href="/{{ account.url }}/layout-test" class="btn btn-outline-secondary">
+                <i class="fa fa-edit"></i> Edit Layout
+            </a>
+        </div>
+    </div>
+
+    <div class="grid-stack"></div>
+</div>
+
+<!-- Plotly.js -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack-all.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const grid = GridStack.init({
+            column: 12,
+            cellHeight: 200,  // Reduced base height
+            margin: 10,
+            marginTop: 10,
+            disableResize: true,
+            float: false,
+            animate: true,
+            staticGrid: true
+        });
+
+        // Load layout configuration
+        const layout = {{ layout.config | safe }};
+        const plotData = {{ plot_data | tojson | safe }};
+        
+        // Create a map of plot data by ID for easy lookup
+        const plotDataMap = {};
+        plotData.forEach(plot => {
+            plotDataMap[plot.plot_id] = plot;
+        });
+
+        // Load and render each widget
+        layout.forEach((item, index) => {
+            if (item.plotId && plotDataMap[item.plotId]) {
+                const plot = plotDataMap[item.plotId];
+                const widget = {
+                    x: item.x,
+                    y: item.y,
+                    w: item.w,
+                    h: 2,  // Make widgets 2 units tall by default
+                    content: `<div class="plot-container"><div id="plot-${plot.plot_id}-${index}"></div></div>`
+                };
+                
+                grid.addWidget(widget);
+                
+                if (plot.plotly_json) {
+                    const plotlyData = JSON.parse(plot.plotly_json);
+                    
+                    // Override any fixed dimensions from plot_utils
+                    plotlyData.layout = {
+                        ...plotlyData.layout,
+                        autosize: true,
+                        margin: { t: 25, r: 10, b: 35, l: 60 },  // Increased bottom margin for legend
+                        height: null,
+                        width: null,
+                        showlegend: true,
+                        legend: { orientation: 'h', y: -0.2 },  // Adjusted legend position
+                        plot_bgcolor: 'white',
+                        paper_bgcolor: 'white'
+                    };
+                    
+                    Plotly.newPlot(`plot-${plot.plot_id}-${index}`, 
+                        plotlyData.data,
+                        plotlyData.layout,
+                        {
+                            responsive: true,
+                            displayModeBar: false,
+                            displaylogo: false
+                        }
+                    );
+
+                    // Handle resize events
+                    const plotDiv = document.getElementById(`plot-${plot.plot_id}-${index}`);
+                    new ResizeObserver(() => {
+                        Plotly.Plots.resize(plotDiv);
+                    }).observe(plotDiv.parentElement);
+                }
+            }
+        });
+    });
+</script>
+{% endblock %} 

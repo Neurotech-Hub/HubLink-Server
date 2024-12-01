@@ -205,3 +205,25 @@ class Plot(db.Model):
             'type': self.type,
             'config': json.loads(self.config)
         }
+
+# Define the layout model
+class Layout(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    config = db.Column(db.Text, nullable=False)  # JSON string storing grid layout
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    # Add relationship to Account
+    account = db.relationship('Account', backref=db.backref('layouts', lazy=True))
+
+    def __repr__(self):
+        return f"<Layout {self.name} for Account {self.account_id}>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'config': json.loads(self.config),
+            'created_at': self.created_at.isoformat()
+        }

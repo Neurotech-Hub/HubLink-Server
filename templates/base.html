@@ -3,6 +3,7 @@
 
 <head>
     {% include 'head.html' %}
+    {% block head %}{% endblock %}
 </head>
 
 <body class="has-sidebar">
@@ -85,6 +86,7 @@
 
     {% include 'footer.html' %}
 
+    {% block scripts %}{% endblock %}
 </body>
 
 </html>

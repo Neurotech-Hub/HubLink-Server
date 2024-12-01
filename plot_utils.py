@@ -31,8 +31,6 @@ def process_metric_plot(plot, csv_content):
             
             # Update layout with transparent background
             fig.update_layout(
-                height=400,
-                margin={'t': 30},
                 showlegend=True,
                 boxmode='group',
                 plot_bgcolor='white',
@@ -108,8 +106,6 @@ def process_timeseries_plot(plot, csv_content):
         
         # Update layout with transparent background
         fig.update_layout(
-            height=400,
-            margin={'t': 30},
             showlegend=True,
             plot_bgcolor='white',
             paper_bgcolor='white'

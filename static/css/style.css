@@ -681,3 +681,60 @@ table td code {
 .modebar-btn:hover {
     color: #000 !important;
 }
+
+/* Layout editor styling */
+.layout-container {
+    background-image: linear-gradient(to right bottom, rgb(229, 231, 235), rgb(249, 250, 251));
+    border: 1px solid rgb(229, 231, 235);
+    border-radius: 8px;
+    padding: 4px;
+    margin-top: 1rem;
+}
+
+.grid-stack {
+    background: transparent;
+    min-height: 80vh;
+}
+
+.grid-stack-item-content {
+    background-color: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.plot-selector {
+    width: 300px !important;
+}
+
+.remove-widget {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 8px !important;
+    line-height: 1 !important;
+    color: #999 !important;
+    border: none !important;
+    background: none !important;
+    opacity: 0.6;
+    z-index: 1;
+}
+
+.remove-widget:hover {
+    opacity: 1;
+    color: #666 !important;
+}
+
+.grid-stack-item .plot-container {
+    height: 100%;
+    margin: 0;
+    padding: 15px 0;
+}
+
+.grid-stack-item .plot-container>div {
+    height: 100% !important;
+    min-height: unset !important;
+}

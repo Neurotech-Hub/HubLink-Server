@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
-from models import db, Account, Setting, File, Gateway, Source, Plot
+from models import db, Account, Setting, File, Gateway, Source, Plot, Layout
 from datetime import datetime, timedelta, timezone
 import logging
 from S3Manager import *
@@ -388,30 +388,9 @@ def account_plots(account_url):
                         'name': plot.name or "Unnamed Plot",
                         'type': plot.type,
                         'source_name': source.name,
-                        'config': config
+                        'config': config,
+                        **data  # Directly merge the data dictionary
                     }
-                    
-                    # Debug print before adding data fields
-                    print(f"Plot {plot.id} data keys: {data.keys()}")
-                    
-                    # Ensure all data values are JSON serializable
-                    for key, value in data.items():
-                        if key != 'error':
-                            if value is None:
-                                plot_info[key] = []
-                            elif isinstance(value, (list, dict)):
-                                # Handle nested structures
-                                try:
-                                    json.dumps(value)  # Test serialization
-                                    plot_info[key] = value
-                                except TypeError:
-                                    # If serialization fails, convert to list or empty structure
-                                    if isinstance(value, list):
-                                        plot_info[key] = [item for item in value if item is not None]
-                                    else:
-                                        plot_info[key] = {}
-                            else:
-                                plot_info[key] = value
                     
                     print(f"Plot {plot.id} info keys: {plot_info.keys()}")
                     plot_data.append(plot_info)
@@ -710,3 +689,96 @@ def delete_plot(account_url, plot_id):
         logging.error(f"Error deleting plot {plot_id}: {e}")
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/layout-test', methods=['GET'])
+def layout_test(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get all plots for this account
+        plots = []
+        for source in Source.query.filter_by(account_id=account.id).all():
+            plots.extend(source.plots)
+        
+        # Get existing layout if available
+        layout = Layout.query.filter_by(account_id=account.id).first()
+        
+        return render_template('layout_test.html',
+                             account=account,
+                             plots=plots,
+                             layout=layout)
+    except Exception as e:
+        logging.error(f"Error loading layout test for {account_url}: {e}")
+        return "There was an issue loading the layout test page.", 500
+
+@accounts_bp.route('/<account_url>/layout', methods=['POST'])
+def save_layout(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        data = request.get_json()
+        
+        # Get or create layout
+        layout = Layout.query.filter_by(account_id=account.id).first()
+        if not layout:
+            layout = Layout(account_id=account.id, name=data['name'])
+        
+        layout.config = json.dumps(data['config'])
+        db.session.add(layout)
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error saving layout for {account_url}: {e}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['GET'])
+def layout_view(account_url, layout_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        
+        # Get all plots for this account
+        plots = []
+        plot_data = []
+        for source in Source.query.filter_by(account_id=account.id).all():
+            # Download source data once per source
+            csv_content = download_source_file(account.settings, source)
+            if not csv_content:
+                continue
+                
+            for plot in source.plots:
+                plots.append(plot)  # For the plot selector
+                try:
+                    if plot.type == "metric":
+                        data = process_metric_plot(plot, csv_content)
+                    else:  # timeline type
+                        data = process_timeseries_plot(plot, csv_content)
+                    
+                    if data.get('error'):
+                        continue
+                    
+                    config = json.loads(plot.config) if plot.config else {}
+                    plot_info = {
+                        'plot_id': plot.id,
+                        'name': plot.name,
+                        'type': plot.type,
+                        'source_name': source.name,
+                        'config': config,
+                        **data
+                    }
+                    plot_data.append(plot_info)
+                    
+                except Exception as e:
+                    logging.error(f"Error processing plot {plot.id}: {str(e)}")
+                    continue
+        
+        return render_template('layout_view.html',
+                           account=account,
+                           layout=layout,
+                           plots=plots,
+                           plot_data=plot_data)
+                           
+    except Exception as e:
+        logging.error(f"Error loading layout view for {account_url}: {e}")
+        traceback.print_exc()
+        return "There was an issue loading the layout view page.", 500

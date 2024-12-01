@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack.min.css" rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2>Layout Editor</h2>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="addWidget('full')">Add Full Width</button>
+                <button class="btn btn-secondary" onclick="addWidget('half')">Add Half Width</button>
+            </div>
+            <button class="btn btn-success ms-2" onclick="saveLayout()">Save Layout</button>
+        </div>
+    </div>
+
+    <div class="layout-container">
+        <div class="grid-stack"></div>
+    </div>
+</div>
+
+<!-- Template for plot selection -->
+<template id="widget-template">
+    <div>
+        <button class="btn btn-sm remove-widget" type="button">
+            <i class="fa fa-times"></i>
+        </button>
+        <select class="form-select form-select-sm plot-selector" onchange="plotSelected(this)">
+            <option value="">Select a plot...</option>
+            {% for plot in plots %}
+            <option value="{{ plot.id }}">{{ plot.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack-all.js"></script>
+<script>
+    let grid;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        grid = GridStack.init({
+            column: 12,
+            cellHeight: 200,
+            margin: 20,
+            marginTop: 20,
+            disableResize: true,
+            float: false,
+            animate: true
+        });
+
+        {% if layout %}
+        const savedLayout = JSON.parse({{ layout.config|tojson|safe }});
+        if (Array.isArray(savedLayout)) {
+            loadLayout(savedLayout);
+        } else if (savedLayout.config && Array.isArray(savedLayout.config)) {
+            loadLayout(savedLayout.config);
+        }
+        {% endif %}
+
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.remove-widget')) {
+                const gridItem = e.target.closest('.grid-stack-item');
+                grid.removeWidget(gridItem);
+            }
+        });
+    });
+
+    function addWidget(size) {
+        const width = size === 'full' ? 12 : 6;
+        const template = document.getElementById('widget-template');
+        grid.addWidget({
+            w: width,
+            h: 1,
+            content: template.innerHTML
+        });
+    }
+
+    function plotSelected(select) {
+        const plotId = select.value;
+    }
+
+    function loadLayout(layout) {
+        grid.removeAll();
+        
+        layout.forEach(item => {
+            const widget = {
+                x: item.x,
+                y: item.y,
+                w: item.w,
+                h: item.h,
+                content: document.getElementById('widget-template').innerHTML
+            };
+            
+            requestAnimationFrame(() => {
+                const el = grid.addWidget(widget);
+                if (item.plotId) {
+                    const select = el.querySelector('.plot-selector');
+                    if (select) {
+                        select.value = item.plotId;
+                    }
+                }
+            });
+        });
+    }
+
+    function saveLayout() {
+        const serializedData = grid.save();
+        const widgets = serializedData.map(item => {
+            const gridItem = document.querySelector(`.grid-stack-item[gs-x="${item.x}"][gs-y="${item.y}"]`);
+            const plotSelector = gridItem.querySelector('.plot-selector');
+            return {
+                gridItem,
+                plotId: plotSelector?.value
+            };
+        });
+
+        const unassignedWidgets = widgets.filter(w => !w.plotId);
+        if (unassignedWidgets.length > 0) {
+            alert(`Please select plots for all widgets before saving (${unassignedWidgets.length} unassigned)`);
+            return;
+        }
+
+        const layoutData = {
+            name: 'Default Layout',
+            config: serializedData.map((item, index) => ({
+                x: item.x,
+                y: item.y,
+                w: item.w,
+                h: 1,
+                plotId: widgets[index].plotId
+            }))
+        };
+
+        fetch('/{{ account.url }}/layout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(layoutData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Layout saved successfully!');
+            } else {
+                alert('Error saving layout: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving layout');
+        });
+    }
+</script>
+{% endblock %}
