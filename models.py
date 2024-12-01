@@ -135,18 +135,17 @@ class Source(db.Model):
 
     @property
     def available_columns(self):
-        """Get list of available columns from the JSON preview, skipping first two columns."""
+        """Get list of available columns from the CSV preview, skipping hublink columns."""
         if self.file and self.file.preview:
             try:
-                # Parse the JSON preview
-                import json
-                preview_data = json.loads(self.file.preview)
+                # Split the preview into lines and get the header row
+                first_line = self.file.preview.split('\n')[0]
                 
-                # First row contains headers, skip first two columns (internal use)
-                headers = preview_data[0][2:]  # Skip hublink_device_id and hublink_full_path
+                # Split the header row into columns
+                headers = [col.strip() for col in first_line.split(',')]
                 
-                # Return non-empty column names
-                return [h for h in headers if h]
+                # Filter out empty columns and hublink columns
+                return [h for h in headers if h and not h.lower().startswith('hublink')]
             except Exception as e:
                 logging.error(f"Error parsing preview headers: {e}")
                 return []

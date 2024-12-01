@@ -155,7 +155,9 @@
                             </ul>
                         </div>
                     </div>
-                    <div id="plot-{{ plot.plot_id }}" style="height: 400px;"></div>
+                    <div class="plot-container" style="position: relative; width: 100%;">
+                        <div id="plot-{{ plot.plot_id }}" style="width: 100%; min-height: 400px;"></div>
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -260,12 +262,28 @@
                         </select>
                     </div>
 
-                    <!-- X Column (for timeline) -->
+                    <!-- X Column (becomes Display options for metric) -->
                     <div class="mb-3" id="xColumnContainer">
-                        <label for="xColumn" class="form-label">X Data <span class="text-danger">*</span></label>
-                        <select class="form-select" id="xColumn" name="x_column" required>
+                        <label id="xColumnLabel" for="xColumn" class="form-label">X Data <span class="text-danger">*</span></label>
+                        <select class="form-select" id="xColumn" name="x_column">
                             <option value="">Select data...</option>
                         </select>
+                        <!-- Radio options for metric display type -->
+                        <div id="displayOptions" style="display: none;" class="mt-2">
+                            <label class="form-label">Display <span class="text-danger">*</span></label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="x_column" id="displayBar" value="bar" checked>
+                                <label class="form-check-label" for="displayBar">
+                                    Bar
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="x_column" id="displayTable" value="table">
+                                <label class="form-check-label" for="displayTable">
+                                    Table
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Y Column (becomes single Data for metric) -->
@@ -346,41 +364,45 @@
 
         // Initialize plots
         {% for plot in plot_data %}
-        console.log("Processing plot:", {{ plot | tojson }});
-    {% if plot.type == 'metric' %}
-    Plotly.newPlot('plot-{{ plot.plot_id }}', [{
-        type: 'bar',
-        x: {{ plot.device_ids | tojson }},
+        {% if plot.type == 'metric' %}
+        Plotly.newPlot('plot-{{ plot.plot_id }}', [{
+            type: 'bar',
+            x: {{ plot.device_ids | tojson }},
         y: {{ plot.means | tojson }},
         error_y: {
         type: 'data',
         array: {{ plot.stds | tojson }},
         visible: true
-            },
+                    },
         name: '{{ plot.name }}'
-        }], {
-        title: '{{ plot.name }}',
-        yaxis: {
-            title: '{{ plot.y_column }}'
-        },
-        height: 400,
-        margin: { t: 30 }
+                }], {
+            title: '{{ plot.name }}',
+            yaxis: {
+                title: '{{ plot.y_column }}'
+            },
+            height: 400,
+            margin: { t: 30 },
+            responsive: true
+        }, {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
     });
     {% else %}
     // Timeline plot
-    const traces = [];
+    const traces_{{ plot.plot_id }} =[];
     {% if plot.device_ids %}
     {% for i in range(plot.device_ids | length) %}
-    traces.push({
+        traces_{{ plot.plot_id }}.push({
         x: {{ plot.x_data[i] | tojson }},
         y: {{ plot.y_data[i] | tojson }},
         mode: 'lines',
         name: {{ plot.device_ids[i] | tojson }}
-            });
+                        });
     {% endfor %}
     {% endif %}
 
-    Plotly.newPlot('plot-{{ plot.plot_id }}', traces, {
+    Plotly.newPlot('plot-{{ plot.plot_id }}', traces_{{ plot.plot_id }}, {
         title: '{{ plot.name }}',
         xaxis: {
             title: '{{ plot.x_column }}',
@@ -390,7 +412,12 @@
             title: '{{ plot.y_column }}'
         },
         height: 400,
-        margin: { t: 30 }
+        margin: { t: 30 },
+        responsive: true
+    }, {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false
     });
     {% endif %}
     {% endfor %}
@@ -399,15 +426,18 @@
     function handlePlotTypeChange() {
         const plotType = document.getElementById('plotType').value;
         const xColumnContainer = document.getElementById('xColumnContainer');
-        const yColumnContainer = document.getElementById('yColumnContainer');
         const xColumn = document.getElementById('xColumn');
+        const displayOptions = document.getElementById('displayOptions');
+        const yColumnContainer = document.getElementById('yColumnContainer');
         const yColumn = document.getElementById('yColumn');
         const yColumnLabel = yColumnContainer.querySelector('label');
+        const xColumnLabel = document.getElementById('xColumnLabel');
 
         if (plotType === 'metric') {
-            // Hide X Data field
-            xColumnContainer.style.display = 'none';
-            xColumn.value = '';
+            // Show radio options, hide X column dropdown
+            xColumn.style.display = 'none';
+            xColumnLabel.style.display = 'none';
+            displayOptions.style.display = 'block';
             xColumn.required = false;
 
             // Show Y Data field with modified label
@@ -415,18 +445,20 @@
             yColumnLabel.innerHTML = 'Data <span class="text-danger">*</span>';
             yColumn.required = true;
         } else {
-            // Show both fields with original labels
-            xColumnContainer.style.display = 'block';
-            yColumnContainer.style.display = 'block';
+            // Show X column dropdown, hide radio options
+            xColumn.style.display = 'block';
+            xColumnLabel.style.display = 'block';
+            displayOptions.style.display = 'none';
             xColumn.required = true;
+
+            // Show both fields with original labels
+            yColumnContainer.style.display = 'block';
             yColumn.required = true;
             yColumnLabel.innerHTML = 'Y Data <span class="text-danger">*</span>';
         }
     }
 
     function createPlot(source) {
-        console.log("Creating plot for source:", JSON.stringify(source, null, 2));  // Pretty print the source object
-
         // Update form action and source ID
         const form = document.getElementById('plotForm');
         form.action = `/{{ account.url }}/source/${source.id}/plot`;
@@ -440,41 +472,19 @@
         xSelect.innerHTML = '<option value="">Select data...</option>';
         ySelect.innerHTML = '<option value="">Select data...</option>';
 
-        // Extract columns from preview
-        let columns = [];
-        if (source.file && source.file.preview) {
-            console.log("Raw preview data:", source.file.preview);  // Debug log
-            try {
-                // Get the first line (headers) from the preview
-                const firstLine = source.file.preview.split('\n')[0];
-                console.log("First line:", firstLine);  // Debug log
-
-                if (firstLine) {
-                    // Split by comma and trim whitespace
-                    columns = firstLine.split(',').map(col => col.trim());
-                    console.log("Extracted columns:", columns);  // Debug log
-                }
-            } catch (e) {
-                console.error("Error parsing preview:", e);  // Debug log
-                console.error("Error details:", e.message);  // Add more error details
-            }
-        } else {
-            console.warn("No preview data found in source:", JSON.stringify(source.file, null, 2));  // Debug log
-        }
-
         // Add options for each available column
-        if (columns.length > 0) {
-            columns.forEach(column => {
+        if (source.available_columns && source.available_columns.length > 0) {
+            source.available_columns.forEach(column => {
                 xSelect.add(new Option(column, column));
                 ySelect.add(new Option(column, column));
             });
-            console.log("Added column options:", columns);  // Debug log
         } else {
             console.warn('No columns available for source:', source.id);
         }
 
-        // Reset plot type and show/hide Y Data field
+        // Reset plot type and show/hide fields
         document.getElementById('plotType').value = 'timeline';
+        document.getElementById('displayBar').checked = true;
         handlePlotTypeChange();
 
         // Show modal

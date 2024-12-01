@@ -362,7 +362,6 @@ def account_plots(account_url):
         plot_data = []
         
         for source in sources:
-            print(f"Processing source: {source.id}")
             for plot in source.plots:
                 print(f"Processing plot: {plot.id} (type={plot.type})")
                 
@@ -384,10 +383,8 @@ def account_plots(account_url):
                         'y_column': plot.y_column,
                         **data
                     }
-                    print(f"Plot data being added: {json.dumps(plot_info, indent=2)}")
                     plot_data.append(plot_info)
-        
-        print(f"Final plot_data: {json.dumps(plot_data, indent=2)}")
+
         logging.info(f"Total plots processed: {len(plot_data)}")
         db.session.commit()
         return render_template('plots.html', 
@@ -585,13 +582,16 @@ def create_plot(account_url, source_id):
         # Validate required fields
         plot_name = request.form.get('name')
         plot_type = request.form.get('type')
-        x_column = request.form.get('x_column', '')  # Default to empty string
+        x_column = request.form.get('x_column', '')  # Will be either empty, 'bar', or 'table' for metric type
         y_column = request.form.get('y_column')
         
         # Validate based on plot type
         if plot_type == 'metric':
             if not all([plot_name, plot_type, y_column]):
                 flash('Plot name, type, and data selection are required for metric plots.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+            if x_column not in ['bar', 'table']:
+                flash('Invalid display type selected for metric plot.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
         else:  # timeline type
             if not all([plot_name, plot_type, x_column, y_column]):

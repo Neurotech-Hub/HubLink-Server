@@ -611,3 +611,73 @@ table td code {
     background: none;
     font-size: 0.8rem;
 }
+
+/* Plot styling */
+.plot-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.plot-container>div {
+    width: 100% !important;
+    min-height: 400px;
+}
+
+/* Plot card styling */
+.plot-card {
+    transition: box-shadow 0.3s ease;
+    border: none;
+    background-color: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.plot-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.plot-card .card-title {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+}
+
+.plot-card .text-muted {
+    font-size: 0.875rem;
+}
+
+/* Plot responsiveness */
+@media (max-width: 768px) {
+    .plot-container>div {
+        min-height: 300px;
+        /* Smaller height on mobile */
+    }
+
+    .plot-card .card-body {
+        padding: 1rem;
+        /* Smaller padding on mobile */
+    }
+
+    .plot-card .card-title {
+        font-size: 1rem;
+    }
+
+    .plot-card .text-muted {
+        font-size: 0.8rem;
+    }
+}
+
+/* Plot toolbar styling */
+.modebar {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(4px);
+}
+
+.modebar-btn {
+    color: #666 !important;
+}
+
+.modebar-btn:hover {
+    color: #000 !important;
+}
