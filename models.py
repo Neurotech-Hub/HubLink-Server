@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 import logging
+import json
 
 db = SQLAlchemy()
 
@@ -188,8 +189,7 @@ class Plot(db.Model):
     source_id = db.Column(db.Integer, db.ForeignKey('source.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(50), nullable=False, default="timeline")
-    x_column = db.Column(db.String(100), nullable=False)
-    y_column = db.Column(db.String(100), nullable=False)
+    config = db.Column(db.String(500), nullable=False)  # JSON string
     
     # Add relationship to Source
     source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
@@ -203,6 +203,5 @@ class Plot(db.Model):
             'source_id': self.source_id,
             'name': self.name,
             'type': self.type,
-            'x_column': self.x_column,
-            'y_column': self.y_column
+            'config': json.loads(self.config)
         }

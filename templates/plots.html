@@ -272,13 +272,19 @@
                         <div id="displayOptions" style="display: none;" class="mt-2">
                             <label class="form-label">Display <span class="text-danger">*</span></label>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="x_column" id="displayBar" value="bar" checked>
+                                <input class="form-check-input" type="radio" name="display_type" id="displayBar" value="bar">
                                 <label class="form-check-label" for="displayBar">
                                     Bar
                                 </label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input" type="radio" name="x_column" id="displayTable" value="table">
+                                <input class="form-check-input" type="radio" name="display_type" id="displayBox" value="box" checked>
+                                <label class="form-check-label" for="displayBox">
+                                    Box
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="display_type" id="displayTable" value="table">
                                 <label class="form-check-label" for="displayTable">
                                     Table
                                 </label>
@@ -364,63 +370,20 @@
 
         // Initialize plots
         {% for plot in plot_data %}
-        {% if plot.type == 'metric' %}
-        Plotly.newPlot('plot-{{ plot.plot_id }}', [{
-            type: 'bar',
-            x: {{ plot.device_ids | tojson }},
-        y: {{ plot.means | tojson }},
-        error_y: {
-        type: 'data',
-        array: {{ plot.stds | tojson }},
-        visible: true
-                    },
-        name: '{{ plot.name }}'
-                }], {
-            title: '{{ plot.name }}',
-            yaxis: {
-                title: '{{ plot.y_column }}'
-            },
-            height: 400,
-            margin: { t: 30 },
-            responsive: true
-        }, {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    });
-    {% else %}
-    // Timeline plot
-    const traces_{{ plot.plot_id }} =[];
-    {% if plot.device_ids %}
-    {% for i in range(plot.device_ids | length) %}
-        traces_{{ plot.plot_id }}.push({
-        x: {{ plot.x_data[i] | tojson }},
-        y: {{ plot.y_data[i] | tojson }},
-        mode: 'lines',
-        name: {{ plot.device_ids[i] | tojson }}
-                        });
-    {% endfor %}
-    {% endif %}
-
-    Plotly.newPlot('plot-{{ plot.plot_id }}', traces_{{ plot.plot_id }}, {
-        title: '{{ plot.name }}',
-        xaxis: {
-            title: '{{ plot.x_column }}',
-            type: 'date'
-        },
-        yaxis: {
-            title: '{{ plot.y_column }}'
-        },
-        height: 400,
-        margin: { t: 30 },
-        responsive: true
-    }, {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    });
-    {% endif %}
-    {% endfor %}
+        {% if plot.type == 'metric' or plot.type == 'timeline' %}
+            {% if plot.plotly_json is defined %}
+                Plotly.newPlot('plot-{{ plot.plot_id }}', 
+                    JSON.parse({{ plot.plotly_json | tojson }}).data,
+                    JSON.parse({{ plot.plotly_json | tojson }}).layout,
+                    {
+                        responsive: true,
+                        displayModeBar: true,
+                        displaylogo: false
+                    }
+                );
+            {% endif %}
+        {% endif %}
+        {% endfor %}
     });
 
     function handlePlotTypeChange() {

@@ -362,37 +362,86 @@ def account_plots(account_url):
         plot_data = []
         
         for source in sources:
+            # Download source data once per source
+            csv_content = download_source_file(settings, source)
+            if not csv_content:
+                flash(f'No data available for source: {source.name}', 'error')
+                continue
+                
             for plot in source.plots:
                 print(f"Processing plot: {plot.id} (type={plot.type})")
                 
-                if plot.type == "metric":
-                    data = process_metric_plot(plot, settings)
-                else:  # timeline type
-                    data = process_timeseries_plot(plot, settings)
-                
-                if data.get('error'):
-                    print(f"Plot error: {data['error']}")
-                    flash(data['error'], 'error')
-                else:
+                try:
+                    if plot.type == "metric":
+                        data = process_metric_plot(plot, csv_content)
+                    else:  # timeline type
+                        data = process_timeseries_plot(plot, csv_content)
+                    
+                    if data.get('error'):
+                        print(f"Plot error: {data['error']}")
+                        flash(data['error'], 'error')
+                        continue
+                    
+                    config = json.loads(plot.config) if plot.config else {}
                     plot_info = {
                         'plot_id': plot.id,
-                        'name': plot.name,
+                        'name': plot.name or "Unnamed Plot",
                         'type': plot.type,
-                        'source_name': plot.source.name,
-                        'x_column': plot.x_column,
-                        'y_column': plot.y_column,
-                        **data
+                        'source_name': source.name,
+                        'config': config
                     }
+                    
+                    # Debug print before adding data fields
+                    print(f"Plot {plot.id} data keys: {data.keys()}")
+                    
+                    # Ensure all data values are JSON serializable
+                    for key, value in data.items():
+                        if key != 'error':
+                            if value is None:
+                                plot_info[key] = []
+                            elif isinstance(value, (list, dict)):
+                                # Handle nested structures
+                                try:
+                                    json.dumps(value)  # Test serialization
+                                    plot_info[key] = value
+                                except TypeError:
+                                    # If serialization fails, convert to list or empty structure
+                                    if isinstance(value, list):
+                                        plot_info[key] = [item for item in value if item is not None]
+                                    else:
+                                        plot_info[key] = {}
+                            else:
+                                plot_info[key] = value
+                    
+                    print(f"Plot {plot.id} info keys: {plot_info.keys()}")
                     plot_data.append(plot_info)
+                    
+                except Exception as e:
+                    print(f"Error processing plot {plot.id}: {str(e)}")
+                    continue
 
-        logging.info(f"Total plots processed: {len(plot_data)}")
+        # Final validation of plot_data
+        validated_plot_data = []
+        for plot in plot_data:
+            try:
+                # Test if the plot data can be serialized
+                json.dumps(plot)
+                validated_plot_data.append(plot)
+            except TypeError as e:
+                print(f"Skipping plot {plot.get('plot_id')}: {str(e)}")
+                continue
+
+        logging.info(f"Total plots processed: {len(validated_plot_data)}")
         db.session.commit()
+        
         return render_template('plots.html', 
                           account=account, 
                           sources=sources,
-                          plot_data=plot_data)
+                          plot_data=validated_plot_data)
+                          
     except Exception as e:
         logging.error(f"Error loading plots for {account_url}: {e}")
+        traceback.print_exc()  # Print the full stack trace
         return "There was an issue loading the plots page.", 500
 
 def validate_source_data(data):
@@ -579,32 +628,50 @@ def create_plot(account_url, source_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
         
-        # Validate required fields
         plot_name = request.form.get('name')
         plot_type = request.form.get('type')
-        x_column = request.form.get('x_column', '')  # Will be either empty, 'bar', or 'table' for metric type
-        y_column = request.form.get('y_column')
         
-        # Validate based on plot type
+        if not plot_name or not plot_type:
+            flash('Plot name and type are required.', 'error')
+            return redirect(url_for('accounts.account_plots', account_url=account_url))
+        
+        # Build config based on plot type
+        config = {}
         if plot_type == 'metric':
-            if not all([plot_name, plot_type, y_column]):
-                flash('Plot name, type, and data selection are required for metric plots.', 'error')
+            data_column = request.form.get('metric_data_column')
+            display_type = request.form.get('display_type')
+            
+            if not data_column:
+                flash('Data column is required for metric plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
-            if x_column not in ['bar', 'table']:
-                flash('Invalid display type selected for metric plot.', 'error')
+            
+            if not display_type or display_type not in ['bar', 'box', 'table']:
+                flash('Valid display type (bar, box, or table) is required for metric plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
+                
+            config = {
+                'data_column': data_column,
+                'display': display_type
+            }
         else:  # timeline type
-            if not all([plot_name, plot_type, x_column, y_column]):
-                flash('All plot fields are required for timeline plots.', 'error')
+            time_column = request.form.get('time_column')
+            data_column = request.form.get('data_column')
+            
+            if not time_column or not data_column:
+                flash('Time column and data column are required for timeline plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
+                
+            config = {
+                'time_column': time_column,
+                'data_column': data_column
+            }
         
-        # Create new plot
+        # Create new plot with JSON config
         plot = Plot(
             source_id=source_id,
             name=plot_name,
             type=plot_type,
-            x_column=x_column,
-            y_column=y_column
+            config=json.dumps(config)
         )
         
         db.session.add(plot)
