@@ -3,6 +3,20 @@
 
 {% block content %}
 <div class="container-fluid">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mb-4">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <!-- Sources Management Section -->
     <div class="row mb-4">
         <div class="col-12">
@@ -12,83 +26,145 @@
                     <i class="bi bi-plus-lg"></i> Add Source
                 </button>
             </div>
+
+            <!-- Sources List -->
             <div class="source-list">
-                <table class="table table-sm table-hover align-middle">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>File Filter</th>
-                            <th>Columns</th>
-                            <th class="text-center">Points</th>
-                            <th class="text-center">Tail</th>
-                            <th>Last Updated</th>
-                            <th class="text-end source-actions">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for source in sources %}
-                        <tr>
-                            <td>{{ source.name }}</td>
-                            <td><small><code>{{ source.file_filter }}</code></small></td>
-                            <td><small><code>{{ source.include_columns }}</code></small></td>
-                            <td class="text-center"><small>{{ source.data_points }}</small></td>
-                            <td class="text-center"><small>{{ "Y" if source.tail_only else "N" }}</small></td>
-                            <td><small>{{ moment(source.last_updated).fromNow() if source.last_updated else 'Never'
-                                    }}</small></td>
-                            <td class="text-end source-actions">
-                                <!-- Status pill -->
+                {% for source in sources %}
+                <div class="card mb-2">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <!-- Source Name -->
+                                <h6 class="mb-1">{{ source.name }}</h6>
+
+                                <!-- Preview Text -->
+                                {% if source.file and source.file.preview %}
+                                <div class="preview-container">
+                                    <small class="text-muted mb-1">
+                                        <code class="d-block text-wrap small">
+                                            {{ source.file.preview }}
+                                        </code>
+                                    </small>
+                                </div>
+                                {% endif %}
+
+                                <!-- Last Updated -->
+                                {% if source.last_updated %}
+                                <small class="text-muted">
+                                    Updated {{ moment(source.last_updated).fromNow() }}
+                                </small>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex align-items-center">
+                                <!-- Status Badge -->
                                 {% if source.to_dict().state == 'created' %}
-                                <span class="badge rounded-pill bg-secondary">Created</span>
+                                <span class="badge bg-secondary me-2">Created</span>
                                 {% elif source.to_dict().state == 'running' %}
-                                <span class="badge rounded-pill bg-primary">
-                                    Running
-                                </span>
+                                <span class="badge bg-primary me-2">Running</span>
                                 {% elif source.to_dict().state == 'success' and source.file_id %}
                                 <a href="/{{ account.url }}/download/{{ source.file_id }}"
-                                    class="badge rounded-pill bg-success text-decoration-none">
+                                    class="badge bg-success text-decoration-none me-2">
                                     Success <i class="bi bi-download"></i>
                                 </a>
                                 {% else %}
-                                <span class="badge rounded-pill bg-danger" title="{{ source.error }}">Error</span>
+                                <span class="badge bg-danger me-2" title="{{ source.error }}">Error</span>
                                 {% endif %}
 
-                                <!-- Action buttons -->
-                                <form action="/{{ account.url }}/source/{{ source.id }}/refresh" method="POST"
-                                    class="d-inline">
-                                    <button type="submit" class="btn btn-sm" title="Refresh source">
-                                        <i class="bi bi-arrow-clockwise"></i>
+                                <!-- Actions Dropdown -->
+                                <div class="dropdown">
+                                    <button class="btn btn-link" type="button" data-bs-toggle="dropdown"
+                                        aria-expanded="false">
+                                        <i class="bi bi-three-dots-vertical"></i>
                                     </button>
-                                </form>
-                                <button type="button" class="btn btn-sm"
-                                    onclick='editSource({{ source.to_dict() | tojson }})' title="Edit source">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                                <form action="/{{ account.url }}/source/{{ source.id }}/delete" method="POST"
-                                    class="d-inline">
-                                    <button type="submit" class="btn btn-sm" title="Delete source">
-                                        <i class="bi bi-trash text-danger"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <form action="/{{ account.url }}/source/{{ source.id }}/refresh"
+                                                method="POST" class="d-inline">
+                                                <button type="submit" class="dropdown-item">
+                                                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                                                </button>
+                                            </form>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="dropdown-item"
+                                                onclick='editSource({{ source.to_dict() | tojson }})'>
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <form action="/{{ account.url }}/source/{{ source.id }}/delete"
+                                                method="POST" class="d-inline">
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="bi bi-trash"></i> Delete
+                                                </button>
+                                            </form>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="dropdown-item"
+                                                onclick='createPlot({{ source.to_dict() | tojson | safe }})'>
+                                                <i class="bi bi-graph-up"></i> Create Plot
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+
+                {% if not sources %}
+                <div class="text-center text-muted p-4">
+                    <p>No sources configured yet. Click "Add Source" to get started.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <!-- Plot Areas -->
-    <div class="row">
-        <div class="col-12 mb-4">
-            <div class="card">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Plots</h5>
+            </div>
+
+            <!-- Plot Cards -->
+            {% for plot in plot_data %}
+            <div class="card mb-3">
                 <div class="card-body">
-                    <h5 class="card-title">Plot Area 1</h5>
-                    <div style="position: relative; height:400px;">
-                        <p class="text-muted">Placeholder for future plot</p>
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="card-title mb-0">{{ plot.name }}</h6>
+                            <small class="text-muted">Source: {{ plot.source_name }}</small>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-link" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <form action="/{{ account.url }}/plot/{{ plot.plot_id }}/delete" method="POST"
+                                        class="d-inline">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-trash"></i> Delete Plot
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </div>
+                    <div id="plot-{{ plot.plot_id }}" style="height: 400px;"></div>
                 </div>
             </div>
+            {% endfor %}
+
+            {% if not plot_data %}
+            <div class="text-center text-muted p-4">
+                <p>No plots created yet. Click "Create Plot" on a source to get started.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -154,10 +230,65 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-{{ super() }}
+<!-- Plot Modal -->
+<div class="modal fade" id="plotModal" tabindex="-1" aria-labelledby="plotModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="plotModalLabel">Create Plot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="plotForm" action="/{{ account.url }}/plot" method="POST" class="needs-validation" novalidate>
+                <div class="modal-body">
+                    <input type="hidden" id="plotSourceId" name="source_id">
+
+                    <!-- Plot Name -->
+                    <div class="mb-3">
+                        <label for="plotName" class="form-label">Plot Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="plotName" name="name" required>
+                        <div class="invalid-feedback">Please provide a plot name.</div>
+                    </div>
+
+                    <!-- Plot Type -->
+                    <div class="mb-3">
+                        <label for="plotType" class="form-label">Plot Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="plotType" name="type" required
+                            onchange="handlePlotTypeChange()">
+                            <option value="timeline">Timeline</option>
+                            <option value="metric">Metric</option>
+                        </select>
+                    </div>
+
+                    <!-- X Column (for timeline) -->
+                    <div class="mb-3" id="xColumnContainer">
+                        <label for="xColumn" class="form-label">X Data <span class="text-danger">*</span></label>
+                        <select class="form-select" id="xColumn" name="x_column" required>
+                            <option value="">Select data...</option>
+                        </select>
+                    </div>
+
+                    <!-- Y Column (becomes single Data for metric) -->
+                    <div class="mb-3" id="yColumnContainer">
+                        <label for="yColumn" class="form-label">Y Data <span class="text-danger">*</span></label>
+                        <select class="form-select" id="yColumn" name="y_column" required>
+                            <option value="">Select data...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Plotly.js -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<!-- Page-specific scripts -->
 <script>
     function editSource(source) {
         // Update form action
@@ -178,21 +309,6 @@
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('sourceModal'));
         modal.show();
-    }
-
-    function toggleDetails(button, sourceId) {
-        const detailsRow = document.getElementById(`details-${sourceId}`);
-        const icon = button.querySelector('i');
-
-        if (detailsRow.style.display === 'none') {
-            detailsRow.style.display = 'table-row';
-            icon.classList.remove('bi-chevron-down');
-            icon.classList.add('bi-chevron-up');
-        } else {
-            detailsRow.style.display = 'none';
-            icon.classList.remove('bi-chevron-up');
-            icon.classList.add('bi-chevron-down');
-        }
     }
 
     // Add reset function for "Add Source" button
@@ -216,6 +332,159 @@
                 form.classList.add('was-validated');
             }, false);
         });
+
+        document.querySelectorAll('.preview-text').forEach(element => {
+            try {
+                // Parse and re-stringify the JSON with formatting
+                const jsonData = JSON.parse(element.dataset.preview);
+                element.dataset.preview = JSON.stringify(jsonData, null, 2);
+            } catch (e) {
+                // If it's not valid JSON, leave it as is
+                console.log('Preview is not valid JSON');
+            }
+        });
+
+        // Initialize plots
+        {% for plot in plot_data %}
+        console.log("Processing plot:", {{ plot | tojson }});
+    {% if plot.type == 'metric' %}
+    Plotly.newPlot('plot-{{ plot.plot_id }}', [{
+        type: 'bar',
+        x: {{ plot.device_ids | tojson }},
+        y: {{ plot.means | tojson }},
+        error_y: {
+        type: 'data',
+        array: {{ plot.stds | tojson }},
+        visible: true
+            },
+        name: '{{ plot.name }}'
+        }], {
+        title: '{{ plot.name }}',
+        yaxis: {
+            title: '{{ plot.y_column }}'
+        },
+        height: 400,
+        margin: { t: 30 }
     });
+    {% else %}
+    // Timeline plot
+    const traces = [];
+    {% if plot.device_ids %}
+    {% for i in range(plot.device_ids | length) %}
+    traces.push({
+        x: {{ plot.x_data[i] | tojson }},
+        y: {{ plot.y_data[i] | tojson }},
+        mode: 'lines',
+        name: {{ plot.device_ids[i] | tojson }}
+            });
+    {% endfor %}
+    {% endif %}
+
+    Plotly.newPlot('plot-{{ plot.plot_id }}', traces, {
+        title: '{{ plot.name }}',
+        xaxis: {
+            title: '{{ plot.x_column }}',
+            type: 'date'
+        },
+        yaxis: {
+            title: '{{ plot.y_column }}'
+        },
+        height: 400,
+        margin: { t: 30 }
+    });
+    {% endif %}
+    {% endfor %}
+    });
+
+    function handlePlotTypeChange() {
+        const plotType = document.getElementById('plotType').value;
+        const xColumnContainer = document.getElementById('xColumnContainer');
+        const yColumnContainer = document.getElementById('yColumnContainer');
+        const xColumn = document.getElementById('xColumn');
+        const yColumn = document.getElementById('yColumn');
+        const yColumnLabel = yColumnContainer.querySelector('label');
+
+        if (plotType === 'metric') {
+            // Hide X Data field
+            xColumnContainer.style.display = 'none';
+            xColumn.value = '';
+            xColumn.required = false;
+
+            // Show Y Data field with modified label
+            yColumnContainer.style.display = 'block';
+            yColumnLabel.innerHTML = 'Data <span class="text-danger">*</span>';
+            yColumn.required = true;
+        } else {
+            // Show both fields with original labels
+            xColumnContainer.style.display = 'block';
+            yColumnContainer.style.display = 'block';
+            xColumn.required = true;
+            yColumn.required = true;
+            yColumnLabel.innerHTML = 'Y Data <span class="text-danger">*</span>';
+        }
+    }
+
+    function createPlot(source) {
+        console.log("Creating plot for source:", JSON.stringify(source, null, 2));  // Pretty print the source object
+
+        // Update form action and source ID
+        const form = document.getElementById('plotForm');
+        form.action = `/{{ account.url }}/source/${source.id}/plot`;
+        document.getElementById('plotSourceId').value = source.id;
+
+        // Get the select elements
+        const xSelect = document.getElementById('xColumn');
+        const ySelect = document.getElementById('yColumn');
+
+        // Clear existing options
+        xSelect.innerHTML = '<option value="">Select data...</option>';
+        ySelect.innerHTML = '<option value="">Select data...</option>';
+
+        // Extract columns from preview
+        let columns = [];
+        if (source.file && source.file.preview) {
+            console.log("Raw preview data:", source.file.preview);  // Debug log
+            try {
+                // Get the first line (headers) from the preview
+                const firstLine = source.file.preview.split('\n')[0];
+                console.log("First line:", firstLine);  // Debug log
+
+                if (firstLine) {
+                    // Split by comma and trim whitespace
+                    columns = firstLine.split(',').map(col => col.trim());
+                    console.log("Extracted columns:", columns);  // Debug log
+                }
+            } catch (e) {
+                console.error("Error parsing preview:", e);  // Debug log
+                console.error("Error details:", e.message);  // Add more error details
+            }
+        } else {
+            console.warn("No preview data found in source:", JSON.stringify(source.file, null, 2));  // Debug log
+        }
+
+        // Add options for each available column
+        if (columns.length > 0) {
+            columns.forEach(column => {
+                xSelect.add(new Option(column, column));
+                ySelect.add(new Option(column, column));
+            });
+            console.log("Added column options:", columns);  // Debug log
+        } else {
+            console.warn('No columns available for source:', source.id);
+        }
+
+        // Reset plot type and show/hide Y Data field
+        document.getElementById('plotType').value = 'timeline';
+        handlePlotTypeChange();
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('plotModal'));
+        modal.show();
+    }
+</script>
+
+<!-- Debug output -->
+<script>
+    console.log("Plot data received:", {{ plot_data | tojson }});
 </script>
 {% endblock %}

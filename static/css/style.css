@@ -611,36 +611,3 @@ table td code {
     background: none;
     font-size: 0.8rem;
 }
-
-.source-actions .btn-sm {
-    padding: 0.25rem 0.4rem;
-    font-size: 0.8rem;
-    border: none;
-    background: none;
-    color: #6c757d;
-    line-height: 1;
-    transition: color 0.2s ease;
-}
-
-.source-actions .btn-sm:hover:not(:disabled) {
-    color: #000;
-}
-
-.source-actions form {
-    margin: 0;
-    padding: 0;
-    display: inline-flex;
-}
-
-.source-actions .badge {
-    margin-right: 0.5rem;
-    font-weight: normal;
-}
-
-.source-actions .badge i {
-    margin-left: 0.25rem;
-}
-
-.source-actions .badge.bg-success:hover {
-    background-color: #157347 !important;
-}

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
-from models import db, Account, Setting, File, Gateway, Source
+from models import db, Account, Setting, File, Gateway, Source, Plot
 from datetime import datetime, timedelta, timezone
 import logging
 from S3Manager import *
@@ -10,6 +10,8 @@ from sqlalchemy.exc import IntegrityError
 import re
 import requests
 import os
+import json
+from plot_utils import process_timeseries_plot, process_metric_plot
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -232,54 +234,41 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
+        
+        # Get all files for this account
+        files = File.query.filter_by(account_id=account.id).all()
+        
+        # Prepare data for charts
+        file_uploads = [file.last_modified.isoformat() for file in files if file.last_modified]
+        
+        # Get device upload counts
+        device_counts = {}
+        for file in files:
+            device = file.key.split('/')[0]  # Get device name from file key
+            device_counts[device] = device_counts.get(device, 0) + 1
+        
+        devices = list(device_counts.keys())
+        device_upload_counts = [device_counts[device] for device in devices]
+        
+        # Get recent gateway activity
+        gateways = Gateway.query.filter_by(account_id=account.id)\
+            .order_by(Gateway.created_at.desc())\
+            .limit(10)\
+            .all()
+        
         db.session.commit()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        gateways = Gateway.query.filter_by(account_id=account.id).order_by(desc(Gateway.created_at)).limit(20).all()
-
-        recent_files = get_latest_files(account.id, 1000, 31)
-
-        # Send timestamps to client for conversion
-        file_uploads = []
-        device_uploads = {}
-
-        for file in recent_files:
-            # Store UTC timestamp
-            timestamp = file.last_modified.timestamp() * 1000  # Convert to milliseconds for JavaScript
-            file_uploads.append(timestamp)
-
-            # Track device uploads
-            device = file.key.split('/')[0]
-            device_uploads[device] = device_uploads.get(device, 0) + 1
-
-        # Sort devices by number of uploads and take the top 10
-        sorted_devices = sorted(device_uploads.items(), key=lambda x: x[1], reverse=True)[:10]
-        devices = [device for device, count in sorted_devices]
-        device_upload_counts = [count for device, count in sorted_devices]
-
-        alerts = [
-            {"device": "Device A", "message": "Error detected", "created_at": "2024-10-21 10:15:00"},
-            {"device": "Device B", "message": "Warning issued", "created_at": "2024-10-21 11:30:00"},
-            {"device": "Device C", "message": "Low battery", "created_at": "2024-10-21 12:00:00"}
-        ]
-
+        
         return render_template(
             'dashboard.html',
             account=account,
-            settings=settings,
-            file_uploads=file_uploads,  # Send raw timestamps
-            gateways=gateways,
+            file_uploads=file_uploads,
             devices=devices,
-            device_upload_counts=device_upload_counts
+            device_upload_counts=device_upload_counts,
+            gateways=gateways
         )
-    except NotFound as e:
-        # Handle NotFound exception separately to render the 404 template
-        logging.error(f"404 Not Found for account URL: {account_url}, error: {e}")
-        return render_template('404.html'), 404
-
     except Exception as e:
-        # Handle other unexpected exceptions
         logging.error(f"Error loading dashboard for {account_url}: {e}")
-        return "There was an issue loading the dashboard.", 500
+        return "There was an issue loading the dashboard page.", 500
 
 @accounts_bp.route('/<account_url>/download/<int:file_id>', methods=['GET'])
 def download_file(account_url, file_id):
@@ -361,16 +350,50 @@ def get_recent_checks(account_url):
 
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
-    g.title = "Plots"
     try:
+        print("Starting plots route")
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         
-        # Get all sources for this account
         sources = Source.query.filter_by(account_id=account.id).all()
+        print(f"Found {len(sources)} sources")
         
+        plot_data = []
+        
+        for source in sources:
+            print(f"Processing source: {source.id}")
+            for plot in source.plots:
+                print(f"Processing plot: {plot.id} (type={plot.type})")
+                
+                if plot.type == "metric":
+                    data = process_metric_plot(plot, settings)
+                else:  # timeline type
+                    data = process_timeseries_plot(plot, settings)
+                
+                if data.get('error'):
+                    print(f"Plot error: {data['error']}")
+                    flash(data['error'], 'error')
+                else:
+                    plot_info = {
+                        'plot_id': plot.id,
+                        'name': plot.name,
+                        'type': plot.type,
+                        'source_name': plot.source.name,
+                        'x_column': plot.x_column,
+                        'y_column': plot.y_column,
+                        **data
+                    }
+                    print(f"Plot data being added: {json.dumps(plot_info, indent=2)}")
+                    plot_data.append(plot_info)
+        
+        print(f"Final plot_data: {json.dumps(plot_data, indent=2)}")
+        logging.info(f"Total plots processed: {len(plot_data)}")
         db.session.commit()
-        return render_template('plots.html', account=account, sources=sources)
+        return render_template('plots.html', 
+                          account=account, 
+                          sources=sources,
+                          plot_data=plot_data)
     except Exception as e:
         logging.error(f"Error loading plots for {account_url}: {e}")
         return "There was an issue loading the plots page.", 500
@@ -498,6 +521,12 @@ def refresh_source(account_url, source_id):
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         
+        # Reset source status
+        source.success = False
+        source.error = None
+        source.file_id = None  # Also reset the file_id
+        db.session.commit()
+        
         # Prepare payload for lambda
         payload = {
             'source': {
@@ -509,11 +538,6 @@ def refresh_source(account_url, source_id):
                 'bucket_name': settings.bucket_name
             }
         }
-        
-        # Reset source status
-        source.success = False
-        source.error = None
-        db.session.commit()
         
         lambda_url = os.environ.get('LAMBDA_URL')
         if not lambda_url:
@@ -549,5 +573,73 @@ def sync_sources(account_url):
     except Exception as e:
         logging.error(f"Error syncing source files for account {account_url}: {e}")
         flash('Error syncing source files.', 'error')
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/plot', methods=['POST'])
+def create_plot(account_url, source_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        
+        # Validate required fields
+        plot_name = request.form.get('name')
+        plot_type = request.form.get('type')
+        x_column = request.form.get('x_column', '')  # Default to empty string
+        y_column = request.form.get('y_column')
+        
+        # Validate based on plot type
+        if plot_type == 'metric':
+            if not all([plot_name, plot_type, y_column]):
+                flash('Plot name, type, and data selection are required for metric plots.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+        else:  # timeline type
+            if not all([plot_name, plot_type, x_column, y_column]):
+                flash('All plot fields are required for timeline plots.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+        
+        # Create new plot
+        plot = Plot(
+            source_id=source_id,
+            name=plot_name,
+            type=plot_type,
+            x_column=x_column,
+            y_column=y_column
+        )
+        
+        db.session.add(plot)
+        db.session.commit()
+        
+        flash('Plot created successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Error creating plot.', 'error')
+        logging.error(f"Error creating plot: {e}")
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/plot/<int:plot_id>/delete', methods=['POST'])
+def delete_plot(account_url, plot_id):
+    try:
+        # First verify the account exists and the plot belongs to it
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        plot = Plot.query.join(Source).filter(
+            Plot.id == plot_id,
+            Source.account_id == account.id
+        ).first_or_404()
+        
+        # Store plot name for flash message
+        plot_name = plot.name
+        
+        # Delete the plot
+        db.session.delete(plot)
+        db.session.commit()
+        
+        flash(f'Plot "{plot_name}" deleted successfully.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting plot.', 'error')
+        logging.error(f"Error deleting plot {plot_id}: {e}")
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))

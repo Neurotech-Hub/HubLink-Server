@@ -10,9 +10,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title"><i class="bi bi-graph-up"></i> File Uploads Over Time</h5>
-                    <div style="position: relative; height:400px;">
-                        <canvas id="uploadsLineChart"></canvas>
-                    </div>
+                    <div id="uploadsLineChart"></div>
                 </div>
             </div>
         </div>
@@ -25,9 +23,7 @@
             <div class="card h-100">
                 <div class="card-body">
                     <h5 class="card-title"><i class="bi bi-device-hdd"></i> File Uploads by Device</h5>
-                    <div style="position: relative; height:400px;">
-                        <canvas id="uploadsBarChart"></canvas>
-                    </div>
+                    <div id="uploadsBarChart"></div>
                 </div>
             </div>
         </div>
@@ -65,11 +61,13 @@
     </div>
 </div>
 
-<!-- Chart.js Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0.1"></script>
 <script>
-    // Get raw timestamps from server
-    var fileUploads = {{ file_uploads | tojson | safe }};
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get raw timestamps from server
+        var fileUploads = {{ file_uploads | tojson | safe
+    }};
+    var devices = {{ devices | tojson | safe }};
+    var deviceUploadCounts = {{ device_upload_counts | tojson | safe }};
 
     // Process timestamps into daily buckets using browser's local timezone
     var dailyCounts = {};
@@ -94,66 +92,77 @@
         }
     });
 
-    // Prepare data for Chart.js
-    var fileUploadsLabels = Object.keys(dailyCounts);
-    var uploadsData = Object.values(dailyCounts);
-
     // Line Chart: File Uploads Over Time
-    var ctxLine = document.getElementById('uploadsLineChart').getContext('2d');
-    var uploadsLineChart = new Chart(ctxLine, {
-        type: 'line',
-        data: {
-            labels: fileUploadsLabels,
-            datasets: [{
-                label: 'Total Uploads',
-                data: uploadsData,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                fill: true,
-            }]
+    var lineTrace = {
+        x: Object.keys(dailyCounts),
+        y: Object.values(dailyCounts),
+        type: 'scatter',
+        mode: 'lines',
+        fill: 'tozeroy',
+        line: {
+            color: 'rgb(75, 192, 192)',
+            width: 2
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-        }
-    });
+        fillcolor: 'rgba(75, 192, 192, 0.2)'
+    };
 
-    // Bar Chart: File Uploads for Device
-    var devices = {{ devices | tojson | safe }};
-    var deviceUploadCounts = {{ device_upload_counts | tojson | safe }};
-    var ctxBar = document.getElementById('uploadsBarChart').getContext('2d');
-    var uploadsBarChart = new Chart(ctxBar, {
+    var lineLayout = {
+        height: 400,
+        margin: { t: 10, r: 10, b: 40, l: 40 },
+        xaxis: {
+            showgrid: true,
+            gridcolor: 'rgba(0,0,0,0.1)',
+            title: 'Date'
+        },
+        yaxis: {
+            showgrid: true,
+            gridcolor: 'rgba(0,0,0,0.1)',
+            zeroline: false,
+            title: 'Number of Uploads'
+        },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)'
+    };
+
+    // Bar Chart: Device Uploads
+    var barTrace = {
+        x: devices,
+        y: deviceUploadCounts,
         type: 'bar',
-        data: {
-            labels: devices,
-            datasets: [{
-                label: 'Device File Uploads (last 30 days)',
-                data: deviceUploadCounts,
-                backgroundColor: 'rgba(153, 102, 255, 0.6)',
-                borderColor: 'rgba(153, 102, 255, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
+        marker: {
+            color: 'rgba(153, 102, 255, 0.6)',
+            line: {
+                color: 'rgba(153, 102, 255, 1)',
+                width: 1
             }
         }
-    });
-</script>
+    };
 
+    var barLayout = {
+        height: 400,
+        margin: { t: 10, r: 10, b: 60, l: 40 },
+        xaxis: {
+            showgrid: false,
+            tickangle: -45,
+            title: 'Device'
+        },
+        yaxis: {
+            showgrid: true,
+            gridcolor: 'rgba(0,0,0,0.1)',
+            zeroline: false,
+            title: 'Number of Files'
+        },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)'
+    };
+
+    const config = {
+        responsive: true,
+        displayModeBar: false
+    };
+
+    Plotly.newPlot('uploadsLineChart', [lineTrace], lineLayout, config);
+    Plotly.newPlot('uploadsBarChart', [barTrace], barLayout, config);
+});
+</script>
 {% endblock %}

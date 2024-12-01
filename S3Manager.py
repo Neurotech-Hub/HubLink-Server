@@ -360,3 +360,41 @@ def sync_source_files(account_settings):
     except Exception as e:
         logging.error(f"Error syncing source files: {e}")
         db.session.rollback()
+
+def download_source_file(account_settings, source):
+    """
+    Download a source's CSV file from S3 into memory.
+    Returns: CSV content as string, or None if error
+    """
+    if not source.file_id:
+        logging.error(f"Source {source.name} has no associated file")
+        return None
+
+    try:
+        # Create S3 client
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+
+        # Get the file object from database
+        file = File.query.get(source.file_id)
+        if not file:
+            logging.error(f"File {source.file_id} not found for source {source.name}")
+            return None
+
+        # Download file from S3
+        response = s3_client.get_object(
+            Bucket=account_settings.bucket_name,
+            Key=file.key
+        )
+        
+        # Read the content as string
+        csv_content = response['Body'].read().decode('utf-8')
+        return csv_content
+
+    except Exception as e:
+        logging.error(f"Error downloading source file for {source.name}: {e}")
+        return None

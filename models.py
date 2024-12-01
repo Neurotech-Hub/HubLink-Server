@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
+import logging
 
 db = SQLAlchemy()
 
@@ -74,6 +75,7 @@ class File(db.Model):
     last_modified = db.Column(db.DateTime, nullable=False)
     version = db.Column(db.Integer, nullable=False, default=1)
     last_checked = db.Column(db.DateTime, nullable=True)
+    preview = db.Column(db.String(500), nullable=True, default="")
 
     def __repr__(self):
         return f"<File {self.key} for Account {self.account_id}>"
@@ -86,7 +88,8 @@ class File(db.Model):
             'size': self.size,
             'last_modified': self.last_modified.isoformat(),
             'version': self.version,
-            'last_checked': self.last_checked.isoformat() if self.last_checked else None
+            'last_checked': self.last_checked.isoformat() if self.last_checked else None,
+            'preview': self.preview
         }
 
 # Define the device model with ip_address instead of mac_address
@@ -130,6 +133,25 @@ class Source(db.Model):
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"
 
+    @property
+    def available_columns(self):
+        """Get list of available columns from the JSON preview, skipping first two columns."""
+        if self.file and self.file.preview:
+            try:
+                # Parse the JSON preview
+                import json
+                preview_data = json.loads(self.file.preview)
+                
+                # First row contains headers, skip first two columns (internal use)
+                headers = preview_data[0][2:]  # Skip hublink_device_id and hublink_full_path
+                
+                # Return non-empty column names
+                return [h for h in headers if h]
+            except Exception as e:
+                logging.error(f"Error parsing preview headers: {e}")
+                return []
+        return []
+
     def to_dict(self):
         """Convert source to dictionary with dynamic state"""
         data = {
@@ -141,7 +163,12 @@ class Source(db.Model):
             'tail_only': self.tail_only,
             'last_updated': self.last_updated.isoformat() if self.last_updated else None,
             'success': self.success,
-            'error': self.error
+            'error': self.error,
+            'available_columns': self.available_columns,  # This will now parse JSON and skip first two columns
+            'file': {
+                'id': self.file.id,
+                'preview': self.file.preview
+            } if self.file else None
         }
         
         # Add dynamic state based on conditions
@@ -155,3 +182,28 @@ class Source(db.Model):
             data['state'] = 'running'
             
         return data
+
+# Define the plot model
+class Plot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    source_id = db.Column(db.Integer, db.ForeignKey('source.id', ondelete='CASCADE'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(50), nullable=False, default="timeline")
+    x_column = db.Column(db.String(100), nullable=False)
+    y_column = db.Column(db.String(100), nullable=False)
+    
+    # Add relationship to Source
+    source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
+
+    def __repr__(self):
+        return f"<Plot {self.name} ({self.type}) for Source {self.source_id}>"
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'source_id': self.source_id,
+            'name': self.name,
+            'type': self.type,
+            'x_column': self.x_column,
+            'y_column': self.y_column
+        }

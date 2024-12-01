@@ -13,11 +13,28 @@ from flask_moment import Moment
 
 load_dotenv(override=True)
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-# Suppress botocore and boto3 debugging logs
-logging.getLogger('botocore').setLevel(logging.WARNING)
-logging.getLogger('boto3').setLevel(logging.WARNING)
+# Configure root logger
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    force=True  # This will override any existing configuration
+)
+
+# Create logger for the application
+logger = logging.getLogger(__name__)
+
+# Ensure all loggers are set to INFO level
+logging.getLogger('plot_utils').setLevel(logging.INFO)
+logging.getLogger('accounts').setLevel(logging.INFO)
+
+# Create console handler if you want to see logs in terminal
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+console_handler.setFormatter(formatter)
+
+# Add the handler to the root logger
+logging.getLogger('').addHandler(console_handler)
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
@@ -33,7 +50,7 @@ moment = Moment(app)
 # security by obscurity
 admin_route = os.getenv('ADMIN_ROUTE', 'admin')
 
-logging.info(f"SQLALCHEMY_DATABASE_URI is set to: {app.config['SQLALCHEMY_DATABASE_URI']}")
+logger.info(f"SQLALCHEMY_DATABASE_URI is set to: {app.config['SQLALCHEMY_DATABASE_URI']}")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
@@ -52,9 +69,9 @@ with app.app_context():
         
         # Now run the migration
         upgrade()
-        logging.info("Database migrations completed successfully")
+        logger.info("Database migrations completed successfully")
     except Exception as e:
-        logging.error(f"Error running database migrations: {e}")
+        logger.error(f"Error running database migrations: {e}")
 
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)
@@ -93,19 +110,19 @@ def create_default_settings(account_id):
         )
         db.session.add(new_setting)
         db.session.commit()
-        logging.debug(f"Default settings created for account ID {account_id}")
+        logger.debug(f"Default settings created for account ID {account_id}")
     except Exception as e:
-        logging.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
+        logger.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
         db.session.rollback()
 
 # Route to display the homepage
 @app.route('/')
 def index():
     try:
-        logging.debug("Accessing the index route.")
+        logger.debug("Accessing the index route.")
         return render_template('index.html')
     except Exception as e:
-        logging.error(f"Error loading index: {e}")
+        logger.error(f"Error loading index: {e}")
         return "There was an issue loading the homepage.", 500
 
 # Define location dynamically
@@ -133,7 +150,7 @@ def add_route_handler():
                              admin_route=admin_route,
                              analytics=analytics)
     except Exception as e:
-        logging.error(f"Error loading new account page: {e}")
+        logger.error(f"Error loading new account page: {e}")
         return "There was an issue loading the page.", 500
 
 # Route to submit a new account
@@ -149,11 +166,11 @@ def submit():
         create_default_settings(new_account.id)
         db.session.commit()
         
-        logging.debug(f"New account created: {new_account} with URL: {new_account.url}")
+        logger.debug(f"New account created: {new_account} with URL: {new_account.url}")
         return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
     except Exception as e:
         db.session.rollback()
-        logging.error(f"There was an issue adding your account: {e}")
+        logger.error(f"There was an issue adding your account: {e}")
         return "There was an issue adding your account."
 
 # Route to view documentation
@@ -163,7 +180,7 @@ def docs():
     try:
         return render_template('docs.html')
     except Exception as e:
-        logging.error(f"Error loading documentation: {e}")
+        logger.error(f"Error loading documentation: {e}")
         return "There was an issue loading the documentation.", 500
     
 # Route to view pricing
@@ -173,7 +190,7 @@ def pricing():
     try:
         return render_template('pricing.html')
     except Exception as e:
-        logging.error(f"Error loading pricing: {e}")
+        logger.error(f"Error loading pricing: {e}")
         return "There was an issue loading the pricing.", 500
     
 @app.route('/favicon.ico')
@@ -183,7 +200,7 @@ def favicon():
 # Define error handler
 @app.errorhandler(404)
 def page_not_found(e):
-    logging.error(f"404 error: {e}")
+    logger.error(f"404 error: {e}")
     return render_template('404.html'), 404
 
 @app.route('/source', methods=['POST'])
@@ -211,6 +228,17 @@ def create_source():
         
         print(f"Found source: {source.name} (ID: {source.id})")
         
+        # Convert preview list to string if it exists
+        preview_str = ''
+        if 'preview' in data and data['preview']:
+            try:
+                # Take first few rows and join them with newlines
+                preview_rows = [','.join(map(str, row)) for row in data['preview'][:3]]
+                preview_str = '\n'.join(preview_rows)
+            except Exception as e:
+                print(f"Error formatting preview data: {e}")
+                preview_str = str(data['preview'])
+        
         # Get or create the File record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
         if not file:
@@ -221,13 +249,17 @@ def create_source():
                 url=generate_s3_url(source.account.settings.bucket_name, data['key']),
                 size=data['size'],
                 last_modified=datetime.now(timezone.utc),
-                version=1
+                version=1,
+                preview=preview_str
             )
             db.session.add(file)
             db.session.flush()
             print(f"Created new file record with ID: {file.id}")
         else:
             print(f"Found existing file record: {file.id}")
+            # Update existing file's preview
+            file.preview = preview_str
+            file.last_modified = datetime.now(timezone.utc)
         
         # Update the source
         print(f"Updating source {source.id} with success={data['success']} and file_id={file.id}")
@@ -243,7 +275,8 @@ def create_source():
         })
     except Exception as e:
         print(f"Error in create_source: {str(e)}")
-        logging.error(f"Error updating source status: {e}")
+        logger.error(f"Error updating source status: {e}")
+        db.session.rollback()  # Add rollback on error
         return jsonify({
             'error': 'Internal server error',
             'status': 500
