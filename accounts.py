@@ -351,76 +351,38 @@ def get_recent_checks(account_url):
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
     try:
-        print("Starting plots route")
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         
         sources = Source.query.filter_by(account_id=account.id).all()
-        print(f"Found {len(sources)} sources")
-        
         plot_data = []
+        source_data = {}
         
         for source in sources:
-            # Download source data once per source
+            # Download and cache source data
             csv_content = download_source_file(settings, source)
             if not csv_content:
                 flash(f'No data available for source: {source.name}', 'error')
                 continue
-                
+            
+            source_data[source.id] = csv_content
+            
             for plot in source.plots:
-                print(f"Processing plot: {plot.id} (type={plot.type})")
-                
-                try:
-                    if plot.type == "metric":
-                        data = process_metric_plot(plot, csv_content)
-                    else:  # timeline type
-                        data = process_timeseries_plot(plot, csv_content)
-                    
-                    if data.get('error'):
-                        print(f"Plot error: {data['error']}")
-                        flash(data['error'], 'error')
-                        continue
-                    
-                    config = json.loads(plot.config) if plot.config else {}
-                    plot_info = {
-                        'plot_id': plot.id,
-                        'name': plot.name or "Unnamed Plot",
-                        'type': plot.type,
-                        'source_name': source.name,
-                        'config': config,
-                        **data  # Directly merge the data dictionary
-                    }
-                    
-                    print(f"Plot {plot.id} info keys: {plot_info.keys()}")
+                plot_info = process_plot_data(plot, csv_content)
+                if plot_info:
                     plot_data.append(plot_info)
-                    
-                except Exception as e:
-                    print(f"Error processing plot {plot.id}: {str(e)}")
-                    continue
 
-        # Final validation of plot_data
-        validated_plot_data = []
-        for plot in plot_data:
-            try:
-                # Test if the plot data can be serialized
-                json.dumps(plot)
-                validated_plot_data.append(plot)
-            except TypeError as e:
-                print(f"Skipping plot {plot.get('plot_id')}: {str(e)}")
-                continue
-
-        logging.info(f"Total plots processed: {len(validated_plot_data)}")
         db.session.commit()
         
         return render_template('plots.html', 
                           account=account, 
                           sources=sources,
-                          plot_data=validated_plot_data)
+                          plot_data=plot_data)
                           
     except Exception as e:
         logging.error(f"Error loading plots for {account_url}: {e}")
-        traceback.print_exc()  # Print the full stack trace
+        traceback.print_exc()
         return "There was an issue loading the plots page.", 500
 
 def validate_source_data(data):
@@ -722,7 +684,12 @@ def save_layout(account_url):
         if not layout:
             layout = Layout(account_id=account.id, name=data['name'])
         
-        layout.config = json.dumps(data['config'])
+        # Ensure plotId is stored as integer in config
+        config = data['config']
+        for item in config:
+            item['plotId'] = int(item['plotId'])  # Convert to integer
+            
+        layout.config = json.dumps(config)
         db.session.add(layout)
         db.session.commit()
         
@@ -731,51 +698,58 @@ def save_layout(account_url):
         logging.error(f"Error saving layout for {account_url}: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
+def process_plot_data(plot, csv_content):
+    """Helper function to process individual plot data"""
+    try:
+        if plot.type == "metric":
+            data = process_metric_plot(plot, csv_content)
+        else:  # timeline type
+            data = process_timeseries_plot(plot, csv_content)
+        
+        if data.get('error'):
+            return None
+            
+        config = json.loads(plot.config) if plot.config else {}
+        return {
+            'plot_id': plot.id,
+            'name': plot.name,
+            'type': plot.type,
+            'source_name': plot.source.name,
+            'config': config,
+            **data
+        }
+    except Exception as e:
+        logging.error(f"Error processing plot {plot.id}: {str(e)}")
+        return None
+
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['GET'])
 def layout_view(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         
-        # Get all plots for this account
-        plots = []
+        layout_config = json.loads(layout.config)
+        required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
+        
         plot_data = []
-        for source in Source.query.filter_by(account_id=account.id).all():
-            # Download source data once per source
-            csv_content = download_source_file(account.settings, source)
-            if not csv_content:
+        source_data = {}  # Cache for source data
+        
+        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
+            # Get or download source data
+            if plot.source.id not in source_data:
+                csv_content = download_source_file(account.settings, plot.source)
+                source_data[plot.source.id] = csv_content
+            
+            if not source_data[plot.source.id]:
                 continue
                 
-            for plot in source.plots:
-                plots.append(plot)  # For the plot selector
-                try:
-                    if plot.type == "metric":
-                        data = process_metric_plot(plot, csv_content)
-                    else:  # timeline type
-                        data = process_timeseries_plot(plot, csv_content)
-                    
-                    if data.get('error'):
-                        continue
-                    
-                    config = json.loads(plot.config) if plot.config else {}
-                    plot_info = {
-                        'plot_id': plot.id,
-                        'name': plot.name,
-                        'type': plot.type,
-                        'source_name': source.name,
-                        'config': config,
-                        **data
-                    }
-                    plot_data.append(plot_info)
-                    
-                except Exception as e:
-                    logging.error(f"Error processing plot {plot.id}: {str(e)}")
-                    continue
+            plot_info = process_plot_data(plot, source_data[plot.source.id])
+            if plot_info:
+                plot_data.append(plot_info)
         
         return render_template('layout_view.html',
                            account=account,
                            layout=layout,
-                           plots=plots,
                            plot_data=plot_data)
                            
     except Exception as e:

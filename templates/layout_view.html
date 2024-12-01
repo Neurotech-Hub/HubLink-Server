@@ -26,56 +26,88 @@
     document.addEventListener('DOMContentLoaded', function() {
         const grid = GridStack.init({
             column: 12,
-            cellHeight: 200,  // Reduced base height
+            cellHeight: 200,
             margin: 10,
             marginTop: 10,
             disableResize: true,
-            float: false,
-            animate: true,
-            staticGrid: true
+            staticGrid: true,
+            disableDrag: true
         });
 
         // Load layout configuration
         const layout = {{ layout.config | safe }};
         const plotData = {{ plot_data | tojson | safe }};
         
+        console.log('Layout config details:', layout.map(item => ({
+            plotId: item.plotId,
+            x: item.x,
+            y: item.y,
+            w: item.w
+        })));
+        
+        console.log('Plot data available:', plotData.map(plot => ({
+            plot_id: plot.plot_id,
+            name: plot.name,
+            plotly_json: plot.plotly_json ? 'present' : 'missing'
+        })));
+        
         // Create a map of plot data by ID for easy lookup
         const plotDataMap = {};
-        plotData.forEach(plot => {
+        plotData.forEach((plot, index) => {
             plotDataMap[plot.plot_id] = plot;
+            console.log(`Mapped plot ${plot.plot_id} at index ${index}:`, {
+                name: plot.name,
+                plotly_json: plot.plotly_json ? 'present' : 'missing'
+            });
         });
+
+        // Keep track of how many times each plot is used
+        const plotInstanceCount = {};
 
         // Load and render each widget
         layout.forEach((item, index) => {
-            if (item.plotId && plotDataMap[item.plotId]) {
-                const plot = plotDataMap[item.plotId];
+            const plotId = parseInt(item.plotId);
+            console.log(`\nProcessing layout item ${index}:`, {
+                plotId,
+                position: `(${item.x}, ${item.y})`,
+                width: item.w
+            });
+            
+            if (plotId && plotDataMap[plotId]) {
+                const plot = plotDataMap[plotId];
+                plotInstanceCount[plotId] = (plotInstanceCount[plotId] || 0) + 1;
+                const instanceNum = plotInstanceCount[plotId];
+                
+                const uniqueId = `plot-${plotId}-${instanceNum}`;
+                
                 const widget = {
                     x: item.x,
                     y: item.y,
                     w: item.w,
-                    h: 2,  // Make widgets 2 units tall by default
-                    content: `<div class="plot-container"><div id="plot-${plot.plot_id}-${index}"></div></div>`
+                    h: 2,
+                    content: `<div class="plot-container"><div id="${uniqueId}"></div></div>`,
+                    noResize: true,
+                    noMove: true,
+                    locked: true
                 };
                 
                 grid.addWidget(widget);
                 
                 if (plot.plotly_json) {
                     const plotlyData = JSON.parse(plot.plotly_json);
-                    
-                    // Override any fixed dimensions from plot_utils
                     plotlyData.layout = {
                         ...plotlyData.layout,
                         autosize: true,
-                        margin: { t: 25, r: 10, b: 35, l: 60 },  // Increased bottom margin for legend
+                        margin: { t: 25, r: 10, b: 35, l: 60 },
                         height: null,
                         width: null,
                         showlegend: true,
-                        legend: { orientation: 'h', y: -0.2 },  // Adjusted legend position
+                        legend: { orientation: 'h', y: -0.2 },
                         plot_bgcolor: 'white',
                         paper_bgcolor: 'white'
                     };
                     
-                    Plotly.newPlot(`plot-${plot.plot_id}-${index}`, 
+                    Plotly.newPlot(uniqueId, 
                         plotlyData.data,
                         plotlyData.layout,
                         {
@@ -85,11 +117,14 @@
                         }
                     );
 
-                    // Handle resize events
-                    const plotDiv = document.getElementById(`plot-${plot.plot_id}-${index}`);
-                    new ResizeObserver(() => {
-                        Plotly.Plots.resize(plotDiv);
-                    }).observe(plotDiv.parentElement);
+                    const plotDiv = document.getElementById(uniqueId);
+                    if (plotDiv) {
+                        new ResizeObserver(() => {
+                            if (plotDiv.offsetParent !== null) {
+                                Plotly.Plots.resize(plotDiv);
+                            }
+                        }).observe(plotDiv.parentElement);
+                    }
                 }
             }
         });
