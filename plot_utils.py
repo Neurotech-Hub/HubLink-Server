@@ -34,12 +34,33 @@ def process_metric_plot(plot, csv_content):
                 showlegend=True,
                 boxmode='group',
                 plot_bgcolor='white',
-                paper_bgcolor='white'
+                paper_bgcolor='white',
+                margin=dict(
+                    l=100,   # left margin
+                    r=60,   # right margin
+                    t=60,   # top margin
+                    b=60    # bottom margin
+                ),
+                legend=dict(
+                    yanchor="top",
+                    y=0.99,
+                    xanchor="left",
+                    x=0.01,
+                    bgcolor="rgba(255, 255, 255, 0.8)"
+                ),
+                xaxis=dict(
+                    automargin=True,
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor='LightGray'
+                ),
+                yaxis=dict(
+                    automargin=True,
+                    showgrid=True,
+                    gridwidth=1,
+                    gridcolor='LightGray'
+                )
             )
-            
-            # Update axes to create a cleaner grid
-            fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-            fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
             
             plot_json = fig.to_json()
             
@@ -108,12 +129,33 @@ def process_timeseries_plot(plot, csv_content):
         fig.update_layout(
             showlegend=True,
             plot_bgcolor='white',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            margin=dict(
+                l=100,   # left margin
+                r=60,   # right margin
+                t=60,   # top margin
+                b=60    # bottom margin
+            ),
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01,
+                bgcolor="rgba(255, 255, 255, 0.8)"
+            ),
+            xaxis=dict(
+                automargin=True,
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='LightGray'
+            ),
+            yaxis=dict(
+                automargin=True,
+                showgrid=True,
+                gridwidth=1,
+                gridcolor='LightGray'
+            )
         )
-        
-        # Update axes to create a cleaner grid
-        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
-        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
         
         plot_json = fig.to_json()
         

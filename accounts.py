@@ -728,6 +728,12 @@ def layout_view(account_url, layout_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         
+        # Get all plots for this account (needed for edit mode)
+        plots = []
+        for source in Source.query.filter_by(account_id=account.id).all():
+            plots.extend(source.plots)
+        
+        # Process plot data for view mode
         layout_config = json.loads(layout.config)
         required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
         
@@ -747,10 +753,11 @@ def layout_view(account_url, layout_id):
             if plot_info:
                 plot_data.append(plot_info)
         
-        return render_template('layout_view.html',
+        return render_template('layout.html',
                            account=account,
                            layout=layout,
-                           plot_data=plot_data)
+                           plots=plots,  # For edit mode
+                           plot_data=plot_data)  # For view mode
                            
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
