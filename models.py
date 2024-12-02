@@ -76,7 +76,6 @@ class File(db.Model):
     last_modified = db.Column(db.DateTime, nullable=False)
     version = db.Column(db.Integer, nullable=False, default=1)
     last_checked = db.Column(db.DateTime, nullable=True)
-    preview = db.Column(db.String(500), nullable=True, default="")
 
     def __repr__(self):
         return f"<File {self.key} for Account {self.account_id}>"
@@ -89,8 +88,7 @@ class File(db.Model):
             'size': self.size,
             'last_modified': self.last_modified.isoformat(),
             'version': self.version,
-            'last_checked': self.last_checked.isoformat() if self.last_checked else None,
-            'preview': self.preview
+            'last_checked': self.last_checked.isoformat() if self.last_checked else None
         }
 
 # Define the device model with ip_address instead of mac_address
@@ -126,6 +124,8 @@ class Source(db.Model):
     success = db.Column(db.Boolean, nullable=False, default=False)
     error = db.Column(db.String(500), nullable=True)
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
+    head = db.Column(db.String(500), nullable=False, default="")
+    devices = db.Column(db.String(500), nullable=False, default="")
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
     # Add relationship to Account
@@ -136,11 +136,11 @@ class Source(db.Model):
 
     @property
     def available_columns(self):
-        """Get list of available columns from the CSV preview, skipping hublink columns."""
-        if self.file and self.file.preview:
+        """Get list of available columns from the CSV head, skipping hublink columns."""
+        if self.head:
             try:
-                # Split the preview into lines and get the header row
-                first_line = self.file.preview.split('\n')[0]
+                # Split the head into lines and get the header row
+                first_line = self.head.split('\n')[0]
                 
                 # Split the header row into columns
                 headers = [col.strip() for col in first_line.split(',')]
@@ -148,7 +148,7 @@ class Source(db.Model):
                 # Filter out empty columns and hublink columns
                 return [h for h in headers if h and not h.lower().startswith('hublink')]
             except Exception as e:
-                logging.error(f"Error parsing preview headers: {e}")
+                logging.error(f"Error parsing head headers: {e}")
                 return []
         return []
 

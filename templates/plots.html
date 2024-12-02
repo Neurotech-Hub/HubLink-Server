@@ -21,7 +21,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5>Sources</h5>
+                <h2>Sources</h2>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourceModal">
                     <i class="bi bi-plus-lg"></i> Add Source
                 </button>
@@ -38,11 +38,11 @@
                                 <h6 class="mb-1">{{ source.name }}</h6>
 
                                 <!-- Preview Text -->
-                                {% if source.file and source.file.preview %}
+                                {% if source.head %}
                                 <div class="preview-container">
                                     <small class="text-muted mb-1">
                                         <code class="d-block text-wrap small">
-                                            {{ source.file.preview }}
+                                            {{ source.head }}
                                         </code>
                                     </small>
                                 </div>

@@ -43,15 +43,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL', 
     f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
 )
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # timezone handling
 moment = Moment(app)
 
 # security by obscurity
 admin_route = os.getenv('ADMIN_ROUTE', 'admin')
-
-logger.info(f"SQLALCHEMY_DATABASE_URI is set to: {app.config['SQLALCHEMY_DATABASE_URI']}")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
 db.init_app(app)
@@ -64,7 +62,9 @@ with app.app_context():
     try:
         # First, try to clean up any leftover temporary tables
         with db.engine.connect() as conn:
+            conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_file"))
             conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_setting"))
+            conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_source"))
             conn.commit()
         
         # Now run the migration
@@ -228,16 +228,9 @@ def create_source():
         
         print(f"Found source: {source.name} (ID: {source.id})")
         
-        # Convert preview list to string if it exists
-        preview_str = ''
-        if 'preview' in data and data['preview']:
-            try:
-                # Take first few rows and join them with newlines
-                preview_rows = [','.join(map(str, row)) for row in data['preview'][:3]]
-                preview_str = '\n'.join(preview_rows)
-            except Exception as e:
-                print(f"Error formatting preview data: {e}")
-                preview_str = str(data['preview'])
+        # Remove preview handling and add head and devices
+        source.head = data.get('head', '')
+        source.devices = data.get('devices', '')
         
         # Get or create the File record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
@@ -249,16 +242,13 @@ def create_source():
                 url=generate_s3_url(source.account.settings.bucket_name, data['key']),
                 size=data['size'],
                 last_modified=datetime.now(timezone.utc),
-                version=1,
-                preview=preview_str
+                version=1
             )
             db.session.add(file)
             db.session.flush()
             print(f"Created new file record with ID: {file.id}")
         else:
             print(f"Found existing file record: {file.id}")
-            # Update existing file's preview
-            file.preview = preview_str
             file.last_modified = datetime.now(timezone.utc)
         
         # Update the source

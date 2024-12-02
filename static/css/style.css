@@ -783,13 +783,10 @@ table td code {
 }
 
 /* Toggle switch styling */
-.toggle-container {
-    padding: 10px;
-}
 
 .toggle-switch {
     position: relative;
-    width: 300px;
+    width: 200px;
     height: 40px;
     background: #f0f0f0;
     border-radius: 20px;
@@ -801,7 +798,7 @@ table td code {
 .switch-handle {
     position: absolute;
     left: 4px;
-    width: 150px;
+    width: 100px;
     height: 32px;
     background: #616161;
     border-radius: 16px;
@@ -809,12 +806,12 @@ table td code {
 }
 
 .toggle-switch.active .switch-handle {
-    left: calc(100% - 154px);
+    left: calc(100% - 104px);
 }
 
 .switch-label {
     position: absolute;
-    width: 150px;
+    width: 100px;
     text-align: center;
     line-height: 32px;
     font-weight: 500;
