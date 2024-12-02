@@ -59,7 +59,7 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 # Run migrations only in production environment
-if os.getenv('ENVIRONMENT') == 'production':
+if os.getenv('ENVIRONMENT', 'development') == 'production':
     with app.app_context():
         try:        
             upgrade()
