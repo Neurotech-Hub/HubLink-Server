@@ -139,14 +139,16 @@ class Source(db.Model):
         """Get list of available columns from the CSV head, skipping hublink columns."""
         if self.head:
             try:
-                # Split the head into lines and get the header row
-                first_line = self.head.split('\n')[0]
+                # Parse the JSON string into a list of lists
+                head_data = json.loads(self.head)
                 
-                # Split the header row into columns
-                headers = [col.strip() for col in first_line.split(',')]
-                
-                # Filter out empty columns and hublink columns
-                return [h for h in headers if h and not h.lower().startswith('hublink')]
+                # Get the header row (first row)
+                if head_data and len(head_data) > 0:
+                    headers = head_data[0]
+                    
+                    # Filter out empty columns and hublink columns
+                    return [h for h in headers if h and not h.lower().startswith('hublink')]
+                    
             except Exception as e:
                 logging.error(f"Error parsing head headers: {e}")
                 return []
@@ -165,10 +167,9 @@ class Source(db.Model):
             'success': self.success,
             'error': self.error,
             'available_columns': self.available_columns,  # This will now parse JSON and skip first two columns
-            'file': {
-                'id': self.file.id,
-                'preview': self.file.preview
-            } if self.file else None
+            'file_id': self.file_id,  # Just include the file_id
+            'head': json.loads(self.head) if self.head else [],  # Decode JSON string to list
+            'devices': json.loads(self.devices) if self.devices else []  # Decode JSON string to list
         }
         
         # Add dynamic state based on conditions
@@ -182,6 +183,13 @@ class Source(db.Model):
             data['state'] = 'running'
             
         return data
+
+    def get_data(self):
+        from S3Manager import download_source_file
+        settings = Setting.query.filter_by(account_id=self.account_id).first()
+        if not settings:
+            return None
+        return download_source_file(settings, self)
 
 # Define the plot model
 class Plot(db.Model):
@@ -213,6 +221,8 @@ class Layout(db.Model):
     name = db.Column(db.String(100), nullable=False)
     config = db.Column(db.Text, nullable=False)  # JSON string storing grid layout
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    is_default = db.Column(db.Boolean, nullable=False, default=False)
+    show_nav = db.Column(db.Boolean, nullable=False, default=False)
     
     # Add relationship to Account
     account = db.relationship('Account', backref=db.backref('layouts', lazy=True))
@@ -225,5 +235,7 @@ class Layout(db.Model):
             'id': self.id,
             'name': self.name,
             'config': json.loads(self.config),
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.isoformat(),
+            'is_default': self.is_default,
+            'show_nav': self.show_nav
         }

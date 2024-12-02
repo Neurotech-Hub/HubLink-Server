@@ -22,21 +22,21 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2>Data Sources</h2>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sourceModal">
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#sourceModal">
                     <i class="bi bi-plus-lg"></i> Add Source
                 </button>
             </div>
 
             <!-- Sources List -->
             <div class="source-list">
-                {% for source in sources|sort(attribute='name') %}
+                {% for source in sources %}
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">{{ source.name }}</h5>
                         <div>
                             <button type="button" class="btn btn-outline-primary btn-sm me-2"
                                 onclick='createPlot({{ source.to_dict() | tojson | safe }})'>
-                                New Plot
+                                Create Plot
                             </button>
                             <div class="dropdown d-inline">
                                 <button class="btn btn-outline-secondary btn-sm" type="button"
@@ -60,26 +60,20 @@
                     <!-- Plot Grid -->
                     <div class="card-body p-3">
                         <div class="row row-cols-1 row-cols-md-4 g-3">
-                            {% for plot in source.plots|sort(attribute='name') %}
+                            {% for plot in source.plots %}
                             <div class="col">
                                 <div class="mini-plot-card">
-                                    <div class="card h-100" 
-                                         tabindex="0"
-                                         role="button"
-                                         data-bs-toggle="popover" 
-                                         data-bs-trigger="focus" 
-                                         title="Plot Configuration"
-                                         data-bs-html="true"
-                                         data-bs-content='<pre class="mb-0"><code>{{ plot.config | tojson }}</code></pre>'>
+                                    <div class="card h-100">
                                         <div class="card-body p-2">
                                             <div class="d-flex justify-content-between align-items-start mb-1">
                                                 <h6 class="card-title mb-0 text-truncate">{{ plot.name }}</h6>
                                                 <form action="/{{ account.url }}/plot/{{ plot.id }}/delete"
-                                                    method="POST">
-                                                    <button type="submit" class="btn-close btn-sm" aria-label="Close"></button>
+                                                    method="POST" class="ms-2">
+                                                    <button type="submit" class="btn-close" aria-label="Close"></button>
                                                 </form>
                                             </div>
                                             <p class="card-text small text-muted mb-1">{{ plot.type }}</p>
+                                            <pre class="config-preview"><code>{{ plot.config }}</code></pre>
                                         </div>
                                     </div>
                                 </div>
@@ -115,56 +109,50 @@
         </div>
     </div>
 
-    <!-- Layouts Management Section -->
+    <!-- Plot Areas -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>Layouts</h2>
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#layoutModal">
-                    <i class="bi bi-plus-lg"></i> Add Layout
-                </button>
+                <h5>Plots</h5>
             </div>
 
-            <!-- Layouts List -->
-            <div class="list-group">
-                {% for layout in account.layouts|sort(attribute='name') %}
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="mb-0">{{ layout.name }}</h5>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        {% if layout.is_default %}
-                        <small class="text-muted me-3" style="font-size: 0.75rem;">
-                            <i class="fa fa-bookmark"></i>
-                            Default
-                        </small>
-                        {% endif %}
-                        <a href="/{{ account.url }}/layout/{{ layout.id }}" class="btn btn-outline-primary btn-sm me-2">View</a>
-                        <div class="dropdown d-inline">
-                            <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown">
-                                ⋮
+            <!-- Plot Cards -->
+            {% for plot in plot_data %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div>
+                            <h6 class="card-title mb-0">{{ plot.name }}</h6>
+                            <small class="text-muted">Source: {{ plot.source_name }}</small>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-link" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical"></i>
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end">
+                            <ul class="dropdown-menu">
                                 <li>
-                                    <button class="dropdown-item" onclick="editLayout({{ layout.id }}, '{{ layout.name }}', {{ layout.is_default|tojson }}, {{ layout.show_nav|tojson }})">Edit</button>
-                                </li>
-                                <li>
-                                    <form action="/{{ account.url }}/layout/{{ layout.id }}/delete" method="POST" class="d-inline">
-                                        <button type="submit" class="dropdown-item text-danger">Delete</button>
+                                    <form action="/{{ account.url }}/plot/{{ plot.plot_id }}/delete" method="POST"
+                                        class="d-inline">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="bi bi-trash"></i> Delete Plot
+                                        </button>
                                     </form>
                                 </li>
                             </ul>
                         </div>
                     </div>
+                    <div class="plot-container" style="position: relative; width: 100%;">
+                        <div id="plot-{{ plot.plot_id }}" style="width: 100%; min-height: 400px;"></div>
+                    </div>
                 </div>
-                {% endfor %}
-
-                {% if not account.layouts %}
-                <div class="list-group-item text-center text-muted">
-                    <p class="mb-0">No layouts created yet.</p>
-                </div>
-                {% endif %}
             </div>
+            {% endfor %}
+
+            {% if not plot_data %}
+            <div class="text-center text-muted p-4">
+                <p>No plots created yet. Click "Create Plot" on a source to get started.</p>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -311,44 +299,6 @@
     </div>
 </div>
 
-<!-- Layout Modal -->
-<div class="modal fade" id="layoutModal" tabindex="-1" aria-labelledby="layoutModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="layoutModalLabel">Add Layout</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="layoutForm" action="" method="POST" class="needs-validation" novalidate>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="layoutName" class="form-label">Layout Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="layoutName" name="name" required>
-                        <div class="invalid-feedback">Please provide a layout name.</div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="isDefault" name="is_default"
-                                {% if not account.layouts %}checked disabled{% endif %}>
-                            <label class="form-check-label" for="isDefault">Set as default layout</label>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="showNav" name="show_nav">
-                            <label class="form-check-label" for="showNav">Assign to sidebar</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- Plotly.js -->
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
@@ -461,102 +411,38 @@
         }
     }
 
-    function editLayout(id, name, isDefault, showNav) {
-        const modal = document.getElementById('layoutModal');
-        const form = document.getElementById('layoutForm');
-        const title = modal.querySelector('.modal-title');
-        const defaultCheckbox = document.getElementById('isDefault');
-        const showNavCheckbox = document.getElementById('showNav');
-        
-        // Update modal title
-        title.textContent = 'Edit Layout';
-        
-        // Set form action
-        form.action = `/{{ account.url }}/layout/${id}/update`;
-        
-        // Populate form fields
-        document.getElementById('layoutName').value = name;
-        defaultCheckbox.checked = isDefault;
-        showNavCheckbox.checked = showNav === true;  // Ensure boolean comparison
-        
-        // If this is the only layout, disable the default checkbox
-        const layoutCount = {{ account.layouts|length }};
-        if (layoutCount === 1) {
-            defaultCheckbox.checked = true;
-            defaultCheckbox.disabled = true;
-        } else {
-            defaultCheckbox.disabled = false;
-        }
-        
-        // Show modal
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-    }
+    function createPlot(source) {
+        // Update form action and source ID
+        const form = document.getElementById('plotForm');
+        form.action = `/{{ account.url }}/source/${source.id}/plot`;
+        document.getElementById('plotSourceId').value = source.id;
 
-    // Add button click handler
-    document.querySelector('[data-bs-target="#layoutModal"]').addEventListener('click', function() {
-        const modal = document.getElementById('layoutModal');
-        const form = document.getElementById('layoutForm');
-        const title = modal.querySelector('.modal-title');
-        const defaultCheckbox = document.getElementById('isDefault');
-        
-        // Reset form
-        form.reset();
-        
-        // Update modal title
-        title.textContent = 'Add Layout';
-        
-        // If there are no layouts, check and disable the default checkbox
-        const layoutCount = {{ account.layouts|length }};
-        if (layoutCount === 0) {
-            defaultCheckbox.checked = true;
-            defaultCheckbox.disabled = true;
-        } else {
-            defaultCheckbox.disabled = false;
-        }
-        
-        // Set form action for creation
-        form.action = `/{{ account.url }}/layout`;
-    });
+        // Get the select elements
+        const xSelect = document.getElementById('xColumn');
+        const ySelect = document.getElementById('yColumn');
 
-    // Initialize all popovers
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize popovers with custom options
-        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl, {
-            sanitize: false, // Allow HTML in the content
-            container: 'body' // Append to body to avoid positioning issues
-        }));
+        // Clear existing options
+        xSelect.innerHTML = '<option value="">Select data...</option>';
+        ySelect.innerHTML = '<option value="">Select data...</option>';
 
-        // Close other popovers when a new one is shown
-        popoverTriggerList.forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                popoverTriggerList.forEach(otherTrigger => {
-                    if (otherTrigger !== trigger) {
-                        const popover = bootstrap.Popover.getInstance(otherTrigger);
-                        if (popover) {
-                            popover.hide();
-                        }
-                    }
-                });
+        // Add options for each available column
+        if (source.available_columns && source.available_columns.length > 0) {
+            source.available_columns.forEach(column => {
+                xSelect.add(new Option(column, column));
+                ySelect.add(new Option(column, column));
             });
-        });
+        } else {
+            console.warn('No columns available for source:', source.id);
+        }
 
-        // Close popover when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.popover') && !e.target.closest('.card')) {
-                popoverTriggerList.forEach(trigger => {
-                    const popover = bootstrap.Popover.getInstance(trigger);
-                    if (popover) {
-                        popover.hide();
-                    }
-                });
-            }
-        });
-    });
+        // Reset plot type and show/hide fields
+        document.getElementById('plotType').value = 'timeline';
+        document.getElementById('displayBar').checked = true;
+        handlePlotTypeChange();
 
-    // Initialize all popovers
-    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('plotModal'));
+        modal.show();
+    }
 </script>
-
 {% endblock %}

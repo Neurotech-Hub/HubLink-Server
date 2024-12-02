@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone  # Added timezone import
 from accounts import accounts_bp  # Importing Blueprint for account-specific routes
 from dotenv import load_dotenv
 from flask_moment import Moment
+import json
 
 load_dotenv(override=True)
 
@@ -228,9 +229,9 @@ def create_source():
         
         print(f"Found source: {source.name} (ID: {source.id})")
         
-        # Remove preview handling and add head and devices
-        source.head = data.get('head', '')
-        source.devices = data.get('devices', '')
+        # Convert lists to JSON strings before storing
+        source.head = json.dumps(data.get('head', []))
+        source.devices = json.dumps(data.get('devices', []))
         
         # Get or create the File record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
@@ -271,6 +272,20 @@ def create_source():
             'error': 'Internal server error',
             'status': 500
         }), 500
+
+@app.template_filter('to_csv')
+def to_csv_filter(value):
+    if not value:
+        return ''
+    try:
+        # If value is a string (JSON), parse it first
+        if isinstance(value, str):
+            value = json.loads(value)
+        # Convert each row to comma-separated string
+        return '\n'.join([','.join(map(str, row)) for row in value])
+    except Exception as e:
+        print(f"Error converting to CSV: {e}")
+        return str(value)
 
 if __name__ == '__main__':
     app.run(debug=True)

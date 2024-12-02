@@ -44,6 +44,15 @@
                                 <i class="fa fa-chart-line"></i>
                                 <span>Plots</span>
                             </a>
+                            {% for layout in account.layouts|sort(attribute='name') %}
+                                {% if layout.show_nav %}
+                                <a class="nav-link ms-3 small {% if request.path == '/' + account.url + '/layout/' + layout.id|string %}active{% endif %}"
+                                    href="/{{ account.url }}/layout/{{ layout.id }}">
+                                    <i class="fa fa-columns fa-fw"></i>
+                                    <span>{{ layout.name }}</span>
+                                </a>
+                                {% endif %}
+                            {% endfor %}
                         </li>
                     </ul>
                 </div>
@@ -70,7 +79,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {% if request.path == '/' + account.url + '/plots' %}active{% endif %}"
+                        <a class="nav-link {% if request.path.startswith('/' + account.url + '/plots') or request.path.startswith('/' + account.url + '/layout/') %}active{% endif %}"
                             href="/{{ account.url }}/plots" aria-label="Plots">
                             <i class="fa fa-chart-line"></i>
                         </a>

@@ -35,7 +35,13 @@
                             <i class="fa fa-plus"></i> Half Width
                         </button>
                     </div>
-                    <button class="btn btn-sm btn-primary" onclick="saveLayout()">Save Layout</button>
+                    <div>
+                        <button class="btn btn-sm btn-success me-2" onclick="saveLayout()">Save Layout</button>
+                        <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
+                              onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -112,7 +118,11 @@
             const plotId = parseInt(item.plotId);
             if (plotId && plotDataMap[plotId]) {
                 const plot = plotDataMap[plotId];
-                const colClass = `col-md-${item.w}`;
+                
+                // Calculate column width and offset based on 12-column grid
+                const colWidth = item.w;  // Use exact width from grid
+                const colOffset = item.x;  // Use exact x position for offset
+                const colClass = `col-md-${colWidth}${colOffset ? ` offset-md-${colOffset}` : ''}`;
                 
                 // Create column div
                 const colDiv = document.createElement('div');
@@ -169,19 +179,22 @@
     function initializeGrid() {
         const gridConfig = {
             column: 12,
-            cellHeight: 120,
+            cellHeight: 100,
             margin: 0,
             marginTop: 0,
             float: false,
             animate: true,
             draggable: {
                 handle: '.grid-stack-item-content'
-            }
+            },
+            disableResize: false,
+            staticGrid: false,
+            disableDrag: false,
+            acceptWidgets: true,
+            dragIn: false,  // Prevent dragging from outside
+            dragInOptions: { revert: 'invalid', scroll: false, appendTo: 'body', helper: 'clone' },
+            removable: false,  // Use our custom remove button instead
         };
-
-        gridConfig.disableResize = true;
-        gridConfig.staticGrid = false;
-        gridConfig.disableDrag = false;
 
         grid = GridStack.init(gridConfig, document.getElementById('editContainer').querySelector('.grid-stack'));
         grid.removeAll();
@@ -269,7 +282,7 @@
             }))
         };
 
-        fetch('/{{ account.url }}/layout', {
+        fetch('/{{ account.url }}/layout/{{ layout.id }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

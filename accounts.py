@@ -353,36 +353,17 @@ def account_plots(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         
         sources = Source.query.filter_by(account_id=account.id).all()
-        plot_data = []
-        source_data = {}
-        
-        for source in sources:
-            # Download and cache source data
-            csv_content = download_source_file(settings, source)
-            if not csv_content:
-                flash(f'No data available for source: {source.name}', 'error')
-                continue
-            
-            source_data[source.id] = csv_content
-            
-            for plot in source.plots:
-                plot_info = process_plot_data(plot, csv_content)
-                if plot_info:
-                    plot_data.append(plot_info)
-
-        db.session.commit()
         
         return render_template('plots.html', 
                           account=account, 
-                          sources=sources,
-                          plot_data=plot_data)
+                          sources=sources)
                           
     except Exception as e:
+        print(f"Error in account_plots: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         logging.error(f"Error loading plots for {account_url}: {e}")
-        traceback.print_exc()
         return "There was an issue loading the plots page.", 500
 
 def validate_source_data(data):
@@ -566,46 +547,48 @@ def sync_sources(account_url):
 @accounts_bp.route('/<account_url>/source/<int:source_id>/plot', methods=['POST'])
 def create_plot(account_url, source_id):
     try:
+        print(f"\nCreating plot for source {source_id} in account {account_url}")
+        print(f"Form data received: {request.form}")
+        
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
         
         plot_name = request.form.get('name')
         plot_type = request.form.get('type')
-        
-        if not plot_name or not plot_type:
-            flash('Plot name and type are required.', 'error')
-            return redirect(url_for('accounts.account_plots', account_url=account_url))
+        print(f"Plot details - Name: {plot_name}, Type: {plot_type}")
         
         # Build config based on plot type
         config = {}
         if plot_type == 'metric':
-            data_column = request.form.get('metric_data_column')
+            y_data = request.form.get('y_data')  # Changed from y_column
             display_type = request.form.get('display_type')
             
-            if not data_column:
+            if not y_data:
                 flash('Data column is required for metric plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
             
             if not display_type or display_type not in ['bar', 'box', 'table']:
-                flash('Valid display type (bar, box, or table) is required for metric plots.', 'error')
+                flash('Valid display type is required for metric plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
                 
             config = {
-                'data_column': data_column,
+                'y_data': y_data,
                 'display': display_type
             }
         else:  # timeline type
-            time_column = request.form.get('time_column')
-            data_column = request.form.get('data_column')
+            x_data = request.form.get('x_data')  # Changed from x_column
+            y_data = request.form.get('y_data')  # Changed from y_column
             
-            if not time_column or not data_column:
-                flash('Time column and data column are required for timeline plots.', 'error')
+            if not x_data or not y_data:
+                flash('X Data and Y Data are required for timeline plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
                 
             config = {
-                'time_column': time_column,
-                'data_column': data_column
+                'x_data': x_data,
+                'y_data': y_data
             }
+        
+        print(f"Final config: {config}")
         
         # Create new plot with JSON config
         plot = Plot(
@@ -617,10 +600,13 @@ def create_plot(account_url, source_id):
         
         db.session.add(plot)
         db.session.commit()
+        print(f"Plot created successfully with ID: {plot.id}")
         
         flash('Plot created successfully.', 'success')
     except Exception as e:
         db.session.rollback()
+        print(f"Error creating plot: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         flash('Error creating plot.', 'error')
         logging.error(f"Error creating plot: {e}")
     
@@ -673,16 +659,16 @@ def layout_test(account_url):
         logging.error(f"Error loading layout test for {account_url}: {e}")
         return "There was an issue loading the layout test page.", 500
 
-@accounts_bp.route('/<account_url>/layout', methods=['POST'])
-def save_layout(account_url):
+@accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['POST'])
+def save_layout(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         data = request.get_json()
         
-        # Get or create layout
-        layout = Layout.query.filter_by(account_id=account.id).first()
-        if not layout:
-            layout = Layout(account_id=account.id, name=data['name'])
+        # Update layout name if provided
+        if 'name' in data:
+            layout.name = data['name']
         
         # Ensure plotId is stored as integer in config
         config = data['config']
@@ -690,26 +676,36 @@ def save_layout(account_url):
             item['plotId'] = int(item['plotId'])  # Convert to integer
             
         layout.config = json.dumps(config)
-        db.session.add(layout)
         db.session.commit()
         
         return jsonify({'success': True})
     except Exception as e:
-        logging.error(f"Error saving layout for {account_url}: {e}")
+        logging.error(f"Error saving layout {layout_id} for account {account_url}: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
 def process_plot_data(plot, csv_content):
     """Helper function to process individual plot data"""
     try:
+        print(f"\nProcessing plot data for plot {plot.id}")
+        if not csv_content:
+            print("  No CSV content provided")
+            return None
+            
+        print(f"  CSV content preview: {csv_content[:200]}...")  # First 200 chars
+        print(f"  Plot type: {plot.type}")
+        print(f"  Plot config: {plot.config}")
+        
         if plot.type == "metric":
             data = process_metric_plot(plot, csv_content)
         else:  # timeline type
             data = process_timeseries_plot(plot, csv_content)
         
         if data.get('error'):
+            print(f"  Error processing data: {data.get('error')}")
             return None
             
         config = json.loads(plot.config) if plot.config else {}
+        print(f"  Successfully processed plot data")
         return {
             'plot_id': plot.id,
             'name': plot.name,
@@ -719,6 +715,7 @@ def process_plot_data(plot, csv_content):
             **data
         }
     except Exception as e:
+        print(f"  Error processing plot {plot.id}: {str(e)}")
         logging.error(f"Error processing plot {plot.id}: {str(e)}")
         return None
 
@@ -763,3 +760,96 @@ def layout_view(account_url, layout_id):
         logging.error(f"Error loading layout view for {account_url}: {e}")
         traceback.print_exc()
         return "There was an issue loading the layout view page.", 500
+
+@accounts_bp.route('/<account_url>/layout/<int:layout_id>/delete', methods=['POST'])
+def delete_layout(account_url, layout_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        
+        was_default = layout.is_default
+        db.session.delete(layout)
+        
+        # If we deleted the default layout and other layouts exist,
+        # make the first remaining layout the default
+        if was_default:
+            remaining_layout = Layout.query.filter_by(account_id=account.id).first()
+            if remaining_layout:
+                remaining_layout.is_default = True
+        
+        db.session.commit()
+        flash('Layout deleted successfully.', 'success')
+    except Exception as e:
+        logging.error(f"Error deleting layout {layout_id} for account {account_url}: {e}")
+        flash('Error deleting layout.', 'error')
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/layout', methods=['POST'])
+def create_layout(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        layout_name = request.form.get('name')
+        
+        if not layout_name:
+            flash('Layout name is required.', 'error')
+            return redirect(url_for('accounts.account_plots', account_url=account_url))
+        
+        # Check if this is the first layout or if is_default was requested
+        is_first_layout = len(account.layouts) == 0
+        should_be_default = is_first_layout or request.form.get('is_default') == 'on'
+        
+        # If this layout will be default, set all other layouts to not default
+        if should_be_default:
+            Layout.query.filter_by(account_id=account.id).update({'is_default': False})
+        
+        # Create new layout with empty config
+        layout = Layout(
+            account_id=account.id,
+            name=layout_name,
+            config=json.dumps([]),
+            is_default=should_be_default,  # Set based on first layout or form input
+            show_nav=request.form.get('show_nav') == 'on'
+        )
+        db.session.add(layout)
+        db.session.commit()
+        
+        return redirect(url_for('accounts.layout_view', account_url=account_url, layout_id=layout.id))
+    except Exception as e:
+        logging.error(f"Error creating layout for {account_url}: {e}")
+        flash('Error creating layout.', 'error')
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/layout/<int:layout_id>/update', methods=['POST'])
+def update_layout_settings(account_url, layout_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        
+        # Update layout name if provided
+        if 'name' in request.form:
+            layout.name = request.form['name']
+        
+        # Handle is_default update
+        if 'is_default' in request.form:
+            # Check if this is the only layout
+            layout_count = Layout.query.filter_by(account_id=account.id).count()
+            if layout_count > 1:
+                # Set all other layouts to not default
+                Layout.query.filter(Layout.account_id == account.id, Layout.id != layout_id).update({'is_default': False})
+            layout.is_default = request.form.get('is_default') == 'on'
+        
+        # Handle show_nav update
+        layout.show_nav = request.form.get('show_nav') == 'on'
+        
+        # Optionally update config if present
+        if 'config' in request.form:
+            layout.config = request.form['config']
+        
+        db.session.commit()
+        flash('Layout settings updated successfully.', 'success')
+    except Exception as e:
+        logging.error(f"Error updating layout settings for {layout_id}: {e}")
+        flash('Error updating layout settings.', 'error')
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))

@@ -638,9 +638,8 @@ table td code {
 
     .grid-stack-item {
         min-height: 80px;
-        margin-bottom: 20px;
+        margin-bottom: 0;
         padding: 0;
-        /* Ensure items respect container bounds */
         max-width: 100%;
     }
 
@@ -653,7 +652,7 @@ table td code {
         border-radius: 8px;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         cursor: move;
-        height: 80px !important;
+        height: 100%;
         position: relative;
         padding: 10px;
         width: 100%;
@@ -863,4 +862,92 @@ table td code {
 .js-plotly-plot .plotly {
     width: 100% !important;
     height: 100% !important;
+}
+
+/* Source card styling */
+.source-list .card {
+    border: 1px solid rgba(0, 0, 0, .125);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .05);
+}
+
+.source-list .card-header {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, .125);
+    padding: 0.75rem 1rem;
+}
+
+/* Mini plot cards */
+.mini-plot-card {
+    transition: all 0.2s ease-in-out;
+}
+
+.mini-plot-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .1);
+}
+
+/* Config preview */
+.config-preview {
+    font-size: 0.7rem;
+    margin: 0;
+    padding: 0;
+    color: #6c757d;
+    background: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 100%;
+}
+
+/* Form reset in footer */
+.source-list .card-footer form {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+/* Layout list styling */
+.list-group-item {
+    border-left: none;
+    border-right: none;
+    padding: 1rem;
+}
+
+.list-group-item:first-child {
+    border-top: none;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* Layout button group styling */
+.list-group-item .btn-group .btn {
+    padding: 0.375rem 1rem;
+    font-weight: 500;
+    border-radius: 4px;
+}
+
+/* .list-group-item .btn-group .btn:not(:last-child) {
+    margin-right: 0.5rem;
+} */
+
+/* Clean form reset for delete button */
+.list-group-item form {
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+/* Style for the popover */
+.popover {
+    max-width: 400px;
+}
+
+.popover pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #f8f9fa;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
 }

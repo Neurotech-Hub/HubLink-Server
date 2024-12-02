@@ -14,4 +14,18 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
+    // Select all flash messages
+    const flashMessages = document.querySelectorAll('.alert-dismissible');
+
+    // Set a timeout to hide each flash message after 5 seconds
+    flashMessages.forEach(function (message) {
+        setTimeout(function () {
+            // Use Bootstrap's fade out class
+            message.classList.add('fade');
+            setTimeout(function () {
+                message.style.display = 'none';
+            }, 150); // Wait for the fade out transition
+        }, 3000); // 3000 milliseconds = 3 seconds
+    });
 });
