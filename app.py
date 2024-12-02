@@ -58,21 +58,14 @@ db.init_app(app)
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
 
-# Run migrations
-with app.app_context():
-    try:
-        # First, try to clean up any leftover temporary tables
-        with db.engine.connect() as conn:
-            conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_file"))
-            conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_setting"))
-            conn.execute(db.text("DROP TABLE IF EXISTS _alembic_tmp_source"))
-            conn.commit()
-        
-        # Now run the migration
-        upgrade()
-        logger.info("Database migrations completed successfully")
-    except Exception as e:
-        logger.error(f"Error running database migrations: {e}")
+# Run migrations only in production environment
+if os.getenv('ENVIRONMENT') == 'production':
+    with app.app_context():
+        try:        
+            upgrade()
+            logger.info("Database migrations completed successfully")
+        except Exception as e:
+            logger.error(f"Error running database migrations: {e}")
 
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)

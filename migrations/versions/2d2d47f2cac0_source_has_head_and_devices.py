@@ -22,8 +22,8 @@ def upgrade():
         batch_op.drop_column('preview')
 
     with op.batch_alter_table('source', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('head', sa.String(length=500), nullable=False))
-        batch_op.add_column(sa.Column('devices', sa.String(length=500), nullable=False))
+        batch_op.add_column(sa.Column('head', sa.String(length=500), nullable=False, server_default=''))
+        batch_op.add_column(sa.Column('devices', sa.String(length=500), nullable=False, server_default=''))
 
     # ### end Alembic commands ###
 
