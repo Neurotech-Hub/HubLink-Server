@@ -40,14 +40,14 @@ document.addEventListener('DOMContentLoaded', function() {
     grid.removeAll();
 
     const layout = {{ layout.config | safe }};
-    const plotData = {{ plot_data | tojson | safe }};
-    const plotDataMap = {};
-    plotData.forEach(plot => plotDataMap[plot.plot_id] = plot);
+    const plotInfo = {{ plot_info_arr | tojson | safe }};
+    const plotInfoMap = {};
+    plotInfo.forEach(plot => plotInfoMap[plot.plot_id] = plot);
     
     layout.forEach((item, index) => {
         const plotId = parseInt(item.plotId);
-        if (plotId && plotDataMap[plotId]) {
-            const plot = plotDataMap[plotId];
+        if (plotId && plotInfoMap[plotId]) {
+            const plot = plotInfoMap[plotId];
             
             // Create the widget content
             const widgetContent = `<div class="plot-container" id="plot-${plotId}-${index}"></div>`;
@@ -78,8 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         responsive: true,
                         displayModeBar: 'hover',
                         displaylogo: false,
-                        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d'],
-                        autosize: true
+                        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
                     }
                 );
 

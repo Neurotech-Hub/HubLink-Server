@@ -198,7 +198,7 @@ class Plot(db.Model):
     name = db.Column(db.String(100), nullable=False)
     type = db.Column(db.String(50), nullable=False, default="timeline")
     config = db.Column(db.String(500), nullable=False)  # JSON string
-    info = db.Column(db.Text, nullable=True)  # JSON string of processed plot data
+    data = db.Column(db.Text, nullable=True)  # JSON string of processed plot data
     
     # Add relationship to Source
     source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
@@ -213,7 +213,7 @@ class Plot(db.Model):
             'name': self.name,
             'type': self.type,
             'config': json.loads(self.config),
-            'info': json.loads(self.info) if self.info else None
+            'data': json.loads(self.info) if self.info else None
         }
 
 # Define the layout model

@@ -714,3 +714,15 @@ table td code {
 .toggle-switch.active .switch-label.right {
     color: white;
 }
+
+.plot-preview {
+    width: 350px;
+    height: 250px;
+    overflow: hidden;
+}
+
+.plot-name {
+    font-size: 0.75rem;
+    font-weight: normal;
+    background-color: transparent;
+}

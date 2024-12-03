@@ -68,9 +68,9 @@
                                          role="button"
                                          data-bs-toggle="popover" 
                                          data-bs-trigger="focus" 
-                                         title="Plot Configuration"
                                          data-bs-html="true"
-                                         data-bs-content='<pre class="mb-0"><code>{{ plot.config | tojson }}</code></pre>'>
+                                         data-plot-id="{{ plot.id }}"
+                                         data-plotly-json="{{ plot.data }}">
                                         <div class="card-body p-2">
                                             <div class="d-flex justify-content-between align-items-start mb-1">
                                                 <h6 class="card-title mb-0 text-truncate">{{ plot.name }}</h6>
@@ -94,13 +94,11 @@
                             <small class="text-muted">updated {{ moment(source.last_updated).fromNow() if
                                 source.last_updated
                                 }}</small>
-                            {% if source.to_dict().state != 'running' %}
                             <form action="/{{ account.url }}/source/{{ source.id }}/refresh" method="POST"
                                 class="d-inline m-0 p-0">
                                 <button type="submit"
                                     class="btn btn-link btn-sm text-muted p-0 border-0">Refresh</button>
                             </form>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -131,6 +129,15 @@
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="mb-0">{{ layout.name }}</h5>
+                        {% if layout_plot_names[layout.id] %}
+                            <div class="mt-1">
+                                {% for plot_name in layout_plot_names[layout.id] %}
+                                    <span class="badge rounded-pill border border-secondary-subtle text-secondary me-1 plot-name">
+                                        {{ plot_name }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                     <div class="d-flex align-items-center">
                         {% if layout.is_default %}
@@ -523,37 +530,44 @@
 
     // Initialize all popovers
     document.addEventListener('DOMContentLoaded', function() {
+        const popoverOptions = {
+            content: '<div class="plot-preview"></div>',
+            placement: 'auto'
+        };
+
         // Initialize popovers with custom options
         const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-        const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl, {
-            sanitize: false, // Allow HTML in the content
-            container: 'body' // Append to body to avoid positioning issues
-        }));
-
-        // Close other popovers when a new one is shown
-        popoverTriggerList.forEach(trigger => {
-            trigger.addEventListener('click', (e) => {
-                popoverTriggerList.forEach(otherTrigger => {
-                    if (otherTrigger !== trigger) {
-                        const popover = bootstrap.Popover.getInstance(otherTrigger);
-                        if (popover) {
-                            popover.hide();
+        const popovers = [...popoverTriggerList].map(el => {
+            const popover = new bootstrap.Popover(el, popoverOptions);
+            
+            // Add show event listener
+            el.addEventListener('shown.bs.popover', function () {
+                const plotlyJson = JSON.parse(this.dataset.plotlyJson);
+                const popoverBody = document.querySelector('.popover-body .plot-preview');
+                
+                if (plotlyJson.plotly_json) {
+                    const plotData = JSON.parse(plotlyJson.plotly_json);
+                    
+                    Plotly.newPlot(
+                        popoverBody,
+                        plotData.data,
+                        {
+                            ...plotData.layout,
+                            height: 250,  // Adjust height for popover
+                            width: 350,   // Adjust width for popover
+                            margin: { l: 30, r: 10, t: 30, b: 30 }  // Adjust margins for smaller size
+                        },
+                        {
+                            responsive: true,
+                            displayModeBar: 'hover',
+                            displaylogo: false,
+                            modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
                         }
-                    }
-                });
+                    );
+                }
             });
-        });
-
-        // Close popover when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.popover') && !e.target.closest('.card')) {
-                popoverTriggerList.forEach(trigger => {
-                    const popover = bootstrap.Popover.getInstance(trigger);
-                    if (popover) {
-                        popover.hide();
-                    }
-                });
-            }
+            
+            return popover;
         });
     });
 

@@ -35,7 +35,7 @@
     <template id="widget-template">
         <div class="plot-container position-relative">
             <button type="button" class="btn-close btn-sm position-absolute top-0 end-0 m-2 text-black-50" onclick="removeWidget(this)" aria-label="Close"></button>
-            <select class="form-select plot-selector" onchange="plotSelected(this)">
+            <select class="form-select plot-selector">
                 <option value="">Select a plot...</option>
                 {% for plot in plots %}
                 <option value="{{ plot.id }}">{{ plot.name }}</option>

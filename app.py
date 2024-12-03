@@ -11,6 +11,7 @@ from accounts import accounts_bp  # Importing Blueprint for account-specific rou
 from dotenv import load_dotenv
 from flask_moment import Moment
 import json
+from plot_utils import get_plot_data
 
 load_dotenv(override=True)
 
@@ -213,12 +214,14 @@ def create_source():
         
         print(f"Found source: {source.name} (ID: {source.id})")
         
-        # Convert lists to JSON strings before storing
+        # Update source fields
         source.head = json.dumps(data.get('head', []))
         source.devices = json.dumps(data.get('devices', []))
-        source.info = None  # Clear the info field
+        source.info = None
+        source.success = data['success']
+        source.last_updated = datetime.now(timezone.utc)
         
-        # Get or create the File record
+        # Handle file record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
         if not file:
             print(f"Creating new file record for key: {data['key']}")
@@ -232,27 +235,37 @@ def create_source():
             )
             db.session.add(file)
             db.session.flush()
-            print(f"Created new file record with ID: {file.id}")
         else:
-            print(f"Found existing file record: {file.id}")
             file.last_modified = datetime.now(timezone.utc)
         
-        # Update the source
-        print(f"Updating source {source.id} with success={data['success']} and file_id={file.id}")
-        source.success = data['success']
         source.file_id = file.id
-        source.last_updated = datetime.now(timezone.utc)
+        
+        # If source update was successful, update all associated plots
+        if data['success']:
+            print(f"Updating plots for source {source.id}")
+            for plot in source.plots:
+                try:
+                    plot_data = get_plot_data(plot, source, source.account)
+                    plot.data = json.dumps(plot_data)
+                    print(f"Successfully updated plot {plot.id}")
+                except Exception as e:
+                    print(f"Error updating plot {plot.id}: {str(e)}")
+                    logger.error(f"Error updating plot {plot.id}: {e}")
+                    # Continue processing other plots even if one fails
+                    continue
+        
         db.session.commit()
-        print("Successfully committed changes to database")
+        print("Successfully committed all changes to database")
         
         return jsonify({
-            'message': 'Source updated successfully',
+            'message': 'Source and plots updated successfully',
             'status': 200
         })
+        
     except Exception as e:
         print(f"Error in create_source: {str(e)}")
         logger.error(f"Error updating source status: {e}")
-        db.session.rollback()  # Add rollback on error
+        db.session.rollback()
         return jsonify({
             'error': 'Internal server error',
             'status': 500
@@ -271,6 +284,18 @@ def to_csv_filter(value):
     except Exception as e:
         print(f"Error converting to CSV: {e}")
         return str(value)
+
+@app.template_filter('from_json')
+def from_json_filter(value):
+    if not value:
+        return []
+    try:
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+    except Exception as e:
+        print(f"Error parsing JSON: {e}")
+        return []
 
 if __name__ == '__main__':
     app.run(debug=True)

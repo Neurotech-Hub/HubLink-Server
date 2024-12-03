@@ -4,14 +4,12 @@ from datetime import datetime, timedelta, timezone
 import logging
 from S3Manager import *
 import traceback
-from werkzeug.exceptions import NotFound, BadRequest
-from sqlalchemy import desc
-from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import BadRequest
 import re
 import requests
 import os
 import json
-from plot_utils import process_plot_data
+from plot_utils import get_plot_info, get_plot_data
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -356,9 +354,21 @@ def account_plots(account_url):
         
         sources = Source.query.filter_by(account_id=account.id).all()
         
+        # Prepare plot names for each layout
+        layout_plot_names = {}
+        for layout in account.layouts:
+            plot_names = []
+            layout_plot_ids = [item['plotId'] for item in json.loads(layout.config)]
+            for source in sources:
+                for plot in source.plots:
+                    if plot.id in layout_plot_ids:
+                        plot_names.append(f"{source.name}: {plot.name}")
+            layout_plot_names[layout.id] = plot_names
+        
         return render_template('plots.html', 
-                          account=account, 
-                          sources=sources)
+                             account=account, 
+                             sources=sources,
+                             layout_plot_names=layout_plot_names)
                           
     except Exception as e:
         print(f"Error in account_plots: {str(e)}")
@@ -547,20 +557,16 @@ def sync_sources(account_url):
 @accounts_bp.route('/<account_url>/source/<int:source_id>/plot', methods=['POST'])
 def create_plot(account_url, source_id):
     try:
-        print(f"\nCreating plot for source {source_id} in account {account_url}")
-        print(f"Form data received: {request.form}")
-        
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
         
         plot_name = request.form.get('name')
         plot_type = request.form.get('type')
-        print(f"Plot details - Name: {plot_name}, Type: {plot_type}")
         
         # Build config based on plot type
         config = {}
         if plot_type == 'metric':
-            y_data = request.form.get('y_data')  # Changed from y_column
+            y_data = request.form.get('y_data')
             display_type = request.form.get('display_type')
             
             if not y_data:
@@ -576,8 +582,8 @@ def create_plot(account_url, source_id):
                 'display': display_type
             }
         else:  # timeline type
-            x_data = request.form.get('x_data')  # Changed from x_column
-            y_data = request.form.get('y_data')  # Changed from y_column
+            x_data = request.form.get('x_data')
+            y_data = request.form.get('y_data')
             
             if not x_data or not y_data:
                 flash('X Data and Y Data are required for timeline plots.', 'error')
@@ -588,8 +594,6 @@ def create_plot(account_url, source_id):
                 'y_data': y_data
             }
         
-        print(f"Final config: {config}")
-        
         # Create new plot with JSON config
         plot = Plot(
             source_id=source_id,
@@ -598,17 +602,17 @@ def create_plot(account_url, source_id):
             config=json.dumps(config)
         )
         
+        # Process plot data and save it to plot.data
+        plot_data = get_plot_data(plot, source, account)
+        plot.data = json.dumps(plot_data)
         db.session.add(plot)
         db.session.commit()
-        print(f"Plot created successfully with ID: {plot.id}")
         
-        flash('Plot created successfully.', 'success')
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
     except Exception as e:
         db.session.rollback()
-        print(f"Error creating plot: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
-        flash('Error creating plot.', 'error')
         logging.error(f"Error creating plot: {e}")
+        flash('Error creating plot.', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
 
@@ -627,16 +631,24 @@ def delete_plot(account_url, plot_id):
         
         # Delete the plot
         db.session.delete(plot)
+        
+        # Update each layout's config to remove the plot entry
+        for layout in account.layouts:
+            config = json.loads(layout.config)
+            # Filter out the plot with the given plot_id
+            updated_config = [entry for entry in config if entry.get('plotId') != plot_id]
+            layout.config = json.dumps(updated_config)
+        
         db.session.commit()
         
         flash(f'Plot "{plot_name}" deleted successfully.', 'success')
-        
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
+    
     except Exception as e:
         db.session.rollback()
+        logging.error(f"Error deleting plot {plot_id} for account {account_url}: {e}")
         flash('Error deleting plot.', 'error')
-        logging.error(f"Error deleting plot {plot_id}: {e}")
-    
-    return redirect(url_for('accounts.account_plots', account_url=account_url))
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['POST'])
 def save_layout(account_url, layout_id):
@@ -668,39 +680,18 @@ def layout_view(account_url, layout_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         
-        # Process plot data for view mode
         layout_config = json.loads(layout.config)
         required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
 
-        plot_data = []
-        source_data = {}  # Cache for source data
-        
+        plot_info_arr = []
         for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
-            # If plot info exists, use it directly
-            if plot.info:
-                try:
-                    plot_data.append(json.loads(plot.info))
-                    continue
-                except json.JSONDecodeError:
-                    logging.warning(f"Invalid JSON in plot.info for plot {plot.id}")
-            
-            # Otherwise, get or download source data
-            if plot.source.id not in source_data:
-                csv_content = download_source_file(account.settings, plot.source)
-                source_data[plot.source.id] = csv_content
-            
-            if not source_data[plot.source.id]:
-                continue
-                
-            plot_info = process_plot_data(plot, source_data[plot.source.id])
-            if plot_info:
-                plot_data.append(plot_info)
+            plot_info = get_plot_info(plot)
+            plot_info_arr.append(plot_info)
         
         return render_template('layout.html',
-                           account=account,
-                           layout=layout,
-                           plot_data=plot_data)
-                           
+                               account=account,
+                               layout=layout,
+                               plot_info_arr=plot_info_arr)
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
         traceback.print_exc()
@@ -780,7 +771,7 @@ def create_layout(account_url):
         db.session.add(layout)
         db.session.commit()
         
-        return redirect(url_for('accounts.layout_view', account_url=account_url, layout_id=layout.id))
+        return redirect(url_for('accounts.layout_edit', account_url=account_url, layout_id=layout.id))
     except Exception as e:
         logging.error(f"Error creating layout for {account_url}: {e}")
         flash('Error creating layout.', 'error')
