@@ -7,44 +7,34 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <div class="row mb-4">
-        <div class="col">
-            <div class="mb-3">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h2>{{ layout.name }} (Edit Mode)</h2>
-                </div>
-            </div>
+    {% include 'layout_select.html' %}
 
-            <!-- Edit Controls -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-secondary" onclick="addWidget('full')">
-                        <i class="fa fa-plus"></i> Full Width
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="addWidget('half')">
-                        <i class="fa fa-plus"></i> Half Width
-                    </button>
-                </div>
-                <div>
-                    <button class="btn btn-sm btn-success me-2" onclick="saveLayout()">Save Layout</button>
-                    <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
-                          onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
-                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                    </form>
-                </div>
-            </div>
+    <!-- Edit Controls -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary" onclick="addWidget('full')">
+                <i class="fa fa-plus"></i> Full Width
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="addWidget('half')">
+                <i class="fa fa-plus"></i> Half Width
+            </button>
+        </div>
+        <div>
+            <button class="btn btn-sm btn-success me-2" onclick="saveLayout()">Save Layout</button>
+            <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
+                  onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
+                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+            </form>
         </div>
     </div>
 
     <!-- Edit Container -->
-    <div class="grid-stack"></div>
+    <div class="grid-stack layout-container"></div>
 
     <!-- Template for plot selection -->
     <template id="widget-template">
-        <div class="widget-container">
-            <button class="btn btn-sm remove-widget" type="button">
-                <i class="fa fa-times"></i>
-            </button>
+        <div class="plot-container position-relative">
+            <button type="button" class="btn-close btn-sm position-absolute top-0 end-0 m-2 text-black-50" onclick="removeWidget(this)" aria-label="Close"></button>
             <select class="form-select plot-selector" onchange="plotSelected(this)">
                 <option value="">Select a plot...</option>
                 {% for plot in plots %}
@@ -62,36 +52,31 @@
 let grid;
 
 document.addEventListener('DOMContentLoaded', function() {
-    initializeGrid();
-    loadEditMode();
-});
-
-function initializeGrid() {
     const gridConfig = {
         column: 12,
-        cellHeight: 100,
-        margin: 0,
+        cellHeight: 110,
+        margin: 20,
         float: false,
-        animate: true,
+        animate: false,
         draggable: {
-            handle: '.grid-stack-item-content'
+            handle: '.plot-container'
         },
         disableResize: false,
         staticGrid: false,
+        disableOneColumnMode: true,
+        minWidth: 768,
+        resizable: {
+            handles: 'e, w'
+        },
+        removable: '.grid-stack-item',
+        removeTimeout: 100,
         acceptWidgets: true
     };
 
     grid = GridStack.init(gridConfig);
     grid.removeAll();
-
-    // Add event delegation for remove widget buttons
-    document.querySelector('.grid-stack').addEventListener('click', function(e) {
-        if (e.target.closest('.remove-widget')) {
-            const gridItem = e.target.closest('.grid-stack-item');
-            grid.removeWidget(gridItem);
-        }
-    });
-}
+    loadEditMode();
+});
 
 function loadEditMode() {
     const layout = {{ layout.config | safe }};
@@ -102,7 +87,9 @@ function loadEditMode() {
             y: item.y,
             w: item.w,
             h: 1,
-            content: document.getElementById('widget-template').innerHTML
+            content: document.getElementById('widget-template').innerHTML,
+            noResize: false,
+            noMove: false
         };
         
         const el = grid.addWidget(widget);
@@ -143,17 +130,15 @@ function saveLayout() {
         return;
     }
 
-    const layoutData = {
-        name: '{{ layout.name }}',
-        config: widgets
-    };
-
     fetch('/{{ account.url }}/layout/{{ layout.id }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify(layoutData)
+        body: JSON.stringify({
+            name: '{{ layout.name }}',
+            config: widgets
+        })
     })
     .then(response => response.json())
     .then(data => {
@@ -167,6 +152,11 @@ function saveLayout() {
         console.error('Error:', error);
         alert('Error saving layout');
     });
+}
+
+function removeWidget(button) {
+    const gridItem = button.closest('.grid-stack-item');
+    grid.removeWidget(gridItem);
 }
 </script>
 {% endblock %} 

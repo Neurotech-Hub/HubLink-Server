@@ -725,6 +725,12 @@ def layout_view(account_url, layout_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         
+        # Get is_edit from query parameter, default to False
+        is_edit = request.args.get('is_edit', '').lower() == 'true'
+        
+        # Choose template based on edit mode
+        template = 'layout_edit.html' if is_edit else 'layout.html'
+        
         # Get all plots for this account (needed for edit mode)
         plots = []
         for source in Source.query.filter_by(account_id=account.id).all():
@@ -737,24 +743,27 @@ def layout_view(account_url, layout_id):
         plot_data = []
         source_data = {}  # Cache for source data
         
-        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
-            # Get or download source data
-            if plot.source.id not in source_data:
-                csv_content = download_source_file(account.settings, plot.source)
-                source_data[plot.source.id] = csv_content
-            
-            if not source_data[plot.source.id]:
-                continue
+        # Only process plot data if we're in view mode
+        if not is_edit:
+            for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
+                # Get or download source data
+                if plot.source.id not in source_data:
+                    csv_content = download_source_file(account.settings, plot.source)
+                    source_data[plot.source.id] = csv_content
                 
-            plot_info = process_plot_data(plot, source_data[plot.source.id])
-            if plot_info:
-                plot_data.append(plot_info)
+                if not source_data[plot.source.id]:
+                    continue
+                    
+                plot_info = process_plot_data(plot, source_data[plot.source.id])
+                if plot_info:
+                    plot_data.append(plot_info)
         
-        return render_template('layout.html',
+        return render_template(template,
                            account=account,
                            layout=layout,
                            plots=plots,  # For edit mode
-                           plot_data=plot_data)  # For view mode
+                           plot_data=plot_data,  # For view mode
+                           is_edit=is_edit)  # Add is_edit to template context
                            
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
