@@ -11,7 +11,7 @@ import re
 import requests
 import os
 import json
-from plot_utils import process_plot_data, process_plots_batch
+from plot_utils import process_plot_data
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -671,23 +671,30 @@ def layout_view(account_url, layout_id):
         # Process plot data for view mode
         layout_config = json.loads(layout.config)
         required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
+
+        plot_data = []
+        source_data = {}  # Cache for source data
         
-        # Get all required plots in one query
-        plots = Plot.query.filter(Plot.id.in_(required_plot_ids)).all()
-        
-        # Download source data efficiently
-        source_data = {}
-        for plot in plots:
-            if not plot.info:  # Only download if we need to process
-                if plot.source.id not in source_data:
-                    source_data[plot.source.id] = download_source_file(account.settings, plot.source)
-        
-        # Process all plots in batch
-        plot_data = process_plots_batch(plots, source_data)
-        
-        # Commit any cache updates
-        if any(not plot.info for plot in plots):
-            db.session.commit()
+        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
+            # If plot info exists, use it directly
+            if plot.info:
+                try:
+                    plot_data.append(json.loads(plot.info))
+                    continue
+                except json.JSONDecodeError:
+                    logging.warning(f"Invalid JSON in plot.info for plot {plot.id}")
+            
+            # Otherwise, get or download source data
+            if plot.source.id not in source_data:
+                csv_content = download_source_file(account.settings, plot.source)
+                source_data[plot.source.id] = csv_content
+            
+            if not source_data[plot.source.id]:
+                continue
+                
+            plot_info = process_plot_data(plot, source_data[plot.source.id])
+            if plot_info:
+                plot_data.append(plot_info)
         
         return render_template('layout.html',
                            account=account,
