@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block head %}
+<!-- GridStack CSS -->
+<link href="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack.min.css" rel="stylesheet"/>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2>{{ layout.name }} (Edit Mode)</h2>
+                </div>
+            </div>
+
+            <!-- Edit Controls -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="addWidget('full')">
+                        <i class="fa fa-plus"></i> Full Width
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="addWidget('half')">
+                        <i class="fa fa-plus"></i> Half Width
+                    </button>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-success me-2" onclick="saveLayout()">Save Layout</button>
+                    <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
+                          onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Container -->
+    <div class="grid-stack"></div>
+
+    <!-- Template for plot selection -->
+    <template id="widget-template">
+        <div class="widget-container">
+            <button class="btn btn-sm remove-widget" type="button">
+                <i class="fa fa-times"></i>
+            </button>
+            <select class="form-select plot-selector" onchange="plotSelected(this)">
+                <option value="">Select a plot...</option>
+                {% for plot in plots %}
+                <option value="{{ plot.id }}">{{ plot.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </template>
+</div>
+
+<!-- GridStack JS -->
+<script src="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack-all.js"></script>
+
+<script>
+let grid;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeGrid();
+    loadEditMode();
+});
+
+function initializeGrid() {
+    const gridConfig = {
+        column: 12,
+        cellHeight: 100,
+        margin: 0,
+        float: false,
+        animate: true,
+        draggable: {
+            handle: '.grid-stack-item-content'
+        },
+        disableResize: false,
+        staticGrid: false,
+        acceptWidgets: true
+    };
+
+    grid = GridStack.init(gridConfig);
+    grid.removeAll();
+
+    // Add event delegation for remove widget buttons
+    document.querySelector('.grid-stack').addEventListener('click', function(e) {
+        if (e.target.closest('.remove-widget')) {
+            const gridItem = e.target.closest('.grid-stack-item');
+            grid.removeWidget(gridItem);
+        }
+    });
+}
+
+function loadEditMode() {
+    const layout = {{ layout.config | safe }};
+    
+    layout.forEach(item => {
+        const widget = {
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            h: 1,
+            content: document.getElementById('widget-template').innerHTML
+        };
+        
+        const el = grid.addWidget(widget);
+        if (item.plotId) {
+            const select = el.querySelector('.plot-selector');
+            if (select) {
+                select.value = item.plotId;
+            }
+        }
+    });
+}
+
+function addWidget(size) {
+    const width = size === 'full' ? 12 : 6;
+    const template = document.getElementById('widget-template');
+    grid.addWidget({
+        w: width,
+        h: 1,
+        content: template.innerHTML,
+        autoPosition: true
+    });
+}
+
+function saveLayout() {
+    const serializedData = grid.save();
+    const widgets = serializedData.map(item => {
+        const gridItem = document.querySelector(`.grid-stack-item[gs-x="${item.x}"][gs-y="${item.y}"]`);
+        const plotSelector = gridItem.querySelector('.plot-selector');
+        return {
+            ...item,
+            plotId: plotSelector?.value
+        };
+    });
+
+    const unassignedWidgets = widgets.filter(w => !w.plotId);
+    if (unassignedWidgets.length > 0) {
+        alert(`Please select plots for all widgets before saving (${unassignedWidgets.length} unassigned)`);
+        return;
+    }
+
+    const layoutData = {
+        name: '{{ layout.name }}',
+        config: widgets
+    };
+
+    fetch('/{{ account.url }}/layout/{{ layout.id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(layoutData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/{{ account.url }}/layout/{{ layout.id }}';
+        } else {
+            alert('Error saving layout: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving layout');
+    });
+}
+</script>
+{% endblock %} 

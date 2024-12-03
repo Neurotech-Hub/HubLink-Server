@@ -28,15 +28,6 @@ logger = logging.getLogger(__name__)
 logging.getLogger('plot_utils').setLevel(logging.INFO)
 logging.getLogger('accounts').setLevel(logging.INFO)
 
-# Create console handler if you want to see logs in terminal
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-
-# Add the handler to the root logger
-logging.getLogger('').addHandler(console_handler)
-
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
 app.config['SECRET_KEY'] = os.urandom(24)

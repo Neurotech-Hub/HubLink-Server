@@ -128,6 +128,11 @@ Using this workflow, you can effectively maintain database schema compatibility 
 ### S3 Browsing Tools
 - [AwsDash - simple yet powerful](https://awsdash.com/)
 
+## Purging CSS
+```bash
+purgecss --css static/css/style.css --content templates/**/*.html --output static/css/style.cleaned.css
+```
+
 ---
 
 python3 -m venv venv

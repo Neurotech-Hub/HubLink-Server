@@ -853,3 +853,24 @@ def update_layout_settings(account_url, layout_id):
         flash('Error updating layout settings.', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/layout/<int:layout_id>/edit', methods=['GET'])
+def layout_edit(account_url, layout_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        
+        # Get all plots for this account
+        plots = []
+        for source in Source.query.filter_by(account_id=account.id).all():
+            plots.extend(source.plots)
+        
+        return render_template('layout_edit.html',
+                           account=account,
+                           layout=layout,
+                           plots=plots)
+                           
+    except Exception as e:
+        logging.error(f"Error loading layout edit for {account_url}: {e}")
+        traceback.print_exc()
+        return "There was an issue loading the layout edit page.", 500

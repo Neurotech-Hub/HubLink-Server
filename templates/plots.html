@@ -519,6 +519,8 @@
         form.action = `/{{ account.url }}/layout`;
     });
 
+    
+
     // Initialize all popovers
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize popovers with custom options
@@ -557,6 +559,40 @@
 
     // Initialize all popovers
     const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
+
+    function createPlot(source) {
+        // Update form action and source ID
+        const form = document.getElementById('plotForm');
+        form.action = `/{{ account.url }}/source/${source.id}/plot`;
+        document.getElementById('plotSourceId').value = source.id;
+
+        // Get the select elements
+        const xSelect = document.getElementById('xColumn');
+        const ySelect = document.getElementById('yColumn');
+
+        // Clear existing options
+        xSelect.innerHTML = '<option value="">Select data...</option>';
+        ySelect.innerHTML = '<option value="">Select data...</option>';
+
+        // Add options for each available column
+        if (source.available_columns && source.available_columns.length > 0) {
+            source.available_columns.forEach(column => {
+                xSelect.add(new Option(column, column));
+                ySelect.add(new Option(column, column));
+            });
+        } else {
+            console.warn('No columns available for source:', source.id);
+        }
+
+        // Reset plot type and show/hide fields
+        document.getElementById('plotType').value = 'timeline';
+        document.getElementById('displayBar').checked = true;
+        handlePlotTypeChange();
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('plotModal'));
+        modal.show();
+    }
 </script>
 
 {% endblock %}

@@ -34,12 +34,9 @@ def process_metric_plot(plot, csv_content):
                 boxmode='group',
                 plot_bgcolor='white',
                 paper_bgcolor='white',
-                margin=dict(
-                    l=100,   # left margin
-                    r=60,   # right margin
-                    t=60,   # top margin
-                    b=60    # bottom margin
-                ),
+                height=None,
+                width=None,
+                margin=dict(l=60, r=30, t=60, b=60),
                 legend=dict(
                     yanchor="top",
                     y=0.99,
@@ -129,12 +126,9 @@ def process_timeseries_plot(plot, csv_content):
             showlegend=True,
             plot_bgcolor='white',
             paper_bgcolor='white',
-            margin=dict(
-                l=100,   # left margin
-                r=60,   # right margin
-                t=60,   # top margin
-                b=60    # bottom margin
-            ),
+            height=None,
+            width=None,
+            margin=dict(l=60, r=30, t=60, b=60),
             legend=dict(
                 yanchor="top",
                 y=0.99,
