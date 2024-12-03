@@ -48,7 +48,6 @@
                                 {% if layout.show_nav %}
                                 <a class="nav-link ms-3 small {% if request.path == '/' + account.url + '/layout/' + layout.id|string %}active{% endif %}"
                                     href="/{{ account.url }}/layout/{{ layout.id }}">
-                                    <i class="fa fa-columns fa-fw"></i>
                                     <span>{{ layout.name }}</span>
                                 </a>
                                 {% endif %}

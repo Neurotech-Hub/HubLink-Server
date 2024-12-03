@@ -7,6 +7,36 @@ import logging
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
+def process_plot_data(plot, csv_content):
+    """Helper function to process individual plot data"""
+    try:
+        logger.info(f"Processing plot data for plot {plot.id}")
+        if not csv_content:
+            logger.warning("No CSV content provided")
+            return None
+        
+        if plot.type == "metric":
+            data = process_metric_plot(plot, csv_content)
+        else:  # timeline type
+            data = process_timeseries_plot(plot, csv_content)
+        
+        if data.get('error'):
+            logger.error(f"Error processing data: {data.get('error')}")
+            return None
+            
+        config = json.loads(plot.config) if plot.config else {}
+        return {
+            'plot_id': plot.id,
+            'name': plot.name,
+            'type': plot.type,
+            'source_name': plot.source.name,
+            'config': config,
+            **data
+        }
+    except Exception as e:
+        logger.error(f"Error processing plot {plot.id}: {str(e)}", exc_info=True)
+        return None
+
 def process_metric_plot(plot, csv_content):
     try:
         logger.info(f"Processing metric plot {plot.id}")
@@ -160,3 +190,66 @@ def process_timeseries_plot(plot, csv_content):
     except Exception as e:
         logger.error(f"Error processing timeseries plot: {e}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'} 
+
+def process_plots_batch(plots, csv_contents):
+    """Process multiple plots that share source data efficiently"""
+    plot_data = []
+    
+    # Group plots by source to minimize data processing
+    plots_by_source = {}
+    for plot in plots:
+        if plot.source_id not in plots_by_source:
+            plots_by_source[plot.source_id] = []
+        plots_by_source[plot.source_id].append(plot)
+    
+    # Process each source's data once
+    for source_id, source_plots in plots_by_source.items():
+        if source_id not in csv_contents or not csv_contents[source_id]:
+            continue
+            
+        # Parse CSV once per source
+        try:
+            df = pd.read_csv(StringIO(csv_contents[source_id]))
+            
+            # Process each plot using the same DataFrame
+            for plot in source_plots:
+                if plot.info:
+                    # Use cached plot info if available
+                    plot_data.append(json.loads(plot.info))
+                    continue
+                    
+                # Process new plot data
+                plot_info = process_plot_data_from_df(plot, df)
+                if plot_info:
+                    plot_data.append(plot_info)
+                    # Cache the processed plot data
+                    plot.info = json.dumps(plot_info)
+        except Exception as e:
+            logger.error(f"Error processing source {source_id}: {str(e)}", exc_info=True)
+    
+    return plot_data
+
+def process_plot_data_from_df(plot, df):
+    """Process plot data using an existing DataFrame"""
+    try:
+        if plot.type == "metric":
+            data = process_metric_plot_from_df(plot, df)
+        else:  # timeline type
+            data = process_timeseries_plot_from_df(plot, df)
+        
+        if data.get('error'):
+            logger.error(f"Error processing data: {data.get('error')}")
+            return None
+            
+        config = json.loads(plot.config) if plot.config else {}
+        return {
+            'plot_id': plot.id,
+            'name': plot.name,
+            'type': plot.type,
+            'source_name': plot.source.name,
+            'config': config,
+            **data
+        }
+    except Exception as e:
+        logger.error(f"Error processing plot {plot.id}: {str(e)}", exc_info=True)
+        return None 

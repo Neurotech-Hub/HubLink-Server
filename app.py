@@ -216,6 +216,7 @@ def create_source():
         # Convert lists to JSON strings before storing
         source.head = json.dumps(data.get('head', []))
         source.devices = json.dumps(data.get('devices', []))
+        source.info = None  # Clear the info field
         
         # Get or create the File record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()

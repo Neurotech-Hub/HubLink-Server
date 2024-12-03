@@ -11,7 +11,7 @@ import re
 import requests
 import os
 import json
-from plot_utils import process_timeseries_plot, process_metric_plot
+from plot_utils import process_plot_data, process_plots_batch
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -638,27 +638,6 @@ def delete_plot(account_url, plot_id):
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
 
-@accounts_bp.route('/<account_url>/layout-test', methods=['GET'])
-def layout_test(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        
-        # Get all plots for this account
-        plots = []
-        for source in Source.query.filter_by(account_id=account.id).all():
-            plots.extend(source.plots)
-        
-        # Get existing layout if available
-        layout = Layout.query.filter_by(account_id=account.id).first()
-        
-        return render_template('layout_test.html',
-                             account=account,
-                             plots=plots,
-                             layout=layout)
-    except Exception as e:
-        logging.error(f"Error loading layout test for {account_url}: {e}")
-        return "There was an issue loading the layout test page.", 500
-
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['POST'])
 def save_layout(account_url, layout_id):
     try:
@@ -683,92 +662,63 @@ def save_layout(account_url, layout_id):
         logging.error(f"Error saving layout {layout_id} for account {account_url}: {e}")
         return jsonify({'success': False, 'error': str(e)})
 
-def process_plot_data(plot, csv_content):
-    """Helper function to process individual plot data"""
-    try:
-        print(f"\nProcessing plot data for plot {plot.id}")
-        if not csv_content:
-            print("  No CSV content provided")
-            return None
-            
-        print(f"  CSV content preview: {csv_content[:200]}...")  # First 200 chars
-        print(f"  Plot type: {plot.type}")
-        print(f"  Plot config: {plot.config}")
-        
-        if plot.type == "metric":
-            data = process_metric_plot(plot, csv_content)
-        else:  # timeline type
-            data = process_timeseries_plot(plot, csv_content)
-        
-        if data.get('error'):
-            print(f"  Error processing data: {data.get('error')}")
-            return None
-            
-        config = json.loads(plot.config) if plot.config else {}
-        print(f"  Successfully processed plot data")
-        return {
-            'plot_id': plot.id,
-            'name': plot.name,
-            'type': plot.type,
-            'source_name': plot.source.name,
-            'config': config,
-            **data
-        }
-    except Exception as e:
-        print(f"  Error processing plot {plot.id}: {str(e)}")
-        logging.error(f"Error processing plot {plot.id}: {str(e)}")
-        return None
-
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['GET'])
 def layout_view(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         
-        # Get is_edit from query parameter, default to False
-        is_edit = request.args.get('is_edit', '').lower() == 'true'
-        
-        # Choose template based on edit mode
-        template = 'layout_edit.html' if is_edit else 'layout.html'
-        
-        # Get all plots for this account (needed for edit mode)
-        plots = []
-        for source in Source.query.filter_by(account_id=account.id).all():
-            plots.extend(source.plots)
-        
         # Process plot data for view mode
         layout_config = json.loads(layout.config)
         required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
         
-        plot_data = []
-        source_data = {}  # Cache for source data
+        # Get all required plots in one query
+        plots = Plot.query.filter(Plot.id.in_(required_plot_ids)).all()
         
-        # Only process plot data if we're in view mode
-        if not is_edit:
-            for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
-                # Get or download source data
+        # Download source data efficiently
+        source_data = {}
+        for plot in plots:
+            if not plot.info:  # Only download if we need to process
                 if plot.source.id not in source_data:
-                    csv_content = download_source_file(account.settings, plot.source)
-                    source_data[plot.source.id] = csv_content
-                
-                if not source_data[plot.source.id]:
-                    continue
-                    
-                plot_info = process_plot_data(plot, source_data[plot.source.id])
-                if plot_info:
-                    plot_data.append(plot_info)
+                    source_data[plot.source.id] = download_source_file(account.settings, plot.source)
         
-        return render_template(template,
+        # Process all plots in batch
+        plot_data = process_plots_batch(plots, source_data)
+        
+        # Commit any cache updates
+        if any(not plot.info for plot in plots):
+            db.session.commit()
+        
+        return render_template('layout.html',
                            account=account,
                            layout=layout,
-                           plots=plots,  # For edit mode
-                           plot_data=plot_data,  # For view mode
-                           is_edit=is_edit)  # Add is_edit to template context
+                           plot_data=plot_data)
                            
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
         traceback.print_exc()
         return "There was an issue loading the layout view page.", 500
+
+@accounts_bp.route('/<account_url>/layout/<int:layout_id>/edit', methods=['GET'])
+def layout_edit(account_url, layout_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        
+        # Get all plots for this account
+        plots = []
+        for source in Source.query.filter_by(account_id=account.id).all():
+            plots.extend(source.plots)
+        
+        return render_template('layout_edit.html',
+                           account=account,
+                           layout=layout,
+                           plots=plots)
+                           
+    except Exception as e:
+        logging.error(f"Error loading layout edit for {account_url}: {e}")
+        traceback.print_exc()
+        return "There was an issue loading the layout edit page.", 500
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>/delete', methods=['POST'])
 def delete_layout(account_url, layout_id):
@@ -862,24 +812,3 @@ def update_layout_settings(account_url, layout_id):
         flash('Error updating layout settings.', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
-
-@accounts_bp.route('/<account_url>/layout/<int:layout_id>/edit', methods=['GET'])
-def layout_edit(account_url, layout_id):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
-        
-        # Get all plots for this account
-        plots = []
-        for source in Source.query.filter_by(account_id=account.id).all():
-            plots.extend(source.plots)
-        
-        return render_template('layout_edit.html',
-                           account=account,
-                           layout=layout,
-                           plots=plots)
-                           
-    except Exception as e:
-        logging.error(f"Error loading layout edit for {account_url}: {e}")
-        traceback.print_exc()
-        return "There was an issue loading the layout edit page.", 500

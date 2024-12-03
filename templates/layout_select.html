@@ -1,12 +1,15 @@
-
 <div class="mb-3">
     <div class="d-flex justify-content-between align-items-center">
         <h2>{{ layout.name }}</h2>
         
         <!-- Mode Toggle -->
         <div class="toggle-container">
-            <a href="{{ url_for('accounts.layout_view', account_url=account.url, layout_id=layout.id, is_edit=not is_edit) }}" 
-                class="toggle-switch {% if is_edit %}active{% endif %}">
+            <a href="{% if request.endpoint == 'accounts.layout_edit' %}
+                      {{ url_for('accounts.layout_view', account_url=account.url, layout_id=layout.id) }}
+                    {% else %}
+                      {{ url_for('accounts.layout_edit', account_url=account.url, layout_id=layout.id) }}
+                    {% endif %}" 
+                class="toggle-switch {% if request.endpoint == 'accounts.layout_edit' %}active{% endif %}">
                 <div class="switch-label left">View</div>
                 <div class="switch-label right">Edit</div>
                 <div class="switch-handle"></div>
