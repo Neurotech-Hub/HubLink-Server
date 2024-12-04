@@ -1052,3 +1052,27 @@ table td code {
         font-size: 0.6rem !important;
     }
 }
+
+@media (max-width: 768px) {
+    .index-page .tagline {
+        font-size: 3rem;
+        /* Adjust font size for tablets */
+    }
+
+    .index-page .effortless {
+        font-size: 1.5em;
+        /* Adjust font size for tablets */
+    }
+}
+
+@media (max-width: 576px) {
+    .index-page .tagline {
+        font-size: 2.5rem;
+        /* Adjust font size for mobile devices */
+    }
+
+    .index-page .effortless {
+        font-size: 1.5em;
+        /* Adjust font size for mobile devices */
+    }
+}
