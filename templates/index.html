@@ -3,245 +3,82 @@
 
 <head>
     {% include 'head.html' %}
-    <style>
-        @keyframes blink {
-            50% {
-                border-color: transparent;
-            }
-        }
-
-        .timeline-point {
-            width: 12px;
-            height: 12px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .steps {
-            position: relative;
-            margin-left: 45px;
-        }
-
-        .step-item {
-            position: relative;
-            padding-bottom: 1rem;
-        }
-
-        .step-item:not(:last-child):before {
-            content: '';
-            position: absolute;
-            left: -30px;
-            top: 30px;
-            bottom: 0;
-            width: 2px;
-            background: #e9ecef;
-        }
-
-        .step-number {
-            width: 32px;
-            height: 32px;
-            background: #616161;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            position: absolute;
-            left: -45px;
-            top: 0;
-            z-index: 1;
-        }
-
-        .step-content {
-            margin-left: 15px;
-        }
-
-        .flow-container {
-            display: flex;
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            gap: 1rem;
-            padding: 0.5rem;
-        }
-
-        .flow-item {
-            flex: 1;
-            min-width: 250px;
-            display: flex;
-            align-items: center;
-        }
-
-        .flow-arrow {
-            margin: 0 1rem;
-            color: #616161;
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        .flow-item:last-child .flow-arrow {
-            display: none;
-        }
-
-        /* Optional hover effect */
-        .step-item:hover .step-number {
-            transform: scale(1.1);
-            transition: transform 0.2s;
-        }
-
-        /* Optional: make the line primary color when hovering over step */
-        .step-item:hover:before {
-            background: #616161;
-            transition: background 0.2s;
-        }
-
-        .badge {
-            color: white !important;
-            /* Force white text */
-            font-weight: 500;
-            /* Slightly bolder for better readability */
-        }
-
-        .toggle-container {
-            padding: 10px;
-        }
-
-        .toggle-switch {
-            position: relative;
-            width: 300px;
-            height: 40px;
-            background: #f0f0f0;
-            border-radius: 20px;
-            padding: 4px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .switch-handle {
-            position: absolute;
-            left: 4px;
-            width: 150px;
-            height: 32px;
-            background: #616161;
-            border-radius: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .toggle-switch.active .switch-handle {
-            left: calc(100% - 154px);
-        }
-
-        .switch-label {
-            position: absolute;
-            width: 150px;
-            text-align: center;
-            line-height: 32px;
-            font-weight: 500;
-            z-index: 1;
-            transition: all 0.3s ease;
-        }
-
-        .switch-label.left {
-            left: 0;
-            color: white;
-        }
-
-        .switch-label.right {
-            right: 0;
-            color: #666;
-        }
-
-        .toggle-switch.active .switch-label.left {
-            color: #666;
-        }
-
-        .toggle-switch.active .switch-label.right {
-            color: white;
-        }
-
-        /* Mobile Optimizations */
-        @media (max-width: 576px) {
-            .steps {
-                margin-left: 30px;
-            }
-
-            .step-content {
-                margin-left: 10px;
-            }
-
-            .step-number {
-                width: 24px;
-                height: 24px;
-                font-size: 0.9rem;
-                left: -35px;
-            }
-
-            .step-item:not(:last-child):before {
-                left: -23px;
-            }
-
-            .card-body {
-                padding: 0.75rem;
-            }
-
-            .badge {
-                font-size: 0.7rem;
-            }
-
-            .card-title {
-                font-size: 1.1rem;
-            }
-
-            .card-text {
-                font-size: 0.85rem;
-            }
-
-            .text-muted small {
-                font-size: 0.75rem;
-            }
-
-            .step-item {
-                padding-bottom: 0.75rem;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .table th {
-                font-size: 0.8rem;
-                /* Smaller font on mobile */
-                line-height: 1.2;
-                /* Tighter line height */
-                padding: 0.5rem 0.25rem;
-                /* Reduced padding */
-            }
-        }
-    </style>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
 </head>
 
-<body>
+<body class="index-page">
     {% include 'nav.html' %}
 
-    <div class="container-fluid center-area text-center">
-        <h1 class="tagline">The <span class="highlight royal">#1</span> Gateway Manager</h1>
-        <h2 class="subtagline">Efficiently manage, sync, and monitor data.</h2>
+    <div class="center-area text-center">
+        <h1 class="tagline">
+            From Device to Cloud
+            <span class="effortless royal">Effortlessly.</span>
+        </h1>
+        <h2 class="subtagline">
+            The <strong>only</strong> end-to-end memory card mirror
+            <span class="mirror-text">mirror</span>
+        </h2>
 
         <!-- Learn More Button -->
-        <a href="#more-content" class="learn-more-btn" id="learn-more-btn">Learn More</a>
+        {# <a href="#more-content" class="learn-more-btn" id="learn-more-btn">Learn More</a> #}
+        
+        <!-- Code Preview -->
+        <div class="code-editor-frame">
+            <div class="code-editor-header">
+                <span class="window-btn red"></span>
+                <span class="window-btn yellow"></span>
+                <span class="window-btn green"></span>
+                <span class="filename">monitorBehavior.ino</span>
+            </div>
+            <pre><code class="language-c">#include &lt;Hublink.h&gt;
+
+const int cs = A0; // chip select pin
+Hublink hublink(cs);
+unsigned long lastBleEntryTime;
+
+void setup()
+{
+    Serial.begin(9600);
+    Serial.println("Hello, Hublink!");
+    hublink.init("hublinkDevice"); // BLE advertisement name
+}
+
+loop()
+{
+    unsigned long currentTime = millis();
+    
+    // try to sync every 30s
+    if (currentTime - lastBleEntryTime >= 30000)
+    {
+        hublink.sync();
+        lastBleEntryTime = millis();
+    }
+    
+    // do your stuff here!
+    
+    hublink.sleep(1000);
+}
+</code></pre>
+        </div>
     </div>
 
     <!-- Hidden Content Section -->
     <div style="font-size:1.15rem;" id="more-content" class="container-fluid px-5 mt-5">
         <section class="mb-5">
             <div class="container-fluid">
+                <h2>How it works</h2>
+                <p class="lead">Hublink is a turn-key system for <strong>managing</strong>, <strong>syncing</strong>,
+                    and <strong>monitoring</strong> data from multiple
+                    node devices <em>through</em> gateway devices.</p>
+                    
                 <div class="text-center mb-5">
-                    <img src="/static/img/hublink-flow.png" alt="Hublink System Diagram" class="img-fluid rounded"
+                    <img src="{{ url_for('static', filename='img/hublink-flow.png') }}" alt="Hublink System Diagram" class="img-fluid rounded"
                         style="max-width:80%">
                 </div>
 
-                <p class="lead">Hublink is a turn-key system for <strong>managing</strong>, <strong>syncing</strong>,
-                    and <strong>monitoring</strong> data from multiple
-                    node devices <em>through</em> gateway devices.
-                <p><strong>Nodes</strong> are any "edge" device that collect data onto an SD card.
+                <p><strong>Nodes</strong> are any "edge" device that collect data onto a memory card.
                     <strong>Gateways</strong> are centralized devices (one or many) used for
                     gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> API endpoints to
                     coordinate
@@ -510,34 +347,6 @@
     {% include 'footer.html' %}
 
     <script>
-        // Click event for 'Learn More' button
-        document.getElementById('learn-more-btn').addEventListener('click', function (event) {
-            event.preventDefault();
-            const target = document.querySelector('#more-content');
-
-            // Smooth scroll to the section
-            target.scrollIntoView({ behavior: 'smooth' });
-
-            // Fade in the content after scrolling
-            setTimeout(() => {
-                target.classList.add('visible');
-            }, 500); // Delay for smooth fade-in effect
-        });
-
-        // Adjust opacity based on scroll position to enhance the preview effect
-        window.addEventListener('scroll', function () {
-            const target = document.getElementById('more-content');
-            const fadeHeight = 200; // Adjust height to control when the fade effect disappears
-            const scrollPos = window.scrollY || document.documentElement.scrollTop;
-
-            if (scrollPos > target.offsetTop - fadeHeight) {
-                target.classList.add('visible'); // Ensures it's fully visible once in view
-            } else {
-                target.classList.remove('visible'); // Hides if scrolled back up
-                target.style.opacity = 0.2 + (scrollPos / fadeHeight) * 0.8; // Gradual fade as you scroll down
-            }
-        });
-
         const toggleSwitch = document.querySelector('.toggle-switch');
         const platTable = document.getElementById('platformTable');
         const techTable = document.getElementById('technologyTable');
@@ -552,6 +361,32 @@
                 platTable.classList.remove('d-none');
                 techTable.classList.add('d-none');
             }
+        });
+
+        // Convert initial gradient colors to HSL
+        const startColor = { h: 283, s: 94, l: 31 };  // #790596
+        const endColor = { h: 225, s: 85, l: 51 };    // #1b4ae9
+        
+        window.addEventListener('scroll', function() {
+            const effortlessText = document.querySelector('.effortless.royal');
+            const scrollPosition = window.scrollY;
+            
+            if (scrollPosition > 0) {
+                // Shift the hues based on scroll, starting from original colors
+                const hueShift = (scrollPosition / 2);
+                const newStartHue = (startColor.h + hueShift) % 360;
+                const newEndHue = (endColor.h + hueShift) % 360;
+                
+                effortlessText.style.background = `linear-gradient(280deg, 
+                    hsl(${newStartHue}, ${startColor.s}%, ${startColor.l}%), 
+                    hsl(${newEndHue}, ${endColor.s}%, ${endColor.l}%)
+                )`;
+            } else {
+                effortlessText.style.background = 'linear-gradient(280deg, #790596, #1b4ae9)';
+            }
+            effortlessText.style.webkitBackgroundClip = 'text';
+            effortlessText.style.backgroundClip = 'text';
+            effortlessText.style.webkitTextFillColor = 'transparent';
         });
     </script>
 </body>

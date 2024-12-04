@@ -1,5 +1,5 @@
 * {
-    font-family: 'Outfit', sans-serif !important;
+    font-family: 'Outfit', sans-serif;
 }
 
 body {
@@ -21,8 +21,17 @@ main {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    height: calc(100vh - 56px);
+    min-height: 100vh;
+    width: 100%;
+    padding: 10rem 1rem 2rem;
     margin-top: 56px;
+    box-sizing: border-box;
+}
+
+.center-area>* {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 /*
@@ -173,52 +182,46 @@ main {
     color: #333;
 }
 
-.highlight {
+.effortless {
+    font-family: 'Sofia', cursive;
+    font-style: italic;
+    font-size: 1.5em;
+    padding: 0.2em 0;
+    margin-top: -0.2em;
+    position: relative;
+    z-index: -1;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.royal {
+    display: block;
     font-weight: 900;
     background: linear-gradient(280deg, #790596, #1b4ae9);
-    -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
     background-clip: text;
-    color: transparent;
 }
 
 .subtagline {
-    font-size: 1.5rem;
-    font-weight: 300;
-    color: #555;
-    margin-top: 1rem;
-    /* white-space: nowrap; */
-    /* overflow: hidden; */
-    border-right: .15em solid #555;
-    animation: blink 1s step-end infinite;
+    position: relative;
+    display: inline-block;
+    font-weight: 200;
 }
 
-/* Initial state - partially visible */
-#more-content {
-    opacity: 0.2;
-    /* Partially visible on load */
-    visibility: visible;
-    /* Allows it to be seen initially */
-    transition: opacity 1s ease-in-out;
-    /* Smooth transition for opacity changes */
-}
-
-/* When visible, fade to full opacity */
-#more-content.visible {
-    opacity: 1;
-}
-
-/* Faded gradient effect for a preview look at the top */
-#more-content::before {
-    content: "";
-    position: absolute;
-    top: 0;
+.mirror-text {
+    color: transparent;
+    display: inline-block;
+    transform: scaleX(-1);
+    opacity: 0.5;
+    position: relative;
     left: 0;
-    right: 0;
-    height: 50px;
-    background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-    z-index: 1;
-    pointer-events: none;
+    white-space: nowrap;
+    background: linear-gradient(to left, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-left: 0.25em;
 }
 
 .card-deck {
@@ -257,7 +260,6 @@ main {
 /* Code blocks styling */
 pre,
 code {
-    padding: 10px;
     /* font-size: 1rem; */
     border-radius: 5px;
     overflow-x: auto;
@@ -725,4 +727,328 @@ table td code {
     font-size: 0.75rem;
     font-weight: normal;
     background-color: transparent;
+}
+
+/* Index Page Specific Styles */
+.index-page .timeline-point {
+    width: 12px;
+    height: 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.index-page .steps {
+    position: relative;
+    margin-left: 45px;
+}
+
+.index-page .step-item {
+    position: relative;
+    padding-bottom: 1rem;
+}
+
+.index-page .step-item:not(:last-child):before {
+    content: '';
+    position: absolute;
+    left: -30px;
+    top: 30px;
+    bottom: 0;
+    width: 2px;
+    background: #e9ecef;
+}
+
+.index-page .step-number {
+    width: 32px;
+    height: 32px;
+    background: #616161;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    position: absolute;
+    left: -45px;
+    top: 0;
+    z-index: 1;
+}
+
+.index-page .step-content {
+    margin-left: 15px;
+}
+
+.index-page .flow-container {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 1rem;
+    padding: 0.5rem;
+}
+
+.index-page .flow-item {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+}
+
+.index-page .flow-arrow {
+    margin: 0 1rem;
+    color: #616161;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.index-page .flow-item:last-child .flow-arrow {
+    display: none;
+}
+
+/* Optional hover effect */
+.index-page .step-item:hover .step-number {
+    transform: scale(1.1);
+    transition: transform 0.2s;
+}
+
+/* Optional: make the line primary color when hovering over step */
+.index-page .step-item:hover:before {
+    background: #616161;
+    transition: background 0.2s;
+}
+
+.index-page .badge {
+    color: white !important;
+    /* Force white text */
+    font-weight: 500;
+    /* Slightly bolder for better readability */
+}
+
+.index-page .toggle-container {
+    padding: 10px;
+}
+
+.index-page .toggle-switch {
+    position: relative;
+    width: 300px;
+    height: 40px;
+    background: #f0f0f0;
+    border-radius: 20px;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.index-page .switch-handle {
+    position: absolute;
+    left: 4px;
+    width: 150px;
+    height: 32px;
+    background: #616161;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+}
+
+.index-page .toggle-switch.active .switch-handle {
+    left: calc(100% - 154px);
+}
+
+.index-page .switch-label {
+    position: absolute;
+    width: 150px;
+    text-align: center;
+    line-height: 32px;
+    font-weight: 500;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.index-page .switch-label.left {
+    left: 0;
+    color: white;
+}
+
+.index-page .switch-label.right {
+    right: 0;
+    color: #666;
+}
+
+.index-page .toggle-switch.active .switch-label.left {
+    color: #666;
+}
+
+.index-page .toggle-switch.active .switch-label.right {
+    color: white;
+}
+
+/* Mobile Optimizations */
+@media (max-width: 576px) {
+    .index-page .steps {
+        margin-left: 30px;
+    }
+
+    .index-page .step-content {
+        margin-left: 10px;
+    }
+
+    .index-page .step-number {
+        width: 24px;
+        height: 24px;
+        font-size: 0.9rem;
+        left: -35px;
+    }
+
+    .index-page .step-item:not(:last-child):before {
+        left: -23px;
+    }
+
+    .index-page .card-body {
+        padding: 0.75rem;
+    }
+
+    .index-page .badge {
+        font-size: 0.7rem;
+    }
+
+    .index-page .card-title {
+        font-size: 1.1rem;
+    }
+
+    .index-page .card-text {
+        font-size: 0.85rem;
+    }
+
+    .index-page .text-muted small {
+        font-size: 0.75rem;
+    }
+
+    .index-page .step-item {
+        padding-bottom: 0.75rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .index-page .table th {
+        font-size: 0.8rem;
+        /* Smaller font on mobile */
+        line-height: 1.2;
+        /* Tighter line height */
+        padding: 0.5rem 0.25rem;
+        /* Reduced padding */
+    }
+}
+
+
+/* Code Editor Styling */
+.code-editor-frame {
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+    margin: 4rem auto;
+    background: #1e1e1e;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+/* Remove the gradient effect */
+.code-editor-frame::after {
+    content: none;
+}
+
+.code-editor-header {
+    background: #2d2d2d;
+    padding: 8px 16px;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+}
+
+.window-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    display: inline-block;
+}
+
+.window-btn.red {
+    background: #ff5f56;
+}
+
+.window-btn.yellow {
+    background: #ffbd2e;
+}
+
+.window-btn.green {
+    background: #27c93f;
+}
+
+.filename {
+    color: #abb2bf;
+    font-size: 0.9rem;
+    margin-left: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.code-editor-frame pre {
+    margin: 0;
+    padding: 16px;
+    background: #1e1e1e;
+    border-radius: 0 0 8px 8px;
+    font-size: 1rem;
+    /* Default font size */
+}
+
+@media (max-width: 768px) {
+    .code-editor-frame pre {
+        font-size: 0.7rem;
+        /* Smaller font size for tablets */
+    }
+}
+
+@media (max-width: 576px) {
+    .code-editor-frame pre {
+        font-size: 0.6rem;
+        /* Even smaller font size for mobile devices */
+    }
+}
+
+.code-editor-frame code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    line-height: 1;
+}
+
+/* Option 1: More specific selector */
+.code-editor-frame pre[class*="language-"] {
+    line-height: 1.5;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+@media (max-width: 768px) {
+    .code-editor-frame pre[class*="language-"] {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .code-editor-frame pre[class*="language-"] {
+        font-size: 0.6rem;
+    }
+}
+
+/* Option 2: Using !important (if needed) */
+.code-editor-frame pre {
+    line-height: 1.5 !important;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+}
+
+@media (max-width: 768px) {
+    .code-editor-frame pre {
+        font-size: 0.7rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .code-editor-frame pre {
+        font-size: 0.6rem !important;
+    }
 }
