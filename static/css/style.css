@@ -2,6 +2,13 @@
     font-family: 'Outfit', sans-serif;
 }
 
+/* Override ONLY the code editor area with stronger specificity */
+.code-editor-frame,
+.code-editor-frame * {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+    font-size: 0.9rem;
+}
+
 body {
     background-color: #f8f9fa;
 }
@@ -953,6 +960,7 @@ table td code {
     border-radius: 8px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
     overflow: hidden;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
 }
 
 /* Remove the gradient effect */
@@ -1002,6 +1010,7 @@ table td code {
     border-radius: 0 0 8px 8px;
     font-size: 1rem;
     /* Default font size */
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
 }
 
 @media (max-width: 768px) {
@@ -1025,7 +1034,6 @@ table td code {
 
 /* Option 1: More specific selector */
 .code-editor-frame pre[class*="language-"] {
-    line-height: 1.5;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
@@ -1043,7 +1051,6 @@ table td code {
 
 /* Option 2: Using !important (if needed) */
 .code-editor-frame pre {
-    line-height: 1.5 !important;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
 }
 
@@ -1080,5 +1087,33 @@ table td code {
     .index-page .effortless {
         font-size: 1.5em;
         /* Adjust font size for mobile devices */
+    }
+}
+
+/* Base code editor styles */
+.code-editor-frame,
+.code-editor-frame pre,
+.code-editor-frame code,
+.code-editor-frame .token {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+    font-size: 0.9rem;
+}
+
+/* Responsive font sizes for code editor elements */
+@media (max-width: 768px) {
+
+    .code-editor-frame pre,
+    .code-editor-frame code,
+    .code-editor-frame .token {
+        font-size: 0.7rem !important;
+    }
+}
+
+@media (max-width: 576px) {
+
+    .code-editor-frame pre,
+    .code-editor-frame code,
+    .code-editor-frame .token {
+        font-size: 0.6rem !important;
     }
 }
