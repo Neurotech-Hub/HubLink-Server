@@ -200,11 +200,28 @@
                     <div class="mb-3">
                         <label for="fileFilter" class="form-label">File Filter <span
                                 class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="fileFilter" name="file_filter" value="*" required
-                            pattern="[^<>:&quot;|?*]+">
-                        <div class="form-text">Filter pattern for matching files (e.g., "device1/*.csv").
-                            Wildcards (*) are allowed.</div>
-                        <div class="invalid-feedback">Please provide a valid file filter pattern.</div>
+                        <input type="text" class="form-control" id="fileFilter" name="file_filter" required>
+                        <div class="form-text">Enter a pattern for matching files, or select from common patterns below.</div>
+                        <div class="invalid-feedback">Please provide a file filter pattern.</div>
+                        
+                        <div class="mt-2">
+                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false">
+                                <i class="bi bi-list"></i> Common Patterns
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="max-height: 200px; overflow-y: auto;">
+                                {% for pattern in dir_patterns %}
+                                <li>
+                                    <button type="button" 
+                                            class="dropdown-item pattern-item" 
+                                            data-pattern="{{ pattern }}">
+                                        {{ pattern }}
+                                    </button>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="includeColumns" class="form-label">Include Columns <span
@@ -607,6 +624,18 @@
         const modal = new bootstrap.Modal(document.getElementById('plotModal'));
         modal.show();
     }
+
+    // Add pattern selection handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const patternItems = document.querySelectorAll('.pattern-item');
+        const fileFilterInput = document.getElementById('fileFilter');
+
+        patternItems.forEach(item => {
+            item.addEventListener('click', function() {
+                fileFilterInput.value = this.dataset.pattern;
+            });
+        });
+    });
 </script>
 
 {% endblock %}

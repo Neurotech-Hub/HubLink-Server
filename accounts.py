@@ -364,17 +364,52 @@ def account_plots(account_url):
                     if plot.id in layout_plot_ids:
                         plot_names.append(f"{source.name}: {plot.name}")
             layout_plot_names[layout.id] = plot_names
+
+        # Get all files for this source's account
+        files = File.query.filter_by(account_id=account.id).all()
+        file_keys = [file.key for file in files]
+        
+        # Generate directory patterns
+        dir_patterns = generate_directory_patterns(file_keys)
         
         return render_template('plots.html', 
                              account=account, 
                              sources=sources,
-                             layout_plot_names=layout_plot_names)
+                             layout_plot_names=layout_plot_names,
+                             dir_patterns=dir_patterns)
                           
     except Exception as e:
         print(f"Error in account_plots: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
         logging.error(f"Error loading plots for {account_url}: {e}")
         return "There was an issue loading the plots page.", 500
+
+def generate_directory_patterns(file_keys):
+    dir_patterns = set()
+    
+    # Add root level pattern
+    dir_patterns.add('*')
+    
+    for key in file_keys:
+        # Skip hidden files and directories
+        if any(part.startswith('.') for part in key.split('/')):
+            continue
+            
+        # Split the key by '/' and remove the filename
+        parts = key.split('/')[:-1]
+        
+        # Generate patterns for each directory level
+        for i in range(len(parts)):
+            # Pattern that matches specific directories up to this level
+            exact_pattern = '/'.join(parts[:i+1]) + '/*'
+            dir_patterns.add(exact_pattern)
+            
+            # Pattern with wildcard for the last directory
+            if i > 0:
+                wildcard_pattern = '/'.join(parts[:i]) + '/[^/]+/*'
+                dir_patterns.add(wildcard_pattern)
+    
+    return sorted(list(dir_patterns))
 
 def validate_source_data(data):
     errors = []
