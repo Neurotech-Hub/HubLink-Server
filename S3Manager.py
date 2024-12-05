@@ -56,7 +56,9 @@ def rebuild_S3_files(account_settings):
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
                                 existing_file.version += 1  # Increment version when size changes
-                                db.session.add(existing_file)
+                            # always update the url and commit
+                            existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
+                            db.session.add(existing_file)
                         else:
                             # New file - create new entry
                             new_file = File(
@@ -316,9 +318,10 @@ def delete_device_files_from_s3(account_settings, device_id):
         return False, error_msg
 
 def generate_s3_url(bucket_name, key):
-    """Generate a standardized S3 URL for a given bucket and key"""
-    return f"s3://{bucket_name}/{key}"
+    """Generate a publicly accessible HTTPS URL for a given bucket and key"""
+    return f"https://{bucket_name}.s3.amazonaws.com/{key}"
 
+# this function is only intended to sync source files that have been generated from local testing
 def sync_source_files(account_settings):
     """Sync source files with their corresponding .hublink/source/ files"""
     try:
@@ -397,4 +400,26 @@ def download_source_file(account_settings, source):
 
     except Exception as e:
         logging.error(f"Error downloading source file for {source.name}: {e}")
+        return None
+
+def make_object_public(account_settings, key):
+    try:
+        # Create S3 client
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        
+        # Set the object's ACL to public-read
+        s3_client.put_object_acl(
+            Bucket=account_settings.bucket_name,
+            Key=key,
+            ACL='public-read'
+        )
+        logging.info(f"Object {key} is now public.")
+        return f"https://{account_settings.bucket_name}.s3.amazonaws.com/{key}"
+    except Exception as e:
+        logging.error(f"Failed to make object {key} public: {e}")
         return None

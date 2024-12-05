@@ -1,7 +1,7 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for
 from flask_migrate import Migrate, upgrade
 from models import db, Account, Setting, File, Gateway, Source # db locations
-from S3Manager import *
+from S3Manager import generate_s3_url, make_object_public
 import os
 import logging
 import random

@@ -18,7 +18,7 @@
     {% endwith %}
 
     <!-- Sources Management Section -->
-    <div class="row mb-4">
+    <div class="row mb-5">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2>Data Sources</h2>
@@ -34,6 +34,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">{{ source.name }}</h5>
                         <div>
+                            <span id="copyFeedback-{{ source.id }}" class="text-muted ms-2 me-2" style="display: none;">Copied!</span>
                             <button type="button" class="btn btn-outline-primary btn-sm me-2"
                                 onclick='createPlot({{ source.to_dict() | tojson | safe }})'>
                                 New Plot
@@ -43,9 +44,15 @@
                                     data-bs-toggle="dropdown">
                                     ⋮
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
+                                <ul class="dropdown-menu dropdown-menu-end position-fixed">
                                     <li><button class="dropdown-item"
                                             onclick='editSource({{ source.to_dict() | tojson }})'>Edit</button></li>
+                                    <li><a class="dropdown-item" 
+                                           href="{{ source.file.url }}" 
+                                           target="_blank">Download</a></li>
+                                    <li><button class="dropdown-item copy-link" 
+                                           data-url="{{ source.file.url }}" 
+                                           data-source-id="{{ source.id }}">Copy Link</button></li>
                                     <li>
                                         <form action="/{{ account.url }}/source/{{ source.id }}/delete" method="POST"
                                             class="d-inline">
@@ -91,9 +98,9 @@
                     <div class="card-footer py-1 px-3">
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">{{ source.to_dict().state }}</small>
-                            <small class="text-muted">updated {{ moment(source.last_updated).fromNow() if
-                                source.last_updated
-                                }}</small>
+                            <small class="text-muted">
+                                {{ "updated " + moment(source.last_updated).fromNow() if source.last_updated else "never updated" }}
+                            </small>
                             <form action="/{{ account.url }}/source/{{ source.id }}/refresh" method="POST"
                                 class="d-inline m-0 p-0">
                                 <button type="submit"
@@ -105,8 +112,8 @@
                 {% endfor %}
 
                 {% if not sources %}
-                <div class="text-center text-muted p-4">
-                    <p>No sources configured yet. Click "Add Source" to get started.</p>
+                <div class="list-group-item text-center text-muted">
+                    <p class="mb-0">No sources configured yet. Click "Add Source" to get started.</p>
                 </div>
                 {% endif %}
             </div>
@@ -635,6 +642,26 @@
                 fileFilterInput.value = this.dataset.pattern;
             });
         });
+    });
+
+    // Copy link functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('copy-link')) {
+            const url = e.target.dataset.url;
+            const sourceId = e.target.dataset.sourceId;
+            navigator.clipboard.writeText(url).then(() => {
+                // Show feedback message
+                const feedbackElement = document.getElementById(`copyFeedback-${sourceId}`);
+                feedbackElement.style.display = 'inline';
+                
+                // Hide feedback after 2 seconds
+                setTimeout(() => {
+                    feedbackElement.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
     });
 </script>
 

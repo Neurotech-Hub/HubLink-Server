@@ -10,14 +10,23 @@ This guide outlines the steps to configure an Amazon S3 bucket and IAM user for 
    - **Bucket Name**: Choose a unique name (e.g., `my-app-files`)
    - **Region**: Select a region closest to your application
    - **Permissions**:  
-     - Ensure **Block all public access** is **enabled** (recommended)
+     - Only check the two boxes for ACLs
      - Leave other settings as default
 4. Click **Create bucket**
-5. Register Event notifications for the bucket:
-    - **Name**: `hublink-events`
-    - **Event Types**: `All object create events, All object removal events`
-    - **Destination**: `SQS Queue`
-    - **Queue**: `HublinkQueue`
+5. Modify the bucket policy to allow public access to files:
+``` json
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "PublicReadGetObject",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::neurotechhub-000/.hublink/source/*"
+        }
+    ]
+}
 
 ## 2. Set Up IAM User for Bucket Access
 
@@ -53,15 +62,6 @@ This guide outlines the steps to configure an Amazon S3 bucket and IAM user for 
           ],
           "Resource": "arn:aws:s3:::neurotechhub-000/*"
         },
-        {
-          "Effect": "Allow",
-          "Action": [
-            "sqs:ReceiveMessage",
-            "sqs:DeleteMessage",
-            "sqs:GetQueueAttributes"
-          ],
-          "Resource": "arn:aws:sqs:us-east-1:557690613785:HublinkQueue"
-        }
       ]
     }
     ```
@@ -92,7 +92,7 @@ If any errors occur, the script will display a detailed error message and exit w
     - **Existing role**: `lambda-basic-execution`
 4. Enable **Function URL** and allow anonymous access.
 
-### Create a Policy for the Lambda Function
+### Create a Policy for the Lambda Function (do once)
 
 1. Goto IAM Dashboard
 2. Click **Policies**
