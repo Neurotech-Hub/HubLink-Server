@@ -190,20 +190,6 @@ def check_files(account_url):
         logging.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": "There was an issue processing your request."}), 500
 
-# Sync endpoint, touch after gateway uploading
-@accounts_bp.route('/<account_url>/sync', methods=['GET'])
-def sync(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-
-        process_sqs_messages(settings)
-
-        return jsonify({"message": "Sync completed successfully"}), 200
-    except Exception as e:
-        logging.error(f"Error during '/sync' endpoint: {e}")
-        return jsonify({"error": "There was an issue processing the sync request."}), 500
-
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
 def rebuild(account_url):
     try:
@@ -597,22 +583,6 @@ def edit_source(account_url, source_id):
         db.session.rollback()
         flash('Error updating source.', 'error')
         logging.error(f"Error updating source: {e}")
-    
-    return redirect(url_for('accounts.account_plots', account_url=account_url))
-
-@accounts_bp.route('/<account_url>/source/sync', methods=['GET'])
-def sync_sources(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        
-        # Call the sync function
-        sync_source_files(settings)
-        
-        flash('Source files synced successfully.', 'success')
-    except Exception as e:
-        logging.error(f"Error syncing source files for account {account_url}: {e}")
-        flash('Error syncing source files.', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
 
