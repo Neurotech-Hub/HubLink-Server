@@ -121,11 +121,11 @@ class Source(db.Model):
     data_points = db.Column(db.Integer, nullable=False, default=0)
     tail_only = db.Column(db.Boolean, nullable=False, default=False)
     last_updated = db.Column(db.DateTime, nullable=True)
-    success = db.Column(db.Boolean, nullable=False, default=False)
     error = db.Column(db.String(500), nullable=True)
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
     head = db.Column(db.String(500), nullable=False, default="")
     devices = db.Column(db.String(500), nullable=False, default="")
+    state = db.Column(db.String(50), nullable=False, default='created')
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
     # Add relationship to Account
@@ -164,24 +164,14 @@ class Source(db.Model):
             'data_points': self.data_points,
             'tail_only': self.tail_only,
             'last_updated': self.last_updated.isoformat() if self.last_updated else None,
-            'success': self.success,
+            'state': self.state,
             'error': self.error,
             'available_columns': self.available_columns,  # This will now parse JSON and skip first two columns
             'file_id': self.file_id,  # Just include the file_id
             'head': json.loads(self.head) if self.head else [],  # Decode JSON string to list
             'devices': json.loads(self.devices) if self.devices else []  # Decode JSON string to list
         }
-        
-        # Add dynamic state based on conditions
-        if not self.last_updated:
-            data['state'] = 'created'
-        elif not self.success and self.error:
-            data['state'] = 'error'
-        elif self.success:
-            data['state'] = 'success'
-        else:
-            data['state'] = 'running'
-            
+
         return data
 
     def get_data(self):

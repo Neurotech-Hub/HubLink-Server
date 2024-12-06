@@ -217,8 +217,8 @@ def create_source():
         # Update source fields
         source.head = json.dumps(data.get('head', []))
         source.devices = json.dumps(data.get('devices', []))
-        source.info = None
-        source.success = data['success']
+        source.state = 'success' if data['success'] else 'error'  # Update state based on success
+        source.error = data.get('error') if not data['success'] else None  # Set error message if failed
         source.last_updated = datetime.now(timezone.utc)
         
         # Handle file record

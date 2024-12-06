@@ -459,6 +459,72 @@ def validate_source_data(data):
         'tail_only': 'tail_only' in data
     }
 
+def initiate_source_refresh(source, settings):
+    """
+    Initiates a refresh for a source without any HTTP redirects.
+    Returns (success, error_message) tuple.
+    """
+    try:
+        # Reset source status
+        source.success = False
+        source.error = None
+        source.file_id = None
+        source.state = 'running'
+
+        # Prepare payload for lambda
+        payload = {
+            'source': {
+                'name': source.name,
+                'file_filter': source.file_filter,
+                'include_columns': source.include_columns,
+                'data_points': source.data_points,
+                'tail_only': source.tail_only,
+                'bucket_name': settings.bucket_name
+            }
+        }
+        
+        lambda_url = os.environ.get('LAMBDA_URL')
+        if not lambda_url:
+            raise ValueError("LAMBDA_URL environment variable not set")
+            
+        try:
+            requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
+        except requests.exceptions.Timeout:
+            # This is expected, ignore it
+            pass
+        
+        db.session.commit()
+        return True, None
+        
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"Error refreshing source {source.id}: {error_msg}")
+        if not source.error:  # Only set error if not already set
+            source.error = error_msg
+            source.state = 'error'
+            db.session.commit()
+        return False, error_msg
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/refresh', methods=['POST'])
+def refresh_source(account_url, source_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+
+        success, error = initiate_source_refresh(source, settings)
+        
+        if success:
+            flash('Source refresh initiated.', 'success')
+        else:
+            flash(f'Error refreshing source: {error}', 'error')
+        
+    except Exception as e:
+        logging.error(f"Error in refresh_source route: {str(e)}")
+        flash('Error refreshing source.', 'error')
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
+
 @accounts_bp.route('/<account_url>/source', methods=['POST'])
 def create_source(account_url):
     try:
@@ -475,7 +541,15 @@ def create_source(account_url):
         db.session.add(source)
         db.session.commit()
         
-        flash('Source created successfully.', 'success')
+        # Trigger refresh for the newly created source
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        success, error = initiate_source_refresh(source, settings)
+        
+        if success:
+            flash('Source created and refresh initiated.', 'success')
+        else:
+            flash('Source created, but initial refresh failed.', 'warning')
+            
     except BadRequest as e:
         flash(str(e), 'error')
     except Exception as e:
@@ -523,53 +597,6 @@ def edit_source(account_url, source_id):
         db.session.rollback()
         flash('Error updating source.', 'error')
         logging.error(f"Error updating source: {e}")
-    
-    return redirect(url_for('accounts.account_plots', account_url=account_url))
-
-@accounts_bp.route('/<account_url>/source/<int:source_id>/refresh', methods=['POST'])
-def refresh_source(account_url, source_id):
-    try:
-        print(f"Starting refresh for source {source_id} in account {account_url}")
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        
-        # Reset source status
-        source.success = False
-        source.error = None
-        source.file_id = None  # Also reset the file_id
-        db.session.commit()
-        
-        # Prepare payload for lambda
-        payload = {
-            'source': {
-                'name': source.name,
-                'file_filter': source.file_filter,
-                'include_columns': source.include_columns,
-                'data_points': source.data_points,
-                'tail_only': source.tail_only,
-                'bucket_name': settings.bucket_name
-            }
-        }
-        
-        lambda_url = os.environ.get('LAMBDA_URL')
-        if not lambda_url:
-            raise ValueError("LAMBDA_URL environment variable not set")
-            
-        print(f"Sending request to Lambda: {lambda_url}")
-        try:
-            requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
-        except requests.exceptions.Timeout:
-            # This is expected, ignore it
-            pass
-        print("Request sent to Lambda")
-        
-        flash('Source refresh initiated.', 'success')
-        
-    except Exception as e:
-        print(f"Error in refresh_source: {str(e)}")
-        logging.error(f"Error refreshing source {source_id}: {e}")
-        flash(f'Error refreshing source: {str(e)}', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
 

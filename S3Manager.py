@@ -349,12 +349,12 @@ def sync_source_files(account_settings):
             if source.name in source_file_map:
                 file = source_file_map[source.name]
                 source.file_id = file.id
-                source.success = True  # override the success status on rebuild
+                source.state = 'success'
                 source.last_updated = file.last_modified
                 print(f"Updated source {source.name} with file {file.key}, last_modified: {file.last_modified}")
             else:
                 source.file_id = None
-                source.success = False
+                source.state = 'error'
                 print(f"No matching file found for source {source.name}")
                 
         db.session.commit()

@@ -99,12 +99,16 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <small class="text-muted">{{ source.to_dict().state }}</small>
                             <small class="text-muted">
-                                {{ "updated " + moment(source.last_updated).fromNow() if source.last_updated else "never updated" }}
+                                {% if source.error %}
+                                    {{ source.error }}
+                                {% else %}
+                                    {{ "updated " + moment(source.last_updated).fromNow() if source.last_updated else "never updated" }}
+                                {% endif %}
                             </small>
                             <form action="/{{ account.url }}/source/{{ source.id }}/refresh" method="POST"
                                 class="d-inline m-0 p-0">
                                 <button type="submit"
-                                    class="btn btn-link btn-sm text-muted p-0 border-0">Refresh</button>
+                                    class="btn btn-link btn-sm text-muted p-0 border-0">refresh</button>
                             </form>
                         </div>
                     </div>
@@ -113,7 +117,7 @@
 
                 {% if not sources %}
                 <div class="list-group-item text-center text-muted">
-                    <p class="mb-0">No sources configured yet. Click "Add Source" to get started.</p>
+                    <p class="mb-0">No sources created yet.</p>
                 </div>
                 {% endif %}
             </div>
@@ -196,13 +200,15 @@
                     <input type="hidden" id="sourceId" name="source_id">
                     <div class="mb-3">
                         <label for="sourceName" class="form-label">Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="sourceName" name="name" required
-                            pattern="^[a-zA-Z0-9_-]+$"
-                            title="Name can only contain letters, numbers, hyphens, and underscores">
-                        <div class="form-text">Only letters, numbers, hyphens (-), and underscores (_) allowed. No
-                            spaces.</div>
-                        <div class="invalid-feedback">Please provide a valid name using only letters, numbers, hyphens,
-                            and underscores.</div>
+                        <input type="text" 
+                               class="form-control" 
+                               id="sourceName" 
+                               name="name" 
+                               required
+                               pattern="[\w\-]+"
+                               title="Name can only contain letters, numbers, hyphens, and underscores">
+                        <div class="form-text">Only letters, numbers, hyphens (-), and underscores (_) allowed. No spaces.</div>
+                        <div class="invalid-feedback">Please provide a valid name using only letters, numbers, hyphens, and underscores.</div>
                     </div>
                     <div class="mb-3">
                         <label for="fileFilter" class="form-label">File Filter <span
@@ -234,10 +240,10 @@
                         <label for="includeColumns" class="form-label">Include Columns <span
                                 class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="includeColumns" name="include_columns" required
-                            pattern="^[^,]+(,[^,]+)*$">
+                            pattern="^[^,*]+(,[^,*]+)*$">
                         <div class="form-text">Comma-separated list of columns to include (e.g.,
-                            "MM:DD:YYYY hh:mm:ss,Battery Voltage,Temperature").</div>
-                        <div class="invalid-feedback">Please provide a comma-separated list of column names.</div>
+                            "MM:DD:YYYY hh:mm:ss,Battery_Voltage"). All columns must be matched in target files and wildcards not allowed.</div>
+                        <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
                     </div>
                     <div class="mb-3">
                         <label for="dataPoints" class="form-label">Data Points <span
