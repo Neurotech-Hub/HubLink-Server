@@ -340,7 +340,14 @@ def account_plots(account_url):
         
         sources = Source.query.filter_by(account_id=account.id).all()
         
-        # Prepare plot names for each layout
+        # Get plot data for all plots
+        plot_data = []
+        for source in sources:
+            for plot in source.plots:
+                plot_info = get_plot_info(plot)
+                plot_data.append(plot_info)
+        
+        # Prepare layout plot names
         layout_plot_names = {}
         for layout in account.layouts:
             plot_names = []
@@ -351,19 +358,17 @@ def account_plots(account_url):
                         plot_names.append(f"{source.name}: {plot.name}")
             layout_plot_names[layout.id] = plot_names
 
-        # Get all files for this source's account
         files = File.query.filter_by(account_id=account.id).all()
         file_keys = [file.key for file in files]
-        
-        # Generate directory patterns
         dir_patterns = generate_directory_patterns(file_keys)
         
         return render_template('plots.html', 
-                             account=account, 
-                             sources=sources,
-                             layout_plot_names=layout_plot_names,
-                             dir_patterns=dir_patterns)
-                          
+                          account=account, 
+                          sources=sources,
+                          plot_data=plot_data,  # Add plot_data to template context
+                          layout_plot_names=layout_plot_names,
+                          dir_patterns=dir_patterns)
+                       
     except Exception as e:
         print(f"Error in account_plots: {str(e)}")
         print(f"Traceback: {traceback.format_exc()}")
@@ -422,17 +427,22 @@ def validate_source_data(data):
         columns = [col.strip() for col in include_columns.split(',')]
         if '*' in columns:
             errors.append("Wildcard (*) is not allowed. Please specify exact column names")
-        invalid_columns = [col for col in columns if not col]  # Only check for empty columns
+        invalid_columns = [col for col in columns if not col]
         if invalid_columns:
             errors.append("Column names cannot be empty")
     
-    # Validate data_points
-    try:
-        data_points = int(data.get('data_points', 0))
-        if not 1 <= data_points <= 1000:
-            errors.append("Data points must be between 1 and 1000")
-    except ValueError:
-        errors.append("Data points must be a valid number")
+    # Set default data_points to 1000 if tail_only is False
+    tail_only = 'tail_only' in data
+    if not tail_only:
+        data_points = 1000
+    else:
+        # Validate data_points only if tail_only is True
+        try:
+            data_points = int(data.get('data_points', 1000))
+            if not 1 <= data_points <= 1000000:
+                errors.append("Data points must be between 1 and 1,000,000")
+        except ValueError:
+            errors.append("Data points must be a valid number")
     
     if errors:
         raise BadRequest(', '.join(errors))
@@ -442,7 +452,7 @@ def validate_source_data(data):
         'file_filter': file_filter,
         'include_columns': include_columns,
         'data_points': data_points,
-        'tail_only': 'tail_only' in data
+        'tail_only': tail_only
     }
 
 def initiate_source_refresh(source, settings):
@@ -597,23 +607,7 @@ def create_plot(account_url, source_id):
         
         # Build config based on plot type
         config = {}
-        if plot_type == 'metric':
-            y_data = request.form.get('y_data')
-            display_type = request.form.get('display_type')
-            
-            if not y_data:
-                flash('Data column is required for metric plots.', 'error')
-                return redirect(url_for('accounts.account_plots', account_url=account_url))
-            
-            if not display_type or display_type not in ['bar', 'box', 'table']:
-                flash('Valid display type is required for metric plots.', 'error')
-                return redirect(url_for('accounts.account_plots', account_url=account_url))
-                
-            config = {
-                'y_data': y_data,
-                'display': display_type
-            }
-        else:  # timeline type
+        if plot_type == 'timeline':
             x_data = request.form.get('x_data')
             y_data = request.form.get('y_data')
             
@@ -623,6 +617,16 @@ def create_plot(account_url, source_id):
                 
             config = {
                 'x_data': x_data,
+                'y_data': y_data
+            }
+        elif plot_type in ['box', 'bar', 'table']:
+            y_data = request.form.get('y_data')
+            
+            if not y_data:
+                flash('Data column is required.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+                
+            config = {
                 'y_data': y_data
             }
         

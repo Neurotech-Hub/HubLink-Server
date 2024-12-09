@@ -65,7 +65,8 @@
                     </div>
 
                     <!-- Plot Grid -->
-                    <div class="card-body p-3">
+                    <div class="card-body p-2">
+                        {% if source.plots %}
                         <div class="row row-cols-1 row-cols-md-4 g-3">
                             {% for plot in source.plots|sort(attribute='name') %}
                             <div class="col">
@@ -93,6 +94,11 @@
                             </div>
                             {% endfor %}
                         </div>
+                        {% else %}
+                        <div class="text-center text-muted py-3">
+                            No plots created.
+                        </div>
+                        {% endif %}
                     </div>
 
                     <div class="card-footer py-1 px-3">
@@ -239,24 +245,32 @@
                     <div class="mb-3">
                         <label for="includeColumns" class="form-label">Include Columns <span
                                 class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="includeColumns" name="include_columns" required
-                            pattern="^[^,*]+(,[^,*]+)*$">
+                        <textarea class="form-control" 
+                                id="includeColumns" 
+                                name="include_columns" 
+                                required
+                                pattern="^[^,*]+(,[^,*]+)*$"
+                                rows="3"
+                                style="white-space: nowrap;"
+                        ></textarea>
                         <div class="form-text">Comma-separated list of columns to include (e.g.,
                             "MM:DD:YYYY hh:mm:ss,Battery_Voltage"). All columns must be matched in target files and wildcards not allowed.</div>
                         <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
                     </div>
-                    <div class="mb-3">
-                        <label for="dataPoints" class="form-label">Data Points <span
-                                class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="dataPoints" name="data_points" value="100"
-                            required min="1" max="1000">
-                        <div class="form-text">Number of data points to collect (1-1000)</div>
-                        <div class="invalid-feedback">Please enter a number between 1 and 1000.</div>
-                    </div>
                     <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only">
+                        <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only" onchange="toggleDataPoints()">
                         <label class="form-check-label" for="tailOnly">Tail Only</label>
                         <div class="form-text">Only process the end of files</div>
+                    </div>
+                    <div class="mb-3" id="dataPointsContainer" style="display: none;">
+                        <label for="dataPoints" class="form-label">Data Points</label>
+                        <input type="number" class="form-control" id="dataPoints" name="data_points" value="1000"
+                            min="1" max="1000000">
+                        <div class="form-text">Number of data points to collect (1-1,000,000)</div>
+                        <div class="invalid-feedback">Please enter a number between 1 and 1,000,000.</div>
+                    </div>
+                    <div class="form-text text-muted mt-3">
+                        Note: The total number of rows being processed is limited to 1M.
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -293,50 +307,39 @@
                         <select class="form-select" id="plotType" name="type" required
                             onchange="handlePlotTypeChange()">
                             <option value="timeline">Timeline</option>
-                            <option value="metric">Metric</option>
+                            <option value="box">Box</option>
+                            <option value="bar">Bar</option>
+                            <option value="table">Table</option>
                         </select>
                     </div>
 
-                    <!-- X Column (becomes Display options for metric) -->
-                    <div class="mb-3" id="xColumnContainer">
-                        <label id="xColumnLabel" for="xColumn" class="form-label">X Data <span
-                                class="text-danger">*</span></label>
-                        <select class="form-select" id="xColumn" name="x_data">
-                            <option value="">Select data...</option>
-                        </select>
-                        <!-- Radio options for metric display type -->
-                        <div id="displayOptions" style="display: none;" class="mt-2">
-                            <label class="form-label">Display <span class="text-danger">*</span></label>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="display_type" id="displayBar"
-                                    value="bar">
-                                <label class="form-check-label" for="displayBar">
-                                    Bar
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="display_type" id="displayBox"
-                                    value="box" checked>
-                                <label class="form-check-label" for="displayBox">
-                                    Box
-                                </label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="display_type" id="displayTable"
-                                    value="table">
-                                <label class="form-check-label" for="displayTable">
-                                    Table
-                                </label>
-                            </div>
+                    <!-- Timeline-specific fields -->
+                    <div id="timelineFields">
+                        <div class="mb-3">
+                            <label for="xData" class="form-label">Time Column <span class="text-danger">*</span></label>
+                            <select class="form-select" id="xData" name="x_data" required>
+                                <option value="">Select column...</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a time column.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="yData" class="form-label">Value Column <span class="text-danger">*</span></label>
+                            <select class="form-select" id="yData" name="y_data" required>
+                                <option value="">Select column...</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a value column.</div>
                         </div>
                     </div>
 
-                    <!-- Y Column (becomes single Data for metric) -->
-                    <div class="mb-3" id="yColumnContainer">
-                        <label for="yColumn" class="form-label">Y Data <span class="text-danger">*</span></label>
-                        <select class="form-select" id="yColumn" name="y_data" required>
-                            <option value="">Select data...</option>
-                        </select>
+                    <!-- Box/Bar/Table fields -->
+                    <div id="metricFields" style="display: none;">
+                        <div class="mb-3">
+                            <label for="metricData" class="form-label">Data Column <span class="text-danger">*</span></label>
+                            <select class="form-select" id="metricData" name="y_data" required>
+                                <option value="">Select column...</option>
+                            </select>
+                            <div class="invalid-feedback">Please select a data column.</div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -447,54 +450,40 @@
 
         // Initialize plots
         {% for plot in plot_data %}
-        {% if plot.type == 'metric' or plot.type == 'timeline' %}
         {% if plot.plotly_json is defined %}
         Plotly.newPlot('plot-{{ plot.plot_id }}',
             JSON.parse({{ plot.plotly_json | tojson }}).data,
-        JSON.parse({{ plot.plotly_json | tojson }}).layout,
-    {
-        responsive: true,
-        displayModeBar: true,
-        displaylogo: false
-    }
-                );
-    {% endif %}
-    {% endif %}
-    {% endfor %}
+            JSON.parse({{ plot.plotly_json | tojson }}).layout,
+            {
+                responsive: true,
+                displayModeBar: 'hover',
+                displaylogo: false,
+                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
+            }
+        );
+        {% endif %}
+        {% endfor %}
     });
 
     function handlePlotTypeChange() {
         const plotType = document.getElementById('plotType').value;
-        const xColumnContainer = document.getElementById('xColumnContainer');
-        const xColumn = document.getElementById('xColumn');
-        const displayOptions = document.getElementById('displayOptions');
-        const yColumnContainer = document.getElementById('yColumnContainer');
-        const yColumn = document.getElementById('yColumn');
-        const yColumnLabel = yColumnContainer.querySelector('label');
-        const xColumnLabel = document.getElementById('xColumnLabel');
+        const timelineFields = document.getElementById('timelineFields');
+        const metricFields = document.getElementById('metricFields');
 
-        if (plotType === 'metric') {
-            // Show radio options, hide X column dropdown
-            xColumn.style.display = 'none';
-            xColumnLabel.style.display = 'none';
-            displayOptions.style.display = 'block';
-            xColumn.required = false;
-
-            // Show Y Data field with modified label
-            yColumnContainer.style.display = 'block';
-            yColumnLabel.innerHTML = 'Data <span class="text-danger">*</span>';
-            yColumn.required = true;
+        if (plotType === 'timeline') {
+            timelineFields.style.display = 'block';
+            metricFields.style.display = 'none';
+            // Update required attributes
+            document.getElementById('xData').required = true;
+            document.getElementById('yData').required = true;
+            document.getElementById('metricData').required = false;
         } else {
-            // Show X column dropdown, hide radio options
-            xColumn.style.display = 'block';
-            xColumnLabel.style.display = 'block';
-            displayOptions.style.display = 'none';
-            xColumn.required = true;
-
-            // Show both fields with original labels
-            yColumnContainer.style.display = 'block';
-            yColumn.required = true;
-            yColumnLabel.innerHTML = 'Y Data <span class="text-danger">*</span>';
+            timelineFields.style.display = 'none';
+            metricFields.style.display = 'block';
+            // Update required attributes
+            document.getElementById('xData').required = false;
+            document.getElementById('yData').required = false;
+            document.getElementById('metricData').required = true;
         }
     }
 
@@ -605,37 +594,39 @@
     const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]')
 
     function createPlot(source) {
-        // Update form action and source ID
+        // Reset form
         const form = document.getElementById('plotForm');
+        form.reset();
+        
+        // Set form action and source ID
         form.action = `/{{ account.url }}/source/${source.id}/plot`;
         document.getElementById('plotSourceId').value = source.id;
-
-        // Get the select elements
-        const xSelect = document.getElementById('xColumn');
-        const ySelect = document.getElementById('yColumn');
-
-        // Clear existing options
-        xSelect.innerHTML = '<option value="">Select data...</option>';
-        ySelect.innerHTML = '<option value="">Select data...</option>';
-
-        // Add options for each available column
-        if (source.available_columns && source.available_columns.length > 0) {
-            source.available_columns.forEach(column => {
-                xSelect.add(new Option(column, column));
-                ySelect.add(new Option(column, column));
-            });
-        } else {
-            console.warn('No columns available for source:', source.id);
-        }
-
-        // Reset plot type and show/hide fields
-        document.getElementById('plotType').value = 'timeline';
-        document.getElementById('displayBar').checked = true;
-        handlePlotTypeChange();
-
+        
+        // Populate column dropdowns
+        const columns = source.include_columns.split(',');
+        const xDataSelect = document.getElementById('xData');
+        const yDataSelect = document.getElementById('yData');
+        const metricDataSelect = document.getElementById('metricData');
+        
+        // Clear existing options (keeping the first "Select column" option)
+        xDataSelect.innerHTML = '<option value="">Select column...</option>';
+        yDataSelect.innerHTML = '<option value="">Select column...</option>';
+        metricDataSelect.innerHTML = '<option value="">Select column...</option>';
+        
+        // Add options for each column
+        columns.forEach(column => {
+            const trimmedColumn = column.trim();
+            xDataSelect.add(new Option(trimmedColumn, trimmedColumn));
+            yDataSelect.add(new Option(trimmedColumn, trimmedColumn));
+            metricDataSelect.add(new Option(trimmedColumn, trimmedColumn));
+        });
+        
         // Show modal
         const modal = new bootstrap.Modal(document.getElementById('plotModal'));
         modal.show();
+        
+        // Initialize field visibility
+        handlePlotTypeChange();
     }
 
     // Add pattern selection handler
@@ -669,6 +660,12 @@
             });
         }
     });
+
+    function toggleDataPoints() {
+        const tailOnly = document.getElementById('tailOnly');
+        const dataPointsContainer = document.getElementById('dataPointsContainer');
+        dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
+    }
 </script>
 
 {% endblock %}

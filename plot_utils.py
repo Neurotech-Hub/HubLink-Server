@@ -5,6 +5,7 @@ import json
 import logging
 from S3Manager import download_source_file
 from models import db
+import plotly.graph_objects as go
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
@@ -16,10 +17,16 @@ def get_plot_data(plot, source, account):
             logger.error("Could not download source file")
             return {}
 
-        if plot.type == 'metric':
-            return process_metric_plot(plot, csv_content)
-        elif plot.type == 'timeline':
+        logger.debug(f"CSV content first 100 chars: {csv_content[:100]}")  # Debug CSV content
+
+        if plot.type == 'timeline':
             return process_timeseries_plot(plot, csv_content)
+        elif plot.type == 'box':
+            return process_box_plot(plot, csv_content)
+        elif plot.type == 'bar':
+            return process_bar_plot(plot, csv_content)
+        elif plot.type == 'table':
+            return process_table_plot(plot, csv_content)
         else:
             return {}
 
@@ -33,17 +40,25 @@ def get_plot_info(plot):
     try:
         # Load the stored plot data (which includes the plotly_json)
         plot_data = json.loads(plot.data) if plot.data else {}
+        logger.debug(f"Plot {plot.id} data: {plot_data}")  # Debug plot data
         
         # If we have valid plotly_json in the stored data, use it
         if plot_data.get('plotly_json'):
             plotly_json = plot_data['plotly_json']
+            logger.debug(f"Found plotly_json for plot {plot.id}")  # Debug plotly_json existence
         else:
-            # Only use empty data as a fallback if no valid plot data exists
+            logger.warning(f"No plotly_json found for plot {plot.id}, using empty data")
             plotly_json = json.dumps({
                 'data': [],
                 'layout': get_default_layout(plot.name)
             })
-            logger.warning(f"No plotly_json found for plot {plot.id}, using empty data")
+
+        # Verify plotly_json structure
+        parsed_json = json.loads(plotly_json)
+        logger.debug(f"Plot {plot.id} data structure: {list(parsed_json.keys())}")  # Debug JSON structure
+        if 'data' not in parsed_json or 'layout' not in parsed_json:
+            logger.error(f"Invalid plotly_json structure for plot {plot.id}")
+            
     except Exception as e:
         logger.error(f"Error parsing plot data for plot {plot.id}: {e}")
         plotly_json = json.dumps({
@@ -89,51 +104,6 @@ def get_default_layout(plot_name):
         }
     }
 
-def process_metric_plot(plot, csv_content):
-    try:
-        logger.info(f"Processing metric plot {plot.id}")
-        config = json.loads(plot.config)
-        y_data = config['y_data']
-        display_type = config.get('display', 'bar')
-        
-        df = pd.read_csv(StringIO(csv_content))
-        
-        if display_type == 'box':
-            fig = px.box(df, 
-                        x='hublink_device_id',
-                        y=y_data,
-                        labels={
-                            'hublink_device_id': 'Device',
-                            y_data: config['y_data']
-                        })
-            
-            fig.update_layout(get_default_layout(plot.name))
-            fig.update_layout(boxmode='group')
-            
-            return {
-                'plotly_json': fig.to_json(),
-                'error': None
-            }
-        else:
-            stats = df.groupby('hublink_device_id')[y_data].agg(['mean', 'std']).reset_index()
-            
-            fig = px.bar(stats, 
-                         x='hublink_device_id', 
-                         y='mean', 
-                         error_y='std',
-                         labels={'hublink_device_id': 'Device', 'mean': 'Mean', 'std': 'Standard Deviation'})
-            
-            fig.update_layout(get_default_layout(plot.name))
-            
-            return {
-                'plotly_json': fig.to_json(),
-                'error': None
-            }
-
-    except Exception as e:
-        logger.error(f"Error processing metric plot: {e}", exc_info=True)
-        return {'error': f'Error processing plot data: {str(e)}'}
-
 def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
@@ -142,6 +112,8 @@ def process_timeseries_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
+        logger.debug(f"DataFrame shape: {df.shape}")  # Debug DataFrame size
+        logger.debug(f"DataFrame columns: {df.columns.tolist()}")  # Debug columns
         
         try:
             df[x_data] = pd.to_datetime(df[x_data], format='%m/%d/%Y %H:%M:%S', errors='coerce')
@@ -152,11 +124,13 @@ def process_timeseries_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[x_data, y_data])
         
+        logger.debug(f"DataFrame shape after cleaning: {df.shape}")  # Debug cleaned DataFrame size
+        
         if len(df) == 0:
             return {'error': 'No valid data points after cleaning'}
 
         df = df.sort_values(['hublink_device_id', x_data])
-
+        
         fig = px.line(df, 
                      x=x_data,
                      y=y_data,
@@ -169,11 +143,119 @@ def process_timeseries_plot(plot, csv_content):
         
         fig.update_layout(get_default_layout(plot.name))
         
+        plotly_json = fig.to_json()
+        logger.debug(f"Generated plotly_json length: {len(plotly_json)}")  # Debug JSON size
+        
+        return {
+            'plotly_json': plotly_json,
+            'error': None
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing timeseries plot: {e}", exc_info=True)
+        return {'error': f'Error processing plot data: {str(e)}'}
+
+def process_box_plot(plot, csv_content):
+    try:
+        logger.info(f"Processing box plot {plot.id}")
+        config = json.loads(plot.config)
+        y_data = config['y_data']
+        
+        df = pd.read_csv(StringIO(csv_content))
+        
+        fig = px.box(df, 
+                    x='hublink_device_id',
+                    y=y_data,
+                    labels={
+                        'hublink_device_id': 'Device',
+                        y_data: config['y_data']
+                    })
+        
+        fig.update_layout(get_default_layout(plot.name))
+        fig.update_layout(boxmode='group')
+        
         return {
             'plotly_json': fig.to_json(),
             'error': None
         }
 
     except Exception as e:
-        logger.error(f"Error processing timeseries plot: {e}", exc_info=True)
+        logger.error(f"Error processing box plot: {e}", exc_info=True)
+        return {'error': f'Error processing plot data: {str(e)}'}
+
+def process_bar_plot(plot, csv_content):
+    try:
+        logger.info(f"Processing bar plot {plot.id}")
+        config = json.loads(plot.config)
+        y_data = config['y_data']
+        
+        df = pd.read_csv(StringIO(csv_content))
+        stats = df.groupby('hublink_device_id')[y_data].agg(['mean', 'std']).reset_index()
+        
+        fig = px.bar(stats, 
+                     x='hublink_device_id', 
+                     y='mean', 
+                     error_y='std',
+                     labels={
+                         'hublink_device_id': 'Device',
+                         'mean': f'{y_data} (Mean)',
+                         'std': 'Standard Deviation'
+                     })
+        
+        fig.update_layout(get_default_layout(plot.name))
+        
+        return {
+            'plotly_json': fig.to_json(),
+            'error': None
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing bar plot: {e}", exc_info=True)
+        return {'error': f'Error processing plot data: {str(e)}'}
+
+def process_table_plot(plot, csv_content):
+    try:
+        logger.info(f"Processing table plot {plot.id}")
+        config = json.loads(plot.config)
+        y_data = config['y_data']
+        
+        df = pd.read_csv(StringIO(csv_content))
+        stats = df.groupby('hublink_device_id')[y_data].agg([
+            'count',
+            'mean',
+            'std',
+            'min',
+            'max'
+        ]).reset_index()
+        
+        # Round numeric columns to 3 decimal places
+        numeric_cols = stats.select_dtypes(include=['float64']).columns
+        stats[numeric_cols] = stats[numeric_cols].round(3)
+        
+        # Rename columns for display
+        stats.columns = ['Device', 'Count', 'Mean', 'Std Dev', 'Min', 'Max']
+        
+        fig = go.Figure(data=[go.Table(
+            header=dict(
+                values=list(stats.columns),
+                fill_color='paleturquoise',
+                align='left'
+            ),
+            cells=dict(
+                values=[stats[col] for col in stats.columns],
+                fill_color='lavender',
+                align='left'
+            )
+        )])
+        
+        fig.update_layout(get_default_layout(plot.name))
+        fig.update_layout(height=400)  # Adjust height for table
+        
+        return {
+            'plotly_json': fig.to_json(),
+            'error': None
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing table plot: {e}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'} 
