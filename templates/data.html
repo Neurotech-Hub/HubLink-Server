@@ -64,22 +64,24 @@
                     {% if recent_files and recent_files|length > 0 %}
                     {% for file in recent_files %}
                     <tr data-key="{{ file.key }}">
-                        <td class="d-flex justify-content-between align-items-center">
-                            <a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}"
-                                download>
-                                {{ file.key }}
-                            </a>
-                            <span class="badge border border-secondary text-secondary small fw-normal" role="button"
-                                onclick="showFileDetails(
-                                    '{{ file.id }}',
-                                    '{{ file.key | replace("'", "\\'") }}',
-                                    '{{ file.size | filesizeformat }}',
-                                    '{{ file.last_modified.isoformat() if file.last_modified else "" }}',
-                                    '{{ file.version }}',
-                                    '{{ file.last_checked.isoformat() if file.last_checked else " Never" }}' )"
-                                style="cursor: pointer;">
-                                v{{ file.version }}
-                            </span>
+                        <td>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}"
+                                    download>
+                                    {{ file.key }}
+                                </a>
+                                <span class="badge border border-secondary text-secondary small fw-normal" role="button"
+                                    onclick="showFileDetails(
+                                        '{{ file.id }}',
+                                        '{{ file.key | replace("'", "\\'") }}',
+                                        '{{ file.size | filesizeformat }}',
+                                        '{{ file.last_modified.isoformat() if file.last_modified else "" }}',
+                                        '{{ file.version }}',
+                                        '{{ file.last_checked.isoformat() if file.last_checked else " Never" }}' )"
+                                    style="cursor: pointer;">
+                                    v{{ file.version }}
+                                </span>
+                            </div>
                         </td>
                         <td><small>{{ file.size | filesizeformat }}</small></td>
                         <td><small>{{ moment(file.last_modified | default('', true)).fromNow() | default('Never', true)

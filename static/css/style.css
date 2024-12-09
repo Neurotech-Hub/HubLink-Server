@@ -1117,3 +1117,26 @@ table td code {
         font-size: 0.6rem !important;
     }
 }
+
+/* Animated Background */
+#bg-wrap {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: -1;
+    opacity: 0.3;
+    /* Adjust for subtlety */
+}
+
+#bg-wrap svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Ensure content remains above the animation */
+.index-page .center-area,
+.index-page .container-fluid {
+    position: relative;
+}

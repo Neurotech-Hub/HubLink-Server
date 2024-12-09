@@ -162,6 +162,8 @@ def process_box_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
+        df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
+        df = df.dropna(subset=[y_data])
         
         fig = px.box(df, 
                     x='hublink_device_id',
@@ -190,6 +192,9 @@ def process_bar_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
+        df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
+        df = df.dropna(subset=[y_data])
+        
         stats = df.groupby('hublink_device_id')[y_data].agg(['mean', 'std']).reset_index()
         
         fig = px.bar(stats, 
@@ -220,6 +225,9 @@ def process_table_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
+        df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
+        df = df.dropna(subset=[y_data])
+        
         stats = df.groupby('hublink_device_id')[y_data].agg([
             'count',
             'mean',

@@ -80,15 +80,33 @@ document.addEventListener('DOMContentLoaded', function() {
                         displaylogo: false,
                         modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
                     }
-                );
-
-                const observer = new ResizeObserver(() => {
-                    Plotly.relayout(plotDiv, {
-                        'xaxis.autorange': true,
-                        'yaxis.autorange': true
-                    });
+                ).then(() => {
+                    // Only set up the ResizeObserver after the plot is successfully created
+                    if (plotDiv && plotDiv.parentElement) {
+                        let resizeTimeout;
+                        const observer = new ResizeObserver(() => {
+                            // Clear any existing timeout
+                            clearTimeout(resizeTimeout);
+                            
+                            // Set a new timeout to debounce the resize event
+                            resizeTimeout = setTimeout(() => {
+                                try {
+                                    if (plotDiv && plotDiv._fullLayout) {  // Check for Plotly's internal layout object
+                                        Plotly.relayout(plotDiv, {
+                                            autosize: true
+                                        });
+                                    }
+                                } catch (error) {
+                                    console.warn('Error during plot resize:', error);
+                                }
+                            }, 100);  // Wait 100ms after resize ends before updating
+                        });
+                        
+                        observer.observe(plotDiv.parentElement);
+                    }
+                }).catch(error => {
+                    console.error('Error creating plot:', error);
                 });
-                observer.observe(plotDiv.parentElement);
             }
         }
     });

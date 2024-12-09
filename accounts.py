@@ -599,19 +599,26 @@ def edit_source(account_url, source_id):
 @accounts_bp.route('/<account_url>/source/<int:source_id>/plot', methods=['POST'])
 def create_plot(account_url, source_id):
     try:
+        print(f"[DEBUG] Starting create_plot for account_url: {account_url}, source_id: {source_id}")
         account = Account.query.filter_by(url=account_url).first_or_404()
+        print(f"[DEBUG] Found account: {account.id}")
+        
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        print(f"[DEBUG] Found source: {source.id}, name: {source.name}")
         
         plot_name = request.form.get('name')
         plot_type = request.form.get('type')
+        print(f"[DEBUG] Plot details - name: {plot_name}, type: {plot_type}")
         
         # Build config based on plot type
         config = {}
         if plot_type == 'timeline':
             x_data = request.form.get('x_data')
             y_data = request.form.get('y_data')
+            print(f"[DEBUG] Timeline plot data - x_data: {x_data}, y_data: {y_data}")
             
             if not x_data or not y_data:
+                print("[DEBUG] Error: Missing x_data or y_data for timeline plot")
                 flash('X Data and Y Data are required for timeline plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
                 
@@ -621,14 +628,18 @@ def create_plot(account_url, source_id):
             }
         elif plot_type in ['box', 'bar', 'table']:
             y_data = request.form.get('y_data')
+            print(f"[DEBUG] {plot_type} plot data - y_data: {y_data}")
             
             if not y_data:
+                print("[DEBUG] Error: Missing y_data for plot")
                 flash('Data column is required.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
                 
             config = {
                 'y_data': y_data
             }
+        
+        print(f"[DEBUG] Final config: {config}")
         
         # Create new plot with JSON config
         plot = Plot(
@@ -638,15 +649,21 @@ def create_plot(account_url, source_id):
             config=json.dumps(config)
         )
         
+        print("[DEBUG] Processing plot data...")
         # Process plot data and save it to plot.data
         plot_data = get_plot_data(plot, source, account)
+        print(f"[DEBUG] Plot data processed, length: {len(str(plot_data))} chars")
+        
         plot.data = json.dumps(plot_data)
         db.session.add(plot)
         db.session.commit()
+        print(f"[DEBUG] Plot created successfully with ID: {plot.id}")
         
         return redirect(url_for('accounts.account_plots', account_url=account_url))
     except Exception as e:
         db.session.rollback()
+        print(f"[DEBUG] Error creating plot: {str(e)}")
+        print(f"[DEBUG] Traceback: {traceback.format_exc()}")
         logging.error(f"Error creating plot: {e}")
         flash('Error creating plot.', 'error')
     

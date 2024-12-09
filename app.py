@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from flask_moment import Moment
 import json
 from plot_utils import get_plot_data
+from sqlalchemy import text
 
 load_dotenv(override=True)
 
@@ -50,14 +51,25 @@ db.init_app(app)
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
 
-# Run migrations only in production environment
-if os.getenv('ENVIRONMENT', 'development') == 'production':
-    with app.app_context():
-        try:        
+# Clean up temporary migration tables and run migrations
+with app.app_context():
+    try:
+        # Clean up any temporary migration tables first
+        with db.engine.connect() as conn:
+            # Get all table names
+            tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '_alembic_tmp_%'"))
+            # Drop each temporary table
+            for table in tables:
+                conn.execute(text(f"DROP TABLE IF EXISTS {table[0]}"))
+                logger.info(f"Dropped temporary table: {table[0]}")
+            conn.commit()
+        
+        # Only run migrations in production
+        if os.getenv('ENVIRONMENT', 'development') == 'production':
             upgrade()
             logger.info("Database migrations completed successfully")
-        except Exception as e:
-            logger.error(f"Error running database migrations: {e}")
+    except Exception as e:
+        logger.error(f"Error during database cleanup/migration: {e}")
 
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)

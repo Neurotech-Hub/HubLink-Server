@@ -55,6 +55,7 @@ def rebuild_S3_files(account_settings):
                                 logging.info(f"File {file_key} size changed from {existing_file.size} to {obj['Size']}")
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
+                                existing_file.last_checked = datetime.now(timezone.utc)
                                 existing_file.version += 1  # Increment version when size changes
                             # always update the url and commit
                             existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
@@ -67,7 +68,7 @@ def rebuild_S3_files(account_settings):
                                 url=generate_s3_url(account_settings.bucket_name, file_key),
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
-                                last_checked=None,
+                                last_checked=datetime.now(timezone.utc),
                                 version=1  # Initial version for new files
                             )
                             db.session.add(new_file)
