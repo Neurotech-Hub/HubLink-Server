@@ -110,9 +110,9 @@ void setup()
     Serial.println("Hello, Hublink.");
 
     SPI.begin(SCK, MISO, MOSI, cs);
-    Serial.println(hublink.initSD() ? "✓ SD Card." : "✗ SD Card");
+    if (hublink.initSD()) Serial.println("✓ SD Card.");
 
-    hublink.init(); // rev your engines...
+    hublink.init(); // start the engine
 }
 
 void loop()
