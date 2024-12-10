@@ -101,27 +101,24 @@ From Device to Cloud
             </div>
             <pre><code class="language-c">#include &lt;Hublink.h&gt;
 
-const int cs = A0;
+const int cs = A0; // SD card
 Hublink hublink(cs);
 
 void setup()
 {
     Serial.begin(9600);
-    Serial.println("Hello, Hublink.");
-
     SPI.begin(SCK, MISO, MOSI, cs);
-    if (hublink.initSD()) Serial.println("✓ SD Card.");
-
-    hublink.init(); // start the engine
+    if(hublink.init()) {
+        Serial.println("✓ Hublink.");
+    } else {
+        Serial.println("✗ Failed.");
+    }
 }
 
 void loop()
 {
-    hublink.sync(); // only blocks when ready
-
+    hublink.sync(); // blocks when ready
     // do your stuff here!
-
-    hublink.sleep(1000); // optional light sleep
 }
 </code></pre>
         </div>
