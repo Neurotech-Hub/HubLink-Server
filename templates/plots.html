@@ -44,7 +44,7 @@
                                     data-bs-toggle="dropdown">
                                     ⋮
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end position-fixed">
+                                <ul class="dropdown-menu dropdown-menu-end">
                                     <li><button class="dropdown-item"
                                             onclick='editSource({{ source.to_dict() | tojson }})'>Edit</button></li>
                                     <li><a class="dropdown-item" 
@@ -80,14 +80,24 @@
                                          data-plot-id="{{ plot.id }}"
                                          data-plotly-json="{{ plot.data }}">
                                         <div class="card-body p-2">
-                                            <div class="d-flex justify-content-between align-items-start mb-1">
-                                                <h6 class="card-title mb-0 text-truncate">{{ plot.name }}</h6>
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <h6 class="card-title mb-0 text-truncate">
+                                                    {% if plot.type == 'timeline' %}
+                                                        <i class="bi bi-graph-up"></i>
+                                                    {% elif plot.type == 'box' %}
+                                                        <i class="bi bi-box"></i>
+                                                    {% elif plot.type == 'bar' %}
+                                                        <i class="bi bi-bar-chart"></i>
+                                                    {% elif plot.type == 'table' %}
+                                                        <i class="bi bi-table"></i>
+                                                    {% endif %}
+                                                    {{ plot.name }}
+                                                </h6>
                                                 <form action="/{{ account.url }}/plot/{{ plot.id }}/delete"
                                                     method="POST">
                                                     <button type="submit" class="btn-close btn-sm" aria-label="Close"></button>
                                                 </form>
                                             </div>
-                                            <p class="card-text small text-muted mb-1">{{ plot.type }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -219,15 +229,12 @@
                     <div class="mb-3">
                         <label for="fileFilter" class="form-label">File Filter <span
                                 class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="fileFilter" name="file_filter" required>
-                        <div class="form-text">Enter a pattern for matching files, or select from common patterns below.</div>
-                        <div class="invalid-feedback">Please provide a file filter pattern.</div>
-                        
-                        <div class="mt-2">
-                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" 
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="fileFilter" name="file_filter" required>
+                            <button class="btn btn-outline-secondary" type="button" 
                                     data-bs-toggle="dropdown" 
                                     aria-expanded="false">
-                                <i class="bi bi-list"></i> Common Patterns
+                                <i class="bi bi-list"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" style="max-height: 200px; overflow-y: auto;">
                                 {% for pattern in dir_patterns %}
@@ -241,6 +248,8 @@
                                 {% endfor %}
                             </ul>
                         </div>
+                        <div class="form-text">Enter a pattern for matching files, or select from common patterns.</div>
+                        <div class="invalid-feedback">Please provide a file filter pattern.</div>
                     </div>
                     <div class="mb-3">
                         <label for="includeColumns" class="form-label">Include Columns <span
@@ -257,10 +266,21 @@
                             "MM:DD:YYYY hh:mm:ss,Battery_Voltage"). All columns must be matched in target files and wildcards not allowed.</div>
                         <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
                     </div>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only" onchange="toggleDataPoints()">
-                        <label class="form-check-label" for="tailOnly">Tail Only</label>
-                        <div class="form-text">Only process the end of files</div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only" onchange="toggleDataPoints()">
+                                <label class="form-check-label" for="tailOnly">Tail Only</label>
+                                <div class="form-text">Only process the end of files</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="includeArchive" name="include_archive">
+                                <label class="form-check-label" for="includeArchive">Include Archival Data</label>
+                                <div class="form-text">May lead to duplicate data</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3" id="dataPointsContainer" style="display: none;">
                         <label for="dataPoints" class="form-label">Data Points</label>

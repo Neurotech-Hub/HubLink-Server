@@ -123,9 +123,9 @@ class Source(db.Model):
     last_updated = db.Column(db.DateTime, nullable=True)
     error = db.Column(db.String(500), nullable=True)
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
-    head = db.Column(db.String(500), nullable=False, default="")
     devices = db.Column(db.String(500), nullable=False, default="")
     state = db.Column(db.String(50), nullable=False, default='created')
+    include_archive = db.Column(db.Boolean, nullable=False, default=False)
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
     # Add relationship to Account
@@ -133,26 +133,6 @@ class Source(db.Model):
 
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"
-
-    @property
-    def available_columns(self):
-        """Get list of available columns from the CSV head, skipping hublink columns."""
-        if self.head:
-            try:
-                # Parse the JSON string into a list of lists
-                head_data = json.loads(self.head)
-                
-                # Get the header row (first row)
-                if head_data and len(head_data) > 0:
-                    headers = head_data[0]
-                    
-                    # Filter out empty columns and hublink columns
-                    return [h for h in headers if h and not h.lower().startswith('hublink')]
-                    
-            except Exception as e:
-                logging.error(f"Error parsing head headers: {e}")
-                return []
-        return []
 
     def to_dict(self):
         """Convert source to dictionary with dynamic state"""
@@ -166,10 +146,9 @@ class Source(db.Model):
             'last_updated': self.last_updated.isoformat() if self.last_updated else None,
             'state': self.state,
             'error': self.error,
-            'available_columns': self.available_columns,  # This will now parse JSON and skip first two columns
             'file_id': self.file_id,  # Just include the file_id
-            'head': json.loads(self.head) if self.head else [],  # Decode JSON string to list
-            'devices': json.loads(self.devices) if self.devices else []  # Decode JSON string to list
+            'devices': json.loads(self.devices) if self.devices else [],  # Decode JSON string to list
+            'include_archive': self.include_archive
         }
 
         return data

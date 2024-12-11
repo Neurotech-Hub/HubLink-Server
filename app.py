@@ -208,7 +208,7 @@ def create_source():
         data = request.get_json()
         print(f"Request data: {data}")
         
-        if not data or 'name' not in data or 'success' not in data:
+        if not data or 'name' not in data:
             print("Missing required fields in request")
             return jsonify({
                 'error': 'Missing required fields',
@@ -227,10 +227,10 @@ def create_source():
         print(f"Found source: {source.name} (ID: {source.id})")
         
         # Update source fields
-        source.head = json.dumps(data.get('head', []))
         source.devices = json.dumps(data.get('devices', []))
-        source.state = 'success' if data['success'] else 'error'  # Update state based on success
-        source.error = data.get('error') if not data['success'] else None  # Set error message if failed
+        is_success = not data.get('error')  # Success if no error field or error is empty
+        source.state = 'success' if is_success else 'error'
+        source.error = data.get('error')  # Store error message if present
         source.last_updated = datetime.now(timezone.utc)
         
         # Handle file record
@@ -252,8 +252,8 @@ def create_source():
         
         source.file_id = file.id
         
-        # If source update was successful, update all associated plots
-        if data['success']:
+        # If source update was successful (no error), update all associated plots
+        if is_success:
             print(f"Updating plots for source {source.id}")
             for plot in source.plots:
                 try:

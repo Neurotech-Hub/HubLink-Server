@@ -402,58 +402,27 @@ def generate_directory_patterns(file_keys):
     
     return sorted(list(dir_patterns))
 
-def validate_source_data(data):
-    errors = []
-    
-    # Validate name
-    name = data.get('name', '').strip()
-    if not name:
-        errors.append("Name cannot be empty")
-    elif not re.match(r'^[a-zA-Z0-9_-]+$', name):
-        errors.append("Name can only contain letters, numbers, hyphens, and underscores")
-    
-    # Validate file_filter
-    file_filter = data.get('file_filter', '*').strip()
-    try:
-        re.compile(file_filter.replace('*', '.*'))
-    except re.error:
-        errors.append("File filter must be a valid pattern")
-    
-    # Validate include_columns
-    include_columns = data.get('include_columns', '').strip()
-    if not include_columns:
-        errors.append("Include columns must specify a list of column names")
-    else:
-        columns = [col.strip() for col in include_columns.split(',')]
-        if '*' in columns:
-            errors.append("Wildcard (*) is not allowed. Please specify exact column names")
-        invalid_columns = [col for col in columns if not col]
-        if invalid_columns:
-            errors.append("Column names cannot be empty")
-    
-    # Set default data_points to 1000 if tail_only is False
-    tail_only = 'tail_only' in data
-    if not tail_only:
-        data_points = 1000
-    else:
-        # Validate data_points only if tail_only is True
-        try:
-            data_points = int(data.get('data_points', 1000))
-            if not 1 <= data_points <= 1000000:
-                errors.append("Data points must be between 1 and 1,000,000")
-        except ValueError:
-            errors.append("Data points must be a valid number")
-    
-    if errors:
-        raise BadRequest(', '.join(errors))
-    
-    return {
-        'name': name,
-        'file_filter': file_filter,
-        'include_columns': include_columns,
-        'data_points': data_points,
-        'tail_only': tail_only
+def validate_source_data(form_data):
+    """Validate source form data and return cleaned data"""
+    if not form_data.get('name'):
+        raise BadRequest('Source name is required.')
+        
+    # Clean and validate data
+    data = {
+        'name': form_data.get('name').strip(),
+        'file_filter': form_data.get('file_filter', '*').strip(),
+        'include_columns': form_data.get('include_columns', '').strip(),
+        'data_points': int(form_data.get('data_points', 0)),
+        'tail_only': form_data.get('tail_only') == 'on',
+        'include_archive': form_data.get('include_archive') == 'on',
+        'state': 'created'
     }
+    
+    # Validate data points range if specified
+    if data['data_points'] < 0:
+        raise BadRequest('Data points must be a positive number.')
+    
+    return data
 
 def initiate_source_refresh(source, settings):
     """
@@ -475,6 +444,7 @@ def initiate_source_refresh(source, settings):
                 'include_columns': source.include_columns,
                 'data_points': source.data_points,
                 'tail_only': source.tail_only,
+                'include_archive': source.include_archive,
                 'bucket_name': settings.bucket_name
             }
         }
@@ -544,7 +514,7 @@ def create_source(account_url):
         if success:
             flash('Source created and refresh initiated.', 'success')
         else:
-            flash('Source created, but initial refresh failed.', 'warning')
+            flash(f'Source created, but initial refresh failed: {error}', 'warning')
             
     except BadRequest as e:
         flash(str(e), 'error')
