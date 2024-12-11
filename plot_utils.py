@@ -168,6 +168,7 @@ def process_box_plot(plot, csv_content):
         fig = px.box(df, 
                     x='hublink_device_id',
                     y=y_data,
+                    color='hublink_device_id',
                     labels={
                         'hublink_device_id': 'Device',
                         y_data: config['y_data']
@@ -201,6 +202,7 @@ def process_bar_plot(plot, csv_content):
                      x='hublink_device_id', 
                      y='mean', 
                      error_y='std',
+                     color='hublink_device_id',
                      labels={
                          'hublink_device_id': 'Device',
                          'mean': f'{y_data} (Mean)',
@@ -246,12 +248,12 @@ def process_table_plot(plot, csv_content):
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=list(stats.columns),
-                fill_color='paleturquoise',
+                fill_color='#f0f0f0',  # Light gray for header
                 align='left'
             ),
             cells=dict(
                 values=[stats[col] for col in stats.columns],
-                fill_color='lavender',
+                fill_color='#ffffff',  # White for cells
                 align='left'
             )
         )])
