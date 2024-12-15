@@ -126,6 +126,7 @@ def index():
 # Define location dynamically
 @app.route(f'/{admin_route}', methods=['GET'])
 def add_route_handler():
+    g.title = "Admin"
     try:
         all_accounts = Account.query.all()
         

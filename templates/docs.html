@@ -38,98 +38,24 @@
                 <div class="card-body">
                     <h3 class="h5">Cloud Storage Settings</h3>
                     <ul>
-                        <li><strong>AWS Access Key & Secret:</strong> Credentials for S3 access</li>
-                        <li><strong>Bucket Name:</strong> S3 bucket for file storage</li>
-                        <li><strong>Use Cloud:</strong> Enable/disable cloud storage</li>
+                        <li><strong>AWS Access Key ID:</strong> AWS credential for S3 access</li>
+                        <li><strong>AWS Secret Access Key:</strong> AWS credential for S3 access</li>
+                        <li><strong>S3 Bucket Name:</strong> Destination bucket for file storage</li>
+                        <li><strong>Use Cloud:</strong> Enable/disable cloud storage uploads</li>
                     </ul>
 
-                    <h3 class="h5 mt-4">File Management</h3>
+                    <h3 class="h5 mt-4">Data Management</h3>
                     <ul>
+                        <li><strong>Archive Rule:</strong> Time-based folder structure (seconds to years)</li>
                         <li><strong>Max File Size:</strong> Maximum allowed file size in bytes</li>
-                        <li><strong>Delete Scans:</strong> Auto-delete old scans</li>
-                        <li><strong>Delete Conditions:</strong> Based on days old or storage percentage</li>
+                        <li><strong>Delete Scans:</strong> Enable/disable automatic scan deletion</li>
+                        <li><strong>Delete Scans Older Than:</strong> Remove files older than specified days</li>
+                        <li><strong>Delete Scans Percent Remaining:</strong> Storage threshold for deletion</li>
                     </ul>
 
                     <h3 class="h5 mt-4">Device Configuration</h3>
                     <ul>
-                        <li><strong>Device Name Filter:</strong> Filter for device names (e.g., "ESP32")</li>
-                        <li><strong>Node Payload:</strong> Custom key-value pairs (format: key=value;key=value)</li>
-                        <li><strong>Alert Configuration:</strong> Email and file prefix settings for alerts</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- API Endpoints Section -->
-        <section class="mb-5">
-            <h2 class="border-bottom pb-2 mb-4">API Endpoints</h2>
-            <div class="card">
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li class="mb-4">
-                            <strong>Settings Retrieval</strong><br>
-                            <code>GET /&lt;secret_url&gt;.json</code><br>
-                            <small class="text-muted">Retrieves account settings in JSON format</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>Gateway Registration</strong><br>
-                            <code>GET /&lt;secret_url&gt;.json/{gateway_name}</code><br>
-                            <small class="text-muted">Registers a gateway and returns settings</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>File Existence Check</strong><br>
-                            <code>POST /&lt;secret_url&gt;/files</code><br>
-                            <small class="text-muted">Checks if files exist in cloud storage</small>
-                            <div class="mt-1">
-                                <em>Request Body:</em>
-                                <pre><code>{
-    "files": [
-        {"filename": "device1/file1.txt", "size": 1234},
-        {"filename": "device2/file2.txt", "size": 5678}
-    ]
-}</code></pre>
-                            </div>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>Force Sync</strong><br>
-                            <code>GET /&lt;secret_url&gt;/sync</code><br>
-                            <small class="text-muted">Forces synchronization with cloud storage</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>Rebuild Cloud Index</strong><br>
-                            <code>GET /&lt;secret_url&gt;/rebuild</code><br>
-                            <small class="text-muted">Rebuilds the cloud storage file index</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>File Download</strong><br>
-                            <code>GET /&lt;secret_url&gt;/download/{file_id}</code><br>
-                            <small class="text-muted">Generates a temporary download link for a specific file</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>View Account Data</strong><br>
-                            <code>GET /&lt;secret_url&gt;/data</code><br>
-                            <code>GET /&lt;secret_url&gt;/data/{device_id}</code><br>
-                            <small class="text-muted">Retrieves account data, optionally filtered by device ID</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>Settings Management</strong><br>
-                            <code>GET /&lt;secret_url&gt;/settings</code><br>
-                            <code>POST /&lt;secret_url&gt;/settings/update</code><br>
-                            <small class="text-muted">View and update account settings</small>
-                        </li>
-
-                        <li class="mb-4">
-                            <strong>Account Deletion</strong><br>
-                            <code>POST /&lt;secret_url&gt;/delete</code><br>
-                            <small class="text-muted">Deletes the account and associated settings</small>
-                        </li>
+                        <li><strong>Device Filter by Name:</strong> Filter for specific device names</li>
                     </ul>
                 </div>
             </div>
@@ -228,56 +154,29 @@
             </div>
         </section>
 
-        <!-- Node Payload Format -->
-        <section class="mb-5">
-            <h2 class="border-bottom pb-2 mb-4">Node Payload Format</h2>
-            <div class="card mb-4">
-                <div class="card-body">
-                    <p>The node payload will be sent to your device immediately upon connection and serve to provide
-                        coordinated variables to all nodes. It uses a key-value format with semicolon separators:</p>
-                    <pre><code>key1=value1;key2=value2;key3=value3</code></pre>
-
-                    <h5 class="mt-4">Special Tags</h5>
-                    <p>The following tags will be automatically replaced when sending to node devices. The node firmward
-                        has a special parser to utilize these values.</p>
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Tag</th>
-                                <th>Replacement</th>
-                                <th>Example</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><code>{timestamp}</code></td>
-                                <td>Local Unix timestamp (integer)</td>
-                                <td><code>rtc={timestamp}</code> → <code>rtc=1710521468</code></td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <p class="mt-3">Example with tag:</p>
-                    <pre><code>name=sensor1;type=temperature;rtc={timestamp}</code></pre>
-                </div>
-            </div>
-        </section>
-
         <!-- SD Card Configuration -->
         <section class="mb-5">
             <h2 class="border-bottom pb-2 mb-4">SD Card Configuration</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <p>Create a file named <code>hublink.node</code> on your SD card to configure node behavior. Each
-                        setting uses a key-value format, with one pair per line:</p>
+                    <p>Create a file named <code>meta.json</code> on your SD card to configure node behavior and store metadata. The file uses JSON format:</p>
                     <div class="bg-light p-3 rounded mb-3">
-                        <pre
-                            class="mb-0"><code><div class="lh-base">node=Subject001</div><div class="lh-base">advertise=ESP32_NODE</div><div class="lh-base">interval=60000,30</div><div class="lh-base">disable=false</div></code></pre>
+                        <pre class="mb-0"><code>{
+  "hublink": {
+    "advertise": "CUSTOM_NAME",
+    "advertise_every": 300,
+    "advertise_for": 30,
+    "disable": false
+  },
+  "subject": {
+    "id": "mouse001",
+    "strain": "C57BL/6",
+    "sex": "male"
+  }
+}</code></pre>
                     </div>
-                    <p>By default, the node firmware will transfer <code>*.node</code> files, so you may also add and
-                        "meta" data you want to track here.</p>
 
-                    <h5 class="mt-4">Available Settings</h5>
+                    <h5 class="mt-4">Hublink Settings</h5>
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -288,19 +187,19 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td><code>node</code></td>
-                                <td>Becomes the base folder name for file storage</td>
-                                <td>Node's MAC address</td>
-                            </tr>
-                            <tr>
                                 <td><code>advertise</code></td>
-                                <td>BLE advertising name</td>
+                                <td>Custom BLE advertising name</td>
                                 <td>See library</td>
                             </tr>
                             <tr>
-                                <td><code>interval</code></td>
-                                <td>BLE connection timing (connectEvery,connectFor in seconds)</td>
-                                <td>See library</td>
+                                <td><code>advertise_every</code></td>
+                                <td>Seconds between advertising periods</td>
+                                <td>300</td>
+                            </tr>
+                            <tr>
+                                <td><code>advertise_for</code></td>
+                                <td>Duration of each advertising period in seconds</td>
+                                <td>30</td>
                             </tr>
                             <tr>
                                 <td><code>disable</code></td>
@@ -310,9 +209,17 @@
                         </tbody>
                     </table>
 
+                    <h5 class="mt-4">Custom Metadata</h5>
+                    <p>You can add any additional JSON objects to track metadata about your experiment. This data will be uploaded along with your files:</p>
+                    <ul>
+                        <li>Subject information (ID, strain, sex, etc.)</li>
+                        <li>Experimental conditions</li>
+                        <li>Device configuration</li>
+                        <li>Any other relevant metadata</li>
+                    </ul>
+
                     <div class="mt-4">
-                        <small class="text-muted">Note: The configuration file is processed internally by the Hublink
-                            Node Library. Changes require a device restart to take effect.</small>
+                        <small class="text-muted">Note: The configuration file is processed using the ArduinoJson library.</small>
                     </div>
                 </div>
             </div>

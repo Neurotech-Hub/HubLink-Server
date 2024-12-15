@@ -334,6 +334,7 @@ def get_recent_checks(account_url):
 
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
+    g.title = "Plots"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
@@ -702,6 +703,7 @@ def layout_view(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        g.title = layout.name
         
         layout_config = json.loads(layout.config)
         required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
@@ -725,6 +727,7 @@ def layout_edit(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        g.title = layout.name
         
         # Get all plots for this account
         plots = []
