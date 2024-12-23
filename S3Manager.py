@@ -402,3 +402,50 @@ def download_source_file(account_settings, source):
     except Exception as e:
         logging.error(f"Error downloading source file for {source.name}: {e}")
         return None
+
+def get_source_file_header(account_settings, source, num_lines=1):
+    """
+    Download only the header (first n lines) of a source's CSV file from S3.
+    
+    Args:
+        account_settings: Account settings containing AWS credentials
+        source: Source object containing file information
+        num_lines: Number of lines to read from the start (default=1)
+    
+    Returns: 
+        String containing the first n lines of the CSV, or None if error
+    """
+    if not source.file_id:
+        logging.error(f"Source {source.name} has no associated file")
+        return None
+
+    try:
+        # Create S3 client
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+
+        # Get the file object from database
+        file = File.query.get(source.file_id)
+        if not file:
+            logging.error(f"File {source.file_id} not found for source {source.name}")
+            return None
+
+        # Download only the first part of the file using range request
+        response = s3_client.get_object(
+            Bucket=account_settings.bucket_name,
+            Key=file.key,
+            Range='bytes=0-8192'  # Get first 8KB which should be enough for headers
+        )
+        
+        # Read content and get first n lines
+        content = response['Body'].read().decode('utf-8')
+        lines = content.split('\n')[:num_lines]
+        return '\n'.join(lines)
+
+    except Exception as e:
+        logging.error(f"Error downloading header for source {source.name}: {e}")
+        return None

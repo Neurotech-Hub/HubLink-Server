@@ -223,7 +223,6 @@
                                required
                                pattern="[\w\-]+"
                                title="Name can only contain letters, numbers, hyphens, and underscores">
-                        <div class="form-text">Only letters, numbers, hyphens (-), and underscores (_) allowed. No spaces.</div>
                         <div class="invalid-feedback">Please provide a valid name using only letters, numbers, hyphens, and underscores.</div>
                     </div>
                     <div class="mb-3">
@@ -248,20 +247,41 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        <div class="form-text">Enter a pattern for matching files, or select from common patterns.</div>
+                        <div class="form-text">Enter a pattern for matching files, or select from common patterns. "/*" matches all files in a directory, "/[^/]+/" matches all files in a directory and all subdirectories.</div>
                         <div class="invalid-feedback">Please provide a file filter pattern.</div>
                     </div>
                     <div class="mb-3">
                         <label for="includeColumns" class="form-label">Include Columns <span
                                 class="text-danger">*</span></label>
-                        <textarea class="form-control" 
-                                id="includeColumns" 
-                                name="include_columns" 
-                                required
-                                pattern="^[^,*]+(,[^,*]+)*$"
-                                rows="3"
-                                style="white-space: nowrap;"
-                        ></textarea>
+                        <div class="input-group">
+                            <textarea class="form-control" 
+                                    id="includeColumns" 
+                                    name="include_columns" 
+                                    required
+                                    pattern="^[^,*]+(,[^,*]+)*$"
+                                    rows="3"
+                                    style="white-space: pre-wrap; word-wrap: break-word; resize: vertical;"
+                            ></textarea>
+                            <button class="btn btn-outline-secondary" 
+                                    type="button" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false"
+                                    style="margin-left: -1px;">
+                                <i class="bi bi-file-text"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end" style="max-height: 200px; overflow-y: auto;">
+                                {% for file in recent_files %}
+                                <li>
+                                    <button type="button" 
+                                            class="dropdown-item recent-file-item" 
+                                            data-file-id="{{ file.id }}"
+                                            data-file-key="{{ file.key }}">
+                                        {{ file.key }}
+                                    </button>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
                         <div class="form-text">Comma-separated list of columns to include (e.g.,
                             "MM:DD:YYYY hh:mm:ss,Battery_Voltage"). All columns must be matched in target files and wildcards not allowed.</div>
                         <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
@@ -289,9 +309,9 @@
                         <div class="form-text">Number of data points to collect (1-1,000,000)</div>
                         <div class="invalid-feedback">Please enter a number between 1 and 1,000,000.</div>
                     </div>
-                    <div class="form-text text-muted mt-3">
+                    <!-- <div class="form-text text-muted mt-3">
                         Note: The total number of rows being processed is limited to 1M.
-                    </div>
+                    </div> -->
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -480,6 +500,45 @@
                 console.log('Preview is not valid JSON');
             }
         });
+
+        // Add file selection handler
+        const recentFileItems = document.querySelectorAll('.recent-file-item');
+        const includeColumnsTextarea = document.getElementById('includeColumns');
+
+        recentFileItems.forEach(item => {
+            item.addEventListener('click', async function() {
+                const fileId = this.dataset.fileId;
+                const fileKey = this.dataset.fileKey;
+                
+                try {
+                    const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        includeColumnsTextarea.value = data.header;
+                    } else {
+                        // Show error in a small alert above the textarea
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
+                        alertDiv.innerHTML = `
+                            Error reading header from ${fileKey}: ${data.error}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        includeColumnsTextarea.parentNode.insertBefore(alertDiv, includeColumnsTextarea);
+                    }
+                } catch (e) {
+                    console.error('Error fetching header:', e);
+                    // Show error in a small alert above the textarea
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
+                    alertDiv.innerHTML = `
+                        Failed to fetch header: ${e.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    includeColumnsTextarea.parentNode.insertBefore(alertDiv, includeColumnsTextarea);
+                }
+            });
+        });
     });
 
     function handlePlotTypeChange() {
@@ -584,7 +643,7 @@
                             ...plotData.layout,
                             height: 250,  // Adjust height for popover
                             width: 350,   // Adjust width for popover
-                            margin: { l: 30, r: 10, t: 30, b: 30 }  // Adjust margins for smaller size
+                            margin: { l: 30, r: 10, t: 30, b: 30 }  // Adjust margins forer size
                         },
                         {
                             responsive: true,

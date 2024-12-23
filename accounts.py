@@ -340,6 +340,7 @@ def account_plots(account_url):
         account.count_page_loads += 1
         
         sources = Source.query.filter_by(account_id=account.id).all()
+        recent_files = get_latest_files(account.id, 100)
         
         # Get plot data for all plots
         plot_data = []
@@ -368,7 +369,8 @@ def account_plots(account_url):
                           sources=sources,
                           plot_data=plot_data,  # Add plot_data to template context
                           layout_plot_names=layout_plot_names,
-                          dir_patterns=dir_patterns)
+                          dir_patterns=dir_patterns,
+                          recent_files=recent_files)
                        
     except Exception as e:
         print(f"Error in account_plots: {str(e)}")
@@ -702,6 +704,8 @@ def save_layout(account_url, layout_id):
 def layout_view(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        db.session.commit()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name
         
@@ -726,6 +730,8 @@ def layout_view(account_url, layout_id):
 def layout_edit(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        db.session.commit()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name
         
@@ -836,3 +842,44 @@ def update_layout_settings(account_url, layout_id):
         flash('Error updating layout settings.', 'error')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/file/<int:file_id>/header', methods=['GET'])
+def get_file_header(account_url, file_id):
+    """
+    Get the header (first line) of a file.
+    Returns JSON with header content or error message.
+    """
+    try:
+        # Verify account and file ownership
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        file = File.query.filter_by(id=file_id, account_id=account.id).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+
+        # Create temporary source object to use with get_source_file_header
+        temp_source = Source(
+            account_id=account.id,
+            name=f"temp_{file.key}",
+            file_id=file.id
+        )
+
+        # Get the header content
+        header_content = get_source_file_header(settings, temp_source, num_lines=1)
+        
+        if header_content is None:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to read file header'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'header': header_content,
+            'file_key': file.key
+        })
+
+    except Exception as e:
+        logging.error(f"Error getting header for file {file_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
