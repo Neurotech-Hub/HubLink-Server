@@ -282,8 +282,7 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        <div class="form-text">Comma-separated list of columns to include (e.g.,
-                            "MM:DD:YYYY hh:mm:ss,Battery_Voltage"). All columns must be matched in target files and wildcards not allowed.</div>
+                        <div class="form-text">Enter or select column names. Press Enter or comma after each name.</div>
                         <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
                     </div>
                     <div class="row mb-3">
@@ -501,10 +500,23 @@
             }
         });
 
-        // Add file selection handler
-        const recentFileItems = document.querySelectorAll('.recent-file-item');
-        const includeColumnsTextarea = document.getElementById('includeColumns');
+        // Initialize Tagify on the textarea
+        var includeColumnsInput = document.getElementById('includeColumns');
+        var tagify = new Tagify(includeColumnsInput, {
+            delimiters: ",",
+            pattern: /^[^,*]+$/,  // Prevent wildcards
+            dropdown: {
+                enabled: 0
+            },
+            callbacks: {
+                add: validateTags,
+                remove: validateTags
+            },
+            originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
+        });
 
+        // Handle file selection with Tagify
+        const recentFileItems = document.querySelectorAll('.recent-file-item');
         recentFileItems.forEach(item => {
             item.addEventListener('click', async function() {
                 const fileId = this.dataset.fileId;
@@ -515,30 +527,53 @@
                     const data = await response.json();
                     
                     if (data.success) {
-                        includeColumnsTextarea.value = data.header;
+                        // Split the header into individual columns and add as tags
+                        const columns = data.header.split(',').map(col => col.trim());
+                        tagify.removeAllTags();
+                        tagify.addTags(columns);
                     } else {
-                        // Show error in a small alert above the textarea
+                        // Show error alert
                         const alertDiv = document.createElement('div');
                         alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
                         alertDiv.innerHTML = `
                             Error reading header from ${fileKey}: ${data.error}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         `;
-                        includeColumnsTextarea.parentNode.insertBefore(alertDiv, includeColumnsTextarea);
+                        includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
                     }
                 } catch (e) {
                     console.error('Error fetching header:', e);
-                    // Show error in a small alert above the textarea
+                    // Show error alert
                     const alertDiv = document.createElement('div');
                     alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
                     alertDiv.innerHTML = `
                         Failed to fetch header: ${e.message}
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     `;
-                    includeColumnsTextarea.parentNode.insertBefore(alertDiv, includeColumnsTextarea);
+                    includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
                 }
             });
         });
+
+        function validateTags() {
+            const form = document.getElementById('sourceForm');
+            if (form.classList.contains('was-validated')) {
+                form.checkValidity();
+            }
+        }
+
+        // When editing a source, convert existing columns to tags
+        if (typeof editSource === 'function') {
+            const originalEditSource = editSource;
+            editSource = function(source) {
+                originalEditSource(source);
+                if (source.include_columns) {
+                    const columns = source.include_columns.split(',').map(col => col.trim());
+                    tagify.removeAllTags();
+                    tagify.addTags(columns);
+                }
+            };
+        }
     });
 
     function handlePlotTypeChange() {
@@ -733,5 +768,9 @@
         dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
     }
 </script>
+
+<!-- Add this in the head section or before closing body -->
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
+<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css" rel="stylesheet" type="text/css" />
 
 {% endblock %}

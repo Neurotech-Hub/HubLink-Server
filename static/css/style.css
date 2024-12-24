@@ -1156,3 +1156,20 @@ table td code {
 .card-body:has(.dropdown) {
     overflow: visible !important;
 }
+
+/* Make Tagify tags smaller */
+.tagify {
+    --tag-pad: 0.3em 0.5em;
+    --tag-min-width: 0;
+    --tag-text-color: #333;
+    --tag-hover: #f0f0f0;
+    font-size: 0.9em;
+}
+
+.tagify__tag {
+    margin: 2px;
+}
+
+.tagify__tag__removeBtn {
+    margin-right: 2px;
+}

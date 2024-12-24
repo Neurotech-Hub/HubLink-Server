@@ -339,6 +339,11 @@ def account_plots(account_url):
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         
+        # Get files sorted by last_modified in descending order
+        files = File.query.filter_by(account_id=account.id).order_by(File.last_modified.desc()).all()
+        file_keys = [file.key for file in files]
+        dir_patterns = generate_directory_patterns(file_keys)  # The order will now be preserved
+        
         sources = Source.query.filter_by(account_id=account.id).all()
         recent_files = get_latest_files(account.id, 100)
         
@@ -360,10 +365,6 @@ def account_plots(account_url):
                         plot_names.append(f"{source.name}: {plot.name}")
             layout_plot_names[layout.id] = plot_names
 
-        files = File.query.filter_by(account_id=account.id).all()
-        file_keys = [file.key for file in files]
-        dir_patterns = generate_directory_patterns(file_keys)
-        
         return render_template('plots.html', 
                           account=account, 
                           sources=sources,
@@ -379,12 +380,14 @@ def account_plots(account_url):
         return "There was an issue loading the plots page.", 500
 
 def generate_directory_patterns(file_keys):
-    dir_patterns = set()
+    dir_patterns = []  # Change to list to maintain order
+    pattern_set = set()  # Use set to track what we've added
     
-    # Add root level pattern
-    dir_patterns.add('*')
+    # Add root level pattern first
+    dir_patterns.append('*')
+    pattern_set.add('*')
     
-    for key in file_keys:
+    for key in file_keys:  # file_keys are pre-sorted by most recent
         # Skip hidden files and directories
         if any(part.startswith('.') for part in key.split('/')):
             continue
@@ -393,17 +396,31 @@ def generate_directory_patterns(file_keys):
         parts = key.split('/')[:-1]
         
         # Generate patterns for each directory level
-        for i in range(len(parts)):
-            # Pattern that matches specific directories up to this level
-            exact_pattern = '/'.join(parts[:i+1]) + '/*'
-            dir_patterns.add(exact_pattern)
+        current_path = []
+        for part in parts:
+            current_path.append(part)
             
-            # Pattern with wildcard for the last directory
-            if i > 0:
-                wildcard_pattern = '/'.join(parts[:i]) + '/[^/]+/*'
-                dir_patterns.add(wildcard_pattern)
+            # Add exact pattern for this level
+            exact_pattern = '/'.join(current_path) + '/*'
+            if exact_pattern not in pattern_set:
+                dir_patterns.append(exact_pattern)
+                pattern_set.add(exact_pattern)
+            
+            # Add wildcard pattern for this level (except root level)
+            if len(current_path) > 1:
+                wildcard_path = current_path[:-1]
+                wildcard_pattern = '/'.join(wildcard_path) + '/[^/]+/*'
+                if wildcard_pattern not in pattern_set:
+                    # Insert wildcard pattern right after its parent pattern
+                    parent_pattern = '/'.join(wildcard_path) + '/*'
+                    try:
+                        parent_idx = dir_patterns.index(parent_pattern)
+                        dir_patterns.insert(parent_idx + 1, wildcard_pattern)
+                    except ValueError:
+                        dir_patterns.append(wildcard_pattern)
+                    pattern_set.add(wildcard_pattern)
     
-    return sorted(list(dir_patterns))
+    return dir_patterns
 
 def validate_source_data(form_data):
     """Validate source form data and return cleaned data"""
@@ -735,10 +752,11 @@ def layout_edit(account_url, layout_id):
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name
         
-        # Get all plots for this account
-        plots = []
-        for source in Source.query.filter_by(account_id=account.id).all():
-            plots.extend(source.plots)
+        # Get all plots with their sources, ordered by source name and plot name
+        plots = Plot.query.join(Source)\
+            .filter(Source.account_id == account.id)\
+            .order_by(Source.name, Plot.name)\
+            .all()
         
         return render_template('layout_edit.html',
                            account=account,
