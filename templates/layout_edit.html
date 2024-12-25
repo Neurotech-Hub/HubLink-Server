@@ -19,8 +19,15 @@
                 <i class="fa fa-plus"></i> Half Width
             </button>
         </div>
-        <div>
-            <button class="btn btn-sm btn-success me-2" onclick="saveLayout()">Save Layout</button>
+        <div class="d-flex align-items-center">
+            <select class="form-select form-select-sm me-2" id="timeRange" name="timeRange">
+                <option value="all" {% if layout.time_range == 'all' %}selected{% endif %}>All Time</option>
+                <option value="week" {% if layout.time_range == 'week' %}selected{% endif %}>Last Week</option>
+                <option value="month" {% if layout.time_range == 'month' %}selected{% endif %}>Last Month</option>
+                <option value="90days" {% if layout.time_range == '90days' %}selected{% endif %}>Last 90 Days</option>
+                <option value="year" {% if layout.time_range == 'year' %}selected{% endif %}>Last Year</option>
+            </select>
+            <button class="btn btn-sm btn-primary me-2" onclick="saveLayout()">Save</button>
             <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
                   onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
                 <button type="submit" class="btn btn-sm btn-danger">Delete</button>
@@ -130,6 +137,8 @@ function saveLayout() {
         return;
     }
 
+    const timeRange = document.getElementById('timeRange').value;
+
     fetch('/{{ account.url }}/layout/{{ layout.id }}', {
         method: 'POST',
         headers: {
@@ -137,7 +146,8 @@ function saveLayout() {
         },
         body: JSON.stringify({
             name: '{{ layout.name }}',
-            config: widgets
+            config: widgets,
+            time_range: timeRange
         })
     })
     .then(response => response.json())

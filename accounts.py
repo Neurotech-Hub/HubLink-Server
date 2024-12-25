@@ -694,28 +694,24 @@ def delete_plot(account_url, plot_id):
         return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['POST'])
-def save_layout(account_url, layout_id):
+def update_layout(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
+        
         data = request.get_json()
+        layout.config = json.dumps(data['config'])
+        layout.time_range = data['time_range']
         
-        # Update layout name if provided
-        if 'name' in data:
-            layout.name = data['name']
-        
-        # Ensure plotId is stored as integer in config
-        config = data['config']
-        for item in config:
-            item['plotId'] = int(item['plotId'])  # Convert to integer
-            
-        layout.config = json.dumps(config)
         db.session.commit()
         
         return jsonify({'success': True})
     except Exception as e:
-        logging.error(f"Error saving layout {layout_id} for account {account_url}: {e}")
-        return jsonify({'success': False, 'error': str(e)})
+        logging.error(f"Error updating layout {layout_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['GET'])
 def layout_view(account_url, layout_id):

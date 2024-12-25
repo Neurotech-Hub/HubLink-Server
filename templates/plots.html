@@ -326,7 +326,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="plotModalLabel">Create Plot</h5>
+                <h5 class="modal-title" id="plotModalLabel">New Plot</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="plotForm" action="/{{ account.url }}/plot" method="POST" class="needs-validation" novalidate>
@@ -342,48 +342,17 @@
 
                     <!-- Plot Type -->
                     <div class="mb-3">
-                        <label class="form-label">Plot Type <span class="text-danger">*</span></label>
-                        <div class="row row-cols-2 g-2">
-                            <div class="col">
-                                <input type="radio" class="btn-check" name="type" id="timeline" value="timeline" checked required onchange="handlePlotTypeChange()">
-                                <label class="btn btn-outline-primary w-100" for="timeline">
-                                    <i class="bi bi-graph-up"></i> Timeline
-                                </label>
-                            </div>
-                            <div class="col">
-                                <input type="radio" class="btn-check" name="type" id="box" value="box" required onchange="handlePlotTypeChange()">
-                                <label class="btn btn-outline-primary w-100" for="box">
-                                    <i class="bi bi-box"></i> Box Plot
-                                </label>
-                            </div>
-                            <div class="col">
-                                <input type="radio" class="btn-check" name="type" id="bar" value="bar" required onchange="handlePlotTypeChange()">
-                                <label class="btn btn-outline-primary w-100" for="bar">
-                                    <i class="bi bi-bar-chart"></i> Bar Chart
-                                </label>
-                            </div>
-                            <div class="col">
-                                <input type="radio" class="btn-check" name="type" id="table" value="table" required onchange="handlePlotTypeChange()">
-                                <label class="btn btn-outline-primary w-100" for="table">
-                                    <i class="bi bi-table"></i> Table
-                                </label>
-                            </div>
-                        </div>
+                        <label for="plotType" class="form-label">Plot Type</label>
+                        <select class="form-select" id="plotType" name="type" onchange="handlePlotTypeChange()">
+                            <option value="timeline">Timeline</option>
+                            <option value="box">Box Plot</option>
+                            <option value="bar">Bar Chart</option>
+                            <option value="table">Table</option>
+                        </select>
                     </div>
 
                     <!-- Plot Fields -->
                     <div id="plotFields">
-                        <!-- Timeline Fields -->
-                        <div id="timelineFields" style="display: none;">
-                            <div class="mb-3">
-                                <label for="xData" class="form-label">Time Column <span class="text-danger">*</span></label>
-                                <select class="form-select" id="xData" name="x_data">
-                                    <option value="">Select column...</option>
-                                </select>
-                                <div class="invalid-feedback">Please select a time column.</div>
-                            </div>
-                        </div>
-
                         <!-- Common Data Field -->
                         <div class="mb-3">
                             <label for="yData" class="form-label">Data Column <span class="text-danger">*</span></label>
@@ -391,6 +360,17 @@
                                 <option value="">Select column...</option>
                             </select>
                             <div class="invalid-feedback">Please select a data column.</div>
+                        </div>
+
+                        <!-- Timeline Fields -->
+                        <div class="mb-3" id="xDataContainer">
+                            <label for="xData" class="form-label">Time Column <span class="text-danger" id="xDataRequired" style="display: none;">*</span></label>
+                            <select class="form-select" id="xData" name="x_data">
+                                <option value="">Select column...</option>
+                            </select>
+                            <div class="form-text" id="xDataHelp" style="display: none;">
+                                Optional to enable time filtering.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -577,17 +557,22 @@
     });
 
     function handlePlotTypeChange() {
-        const plotType = document.querySelector('input[name="type"]:checked').value;
-        const timelineFields = document.getElementById('timelineFields');
+        const plotType = document.getElementById('plotType').value;
+        const xDataContainer = document.getElementById('xDataContainer');
         const xDataSelect = document.getElementById('xData');
-
-        // Show/hide time column field for timeline plots
+        const xDataHelp = document.getElementById('xDataHelp');
+        const xDataRequired = document.getElementById('xDataRequired');
+        
         if (plotType === 'timeline') {
-            timelineFields.style.display = 'block';
+            xDataContainer.style.display = 'block';
             xDataSelect.required = true;
+            xDataHelp.style.display = 'none';
+            xDataRequired.style.display = 'inline';
         } else {
-            timelineFields.style.display = 'none';
+            xDataContainer.style.display = 'block';
             xDataSelect.required = false;
+            xDataHelp.style.display = 'block';
+            xDataRequired.style.display = 'none';
         }
     }
 

@@ -194,6 +194,7 @@ class Layout(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     is_default = db.Column(db.Boolean, nullable=False, default=False)
     show_nav = db.Column(db.Boolean, nullable=False, default=False)
+    time_range = db.Column(db.String(20), nullable=False, default="all")  # all, week, month, 90days, year
     
     # Add relationship to Account
     account = db.relationship('Account', backref=db.backref('layouts', lazy=True))
