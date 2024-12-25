@@ -21,7 +21,14 @@
     <div class="row mb-5">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>Data Sources</h2>
+                <h2>
+                    Data Sources
+                    <i class="bi bi-info-circle ms-2 info-icon" 
+                       data-bs-toggle="popover"
+                       data-bs-trigger="hover focus"
+                       data-bs-placement="right"
+                       data-bs-content="Data sources define which files to process and what columns to extract, creating a psuedo database in csv format. Each source can have multiple plots."></i>
+                </h2>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sourceModal">
                     <i class="bi bi-plus-lg"></i> Add Source
                 </button>
@@ -144,7 +151,14 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2>Layouts</h2>
+                <h2>
+                    Layouts
+                    <i class="bi bi-info-circle ms-2 info-icon"
+                       data-bs-toggle="popover"
+                       data-bs-trigger="hover focus"
+                       data-bs-placement="right"
+                       data-bs-content="Layouts let you arrange multiple plots into customizable dashboards. Create different layouts for different views of your data."></i>
+                </h2>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#layoutModal">
                     <i class="bi bi-plus-lg"></i> Add Layout
                 </button>
@@ -156,23 +170,21 @@
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
                         <h5 class="mb-0">{{ layout.name }}</h5>
-                        {% if layout_plot_names[layout.id] %}
-                            <div class="mt-1">
-                                {% for plot_name in layout_plot_names[layout.id] %}
-                                    <span class="badge rounded-pill border border-secondary-subtle text-secondary me-1 plot-name">
-                                        {{ plot_name }}
-                                    </span>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
+                        <div class="text-muted small mt-1">
+                            {% if layout_plot_names[layout.id] %}
+                                {{ layout_plot_names[layout.id]|join(", ") }}
+                            {% else %}
+                                <em>No plots added</em>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="d-flex align-items-center">
-                        {% if layout.is_default %}
+                        {# {% if layout.is_default %}
                         <small class="text-muted me-3" style="font-size: 0.75rem;">
                             <i class="fa fa-bookmark"></i>
                             Default
                         </small>
-                        {% endif %}
+                        {% endif %} #}
                         <a href="/{{ account.url }}/layout/{{ layout.id }}" class="btn btn-outline-primary btn-sm me-2">View</a>
                         <div class="dropdown d-inline">
                             <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="dropdown">
@@ -180,7 +192,7 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li>
-                                    <button class="dropdown-item" onclick="editLayout({{ layout.id }}, '{{ layout.name }}', {{ layout.is_default|tojson }}, {{ layout.show_nav|tojson }})">Edit</button>
+                                    <button class="dropdown-item" onclick="editLayout({{ layout.id }}, '{{ layout.name }}')">Edit</button>
                                 </li>
                                 <li>
                                     <form action="/{{ account.url }}/layout/{{ layout.id }}/delete" method="POST" class="d-inline">
@@ -198,6 +210,9 @@
                     <p class="mb-0">No layouts created yet.</p>
                 </div>
                 {% endif %}
+            </div>
+            <div class="text-muted small mt-2">
+                source name → plot name (plot type)
             </div>
         </div>
     </div>
@@ -282,7 +297,7 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        <div class="form-text">Enter or select column names. Press Enter or comma after each name.</div>
+                        <div class="form-text">List column names (press enter or comma after each), or select a recent file to use its columns.</div>
                         <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
                     </div>
                     <div class="row mb-3">
@@ -290,14 +305,14 @@
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only" onchange="toggleDataPoints()">
                                 <label class="form-check-label" for="tailOnly">Tail Only</label>
-                                <div class="form-text">Only process the end of files</div>
+                                <div class="form-text">Only process the end of files: use if rows might exceed 1M.</div>
                             </div>
                         </div>
                         <div class="col-6">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="includeArchive" name="include_archive">
                                 <label class="form-check-label" for="includeArchive">Include Archival Data</label>
-                                <div class="form-text">May lead to duplicate data</div>
+                                <div class="form-text">Leave unchecked to only process the latest file version.</div>
                             </div>
                         </div>
                     </div>
@@ -400,15 +415,8 @@
                     </div>
                     <div class="mb-3">
                         <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="isDefault" name="is_default"
-                                {% if not account.layouts %}checked disabled{% endif %}>
-                            <label class="form-check-label" for="isDefault">Set as default layout</label>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="showNav" name="show_nav">
-                            <label class="form-check-label" for="showNav">Assign to sidebar</label>
+                            <input type="checkbox" class="form-check-input" id="showNav" name="show_nav" checked>
+                            <label class="form-check-label" for="showNav">Assign to Sidebar</label>
                         </div>
                     </div>
                 </div>
@@ -576,12 +584,10 @@
         }
     }
 
-    function editLayout(id, name, isDefault, showNav) {
+    function editLayout(id, name) {
         const modal = document.getElementById('layoutModal');
         const form = document.getElementById('layoutForm');
         const title = modal.querySelector('.modal-title');
-        const defaultCheckbox = document.getElementById('isDefault');
-        const showNavCheckbox = document.getElementById('showNav');
         
         // Update modal title
         title.textContent = 'Edit Layout';
@@ -591,17 +597,6 @@
         
         // Populate form fields
         document.getElementById('layoutName').value = name;
-        defaultCheckbox.checked = isDefault;
-        showNavCheckbox.checked = showNav === true;  // Ensure boolean comparison
-        
-        // If this is the only layout, disable the default checkbox
-        const layoutCount = {{ account.layouts|length }};
-        if (layoutCount === 1) {
-            defaultCheckbox.checked = true;
-            defaultCheckbox.disabled = true;
-        } else {
-            defaultCheckbox.disabled = false;
-        }
         
         // Show modal
         const bsModal = new bootstrap.Modal(modal);
@@ -613,22 +608,12 @@
         const modal = document.getElementById('layoutModal');
         const form = document.getElementById('layoutForm');
         const title = modal.querySelector('.modal-title');
-        const defaultCheckbox = document.getElementById('isDefault');
         
         // Reset form
         form.reset();
         
         // Update modal title
         title.textContent = 'Add Layout';
-        
-        // If there are no layouts, check and disable the default checkbox
-        const layoutCount = {{ account.layouts|length }};
-        if (layoutCount === 0) {
-            defaultCheckbox.checked = true;
-            defaultCheckbox.disabled = true;
-        } else {
-            defaultCheckbox.disabled = false;
-        }
         
         // Set form action for creation
         form.action = `/{{ account.url }}/layout`;
@@ -752,6 +737,15 @@
         const dataPointsContainer = document.getElementById('dataPointsContainer');
         dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
     }
+
+    // Initialize all popovers
+    document.addEventListener('DOMContentLoaded', function() {
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+        const popoverList = [...popoverTriggerList].map(el => new bootstrap.Popover(el, {
+            html: true,
+            container: 'body'
+        }));
+    });
 </script>
 
 <!-- Add this in the head section or before closing body -->

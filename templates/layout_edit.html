@@ -28,15 +28,20 @@
                 <option value="year" {% if layout.time_range == 'year' %}selected{% endif %}>Last Year</option>
             </select>
             <button class="btn btn-sm btn-primary me-2" onclick="saveLayout()">Save</button>
-            <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
-                  onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
-                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-            </form>
         </div>
     </div>
 
     <!-- Edit Container -->
     <div class="grid-stack layout-container"></div>
+    <div class="d-flex justify-content-between align-items-center mt-2">
+        <div class="text-muted small">
+            source name → plot name (plot type)
+        </div>
+        <form class="d-inline" method="POST" action="/{{ account.url }}/layout/{{ layout.id }}/delete" 
+              onsubmit="return confirm('Are you sure you want to delete this layout? This action cannot be undone.');">
+            <button type="submit" class="btn btn-sm btn-outline-danger">Delete Layout</button>
+        </form>
+    </div>
 
     <!-- Template for plot selection -->
     <template id="widget-template">

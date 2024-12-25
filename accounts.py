@@ -358,17 +358,38 @@ def account_plots(account_url):
         layout_plot_names = {}
         for layout in account.layouts:
             plot_names = []
-            layout_plot_ids = [item['plotId'] for item in json.loads(layout.config)]
-            for source in sources:
-                for plot in source.plots:
-                    if plot.id in layout_plot_ids:
-                        plot_names.append(f"{source.name}: {plot.name}")
+            try:
+                config = json.loads(layout.config)
+                plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
+                
+                # Create a lookup dictionary for all plots
+                plot_lookup = {}
+                for source in sources:
+                    for plot in source.plots:
+                        plot_lookup[plot.id] = {
+                            'source_name': source.name,
+                            'plot_name': plot.name,
+                            'plot_type': plot.type
+                        }
+                
+                # Get plot names in order of layout config
+                for plot_id in plot_ids:
+                    if plot_id in plot_lookup:
+                        plot_info = plot_lookup[plot_id]
+                        plot_names.append(
+                            f"{plot_info['source_name']} → {plot_info['plot_name']} ({plot_info['plot_type']})"
+                        )
+                
+            except Exception as e:
+                logging.error(f"Error processing layout config: {e}")
+                plot_names = ["Error loading plots"]
+                
             layout_plot_names[layout.id] = plot_names
 
         return render_template('plots.html', 
                           account=account, 
                           sources=sources,
-                          plot_data=plot_data,  # Add plot_data to template context
+                          plot_data=plot_data,
                           layout_plot_names=layout_plot_names,
                           dir_patterns=dir_patterns,
                           recent_files=recent_files)

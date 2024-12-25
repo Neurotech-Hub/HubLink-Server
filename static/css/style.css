@@ -1173,3 +1173,15 @@ table td code {
 .tagify__tag__removeBtn {
     margin-right: 2px;
 }
+
+/* Info icon styling */
+.info-icon {
+    cursor: help;
+    color: #6c757d;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
+}
+
+.info-icon:hover {
+    opacity: 1;
+}
