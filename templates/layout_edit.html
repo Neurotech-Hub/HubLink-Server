@@ -38,7 +38,7 @@
             <select class="form-select plot-selector">
                 <option value="">Select a plot...</option>
                 {% for plot in plots %}
-                <option value="{{ plot.id }}">{{ plot.source.name }} → {{ plot.name }}</option>
+                <option value="{{ plot.id }}">{{ plot.source.name }} → {{ plot.name }} ({{ plot.type }})</option>
                 {% endfor %}
             </select>
         </div>
