@@ -89,8 +89,14 @@ def update_settings(account_url):
         settings.max_file_size = int(request.form['max_file_size'])
         settings.use_cloud = request.form['use_cloud'] == 'true'
         settings.delete_scans = request.form['delete_scans'] == 'true'
-        settings.delete_scans_days_old = int(request.form['delete_scans_days_old']) if request.form['delete_scans_days_old'] else None
-        settings.delete_scans_percent_remaining = int(request.form['delete_scans_percent_remaining']) if request.form['delete_scans_percent_remaining'] else None
+        # Only process these fields if delete_scans is True
+        if settings.delete_scans:
+            settings.delete_scans_days_old = int(request.form['delete_scans_days_old']) if request.form['delete_scans_days_old'] else None
+            settings.delete_scans_percent_remaining = int(request.form['delete_scans_percent_remaining']) if request.form['delete_scans_percent_remaining'] else None
+        else:
+            # Set to None when delete_scans is False
+            settings.delete_scans_days_old = None
+            settings.delete_scans_percent_remaining = None
         settings.device_name_includes = device_name_includes
         # These fields are commented out in the form, so we'll keep their existing values
         # settings.alert_file_starts_with = request.form.get('alert_file_starts_with', settings.alert_file_starts_with)
