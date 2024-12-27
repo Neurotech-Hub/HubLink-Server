@@ -12,6 +12,16 @@
         outline: 2px solid #0d6efd;
         outline-offset: 2px;
     }
+    
+    .info-icon {
+        font-size: 0.8em;
+        color: #6c757d;
+        cursor: help;
+    }
+    
+    .popover {
+        max-width: 300px;
+    }
 </style>
 
 <div class="container-fluid">
@@ -39,6 +49,7 @@
                        data-bs-toggle="popover"
                        data-bs-trigger="hover focus"
                        data-bs-placement="right"
+                       data-bs-container="body"
                        data-bs-content="Data sources define which files to process and what columns to extract, creating a psuedo database in csv format. Each source can have multiple plots."></i>
                 </h2>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#sourceModal">
@@ -95,27 +106,19 @@
                                          style="cursor: pointer;">
                                         <div class="card-body p-2"
                                              data-bs-toggle="popover"
-                                             data-bs-container="body" 
-                                             data-bs-trigger="click"
+                                             data-bs-trigger="manual"
                                              data-bs-html="true"
                                              data-plot-id="{{ plot.id }}"
-                                             style="height: 100%;"
-                                             data-plotly-json='{{ plot.data | tojson | safe }}'>
+                                             data-plotly-json="{{ plot.data }}"
+                                             style="height: 100%;">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <h6 class="card-title mb-0 text-truncate">
                                                     {% if plot.type == 'timeline' %}
                                                         <i class="bi bi-graph-up"></i>
-                                                    {% elif plot.type == 'box' %}
-                                                        <i class="bi bi-box"></i>
-                                                    {% elif plot.type == 'bar' %}
-                                                        <i class="bi bi-bar-chart"></i>
-                                                    {% elif plot.type == 'table' %}
-                                                        <i class="bi bi-table"></i>
                                                     {% endif %}
                                                     {{ plot.name }}
                                                 </h6>
-                                                <form action="/{{ account.url }}/plot/{{ plot.id }}/delete"
-                                                    method="POST">
+                                                <form action="/{{ account.url }}/plot/{{ plot.id }}/delete" method="POST">
                                                     <button type="submit" class="btn-close btn-sm" aria-label="Close"></button>
                                                 </form>
                                             </div>
@@ -167,11 +170,12 @@
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2>
                     Layouts
-                    <i class="bi bi-info-circle ms-2 info-icon"
+                    <i class="bi bi-info-circle ms-2 info-icon" 
                        data-bs-toggle="popover"
                        data-bs-trigger="hover focus"
                        data-bs-placement="right"
-                       data-bs-content="Layouts let you arrange multiple plots into customizable dashboards. Create different layouts for different views of your data."></i>
+                       data-bs-container="body"
+                       data-bs-content="Layouts allow you to organize and display your plots in different configurations."></i>
                 </h2>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#layoutModal">
                     <i class="bi bi-plus-lg"></i> Add Layout
@@ -637,25 +641,21 @@
 
     // Initialize all popovers
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize plot popovers
         const popoverOptions = {
             html: true,
-            placement: 'auto',
-            boundary: 'viewport',
-            content: function() {
-                return '<div class="plot-preview" style="width: 350px; height: 250px;"></div>';
-            },
             trigger: 'manual',
-            sanitize: false
+            content: '<div class="plot-preview"></div>',
+            placement: 'auto',
+            container: 'body'
         };
 
-        const popoverTriggerList = document.querySelectorAll('.card-body[data-bs-toggle="popover"]');
-
-        const popovers = [...popoverTriggerList].map(el => {
+        const plotTriggerList = document.querySelectorAll('.card-body[data-bs-toggle="popover"]');
+        const popovers = [...plotTriggerList].map(el => {
             const popover = new bootstrap.Popover(el, popoverOptions);
             
-            // Direct click handler on card-body
+            // Add click handler
             el.addEventListener('click', function(e) {
-                // Don't trigger if clicking the close button
                 if (!e.target.closest('.btn-close')) {
                     // Hide any other shown popovers
                     popovers.forEach(p => {
@@ -668,68 +668,47 @@
                     const tip = popover.tip;
                     if (!tip || !tip.classList.contains('show')) {
                         popover.show();
-                        
-                        // Wait for popover to be fully shown before plotting
-                        setTimeout(() => {
-                            const plotData = JSON.parse(this.dataset.plotlyJson);
-                            
-                            try {
-                                // First parse the outer JSON string
-                                const parsedData = typeof plotData === 'string' ? JSON.parse(plotData) : plotData;
-                                
-                                if (!parsedData?.plotly_json) {
-                                    throw new Error('Missing plotly_json in parsed data');
-                                }
-
-                                // Then parse the inner plotly_json string
-                                const plotlyConfig = JSON.parse(parsedData.plotly_json);
-                                console.log('Parsed plotlyConfig:', plotlyConfig);
-                                const popoverBody = popover.tip.querySelector('.plot-preview');
-                                
-                                if (popoverBody) {
-                                    Plotly.newPlot(
-                                        popoverBody,
-                                        plotlyConfig.data || [],
-                                        Object.assign({
-                                            height: 250,
-                                            width: 350,
-                                            margin: {
-                                                l: 35,  // left margin for y-axis labels
-                                                r: 5,   // minimal right margin
-                                                t: 30,  // top margin for title
-                                                b: 30   // bottom margin for x-axis labels
-                                            },
-                                            legend: {
-                                                orientation: 'h',     // horizontal legend
-                                                yanchor: 'bottom',
-                                                y: -0.3,             // position below plot
-                                                xanchor: 'center',
-                                                x: 0.5
-                                            }
-                                        }, plotlyConfig.layout || {}),
-                                        {
-                                            responsive: true,
-                                            displayModeBar: false,
-                                            staticPlot: true,
-                                            autosize: false
-                                        }
-                                    );
-                                } else {
-                                    console.error('No popover body found');
-                                }
-                            } catch (error) {
-                                console.error('Error processing plot data:', error.message);
-                                console.error('plotData details:', {
-                                    raw: this.dataset.plotlyJson,
-                                    parsed: plotData,
-                                    parsedData: typeof plotData === 'string' ? JSON.parse(plotData) : plotData
-                                });
-                                console.error('Full error:', error);
-                            }
-                        }, 50);
                     } else {
                         popover.hide();
                     }
+                }
+            });
+            
+            // Add show event listener for plot
+            el.addEventListener('shown.bs.popover', function () {
+                console.log('Raw data:', this.dataset.plotlyJson);  // Debug
+                try {
+                    // Parse the outer JSON structure
+                    const plotData = JSON.parse(this.dataset.plotlyJson);
+                    console.log('Parsed outer JSON:', plotData);  // Debug
+                    
+                    const popoverBody = popover.tip.querySelector('.plot-preview');
+                    
+                    if (plotData && plotData.plotly_json) {
+                        // Parse the inner plotly_json string
+                        const plotlyConfig = JSON.parse(plotData.plotly_json);
+                        console.log('Parsed plotly config:', plotlyConfig);  // Debug
+                        
+                        Plotly.newPlot(
+                            popoverBody,
+                            plotlyConfig.data,
+                            {
+                                ...plotlyConfig.layout,
+                                height: 250,
+                                width: 350,
+                                margin: { l: 30, r: 10, t: 30, b: 30 }
+                            },
+                            {
+                                responsive: true,
+                                displayModeBar: 'hover',
+                                displaylogo: false,
+                                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
+                            }
+                        );
+                    }
+                } catch (error) {
+                    console.error('Error parsing plot data:', error);
+                    console.error('Raw data was:', this.dataset.plotlyJson);
                 }
             });
             
@@ -823,6 +802,58 @@
             html: true,
             container: 'body'
         }));
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize all plot previews
+        document.querySelectorAll('.plot-preview').forEach(function(plotElement) {
+            const plotData = JSON.parse(plotElement.dataset.plot);
+            if (plotData && plotData.plotly_json) {
+                const plotlyConfig = JSON.parse(plotData.plotly_json);
+                Plotly.newPlot(
+                    plotElement,
+                    plotlyConfig.data,
+                    Object.assign({
+                        height: 250,
+                        width: 350,
+                        margin: { l: 30, r: 10, t: 30, b: 30 }
+                    }, plotlyConfig.layout || {}),
+                    {
+                        responsive: true,
+                        displayModeBar: 'hover',
+                        displaylogo: false,
+                        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
+                    }
+                );
+            }
+        });
+
+        // Add click handlers for showing/hiding plots
+        document.querySelectorAll('[data-plot-trigger]').forEach(function(trigger) {
+            trigger.addEventListener('click', function(e) {
+                if (e.target.closest('.btn-close')) return;
+                
+                // Hide all other previews
+                document.querySelectorAll('.plot-preview-container').forEach(container => {
+                    if (container !== this.querySelector('.plot-preview-container')) {
+                        container.style.display = 'none';
+                    }
+                });
+                
+                // Toggle this preview
+                const container = this.querySelector('.plot-preview-container');
+                container.style.display = container.style.display === 'none' ? 'block' : 'none';
+            });
+        });
+
+        // Close previews when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('[data-plot-trigger]')) {
+                document.querySelectorAll('.plot-preview-container').forEach(container => {
+                    container.style.display = 'none';
+                });
+            }
+        });
     });
 </script>
 
