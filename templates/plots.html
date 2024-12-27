@@ -2,27 +2,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-    .mini-plot-card .card-body[data-bs-toggle="popover"] {
-        cursor: pointer;
-        user-select: none;
-    }
-    
-    .mini-plot-card .card:focus {
-        outline: 2px solid #0d6efd;
-        outline-offset: 2px;
-    }
-    
-    .info-icon {
-        font-size: 0.8em;
-        color: #6c757d;
-        cursor: help;
-    }
-    
-    .popover {
-        max-width: 300px;
-    }
-</style>
 
 <div class="container-fluid">
     <!-- Flash Messages -->
@@ -645,7 +624,7 @@
         const popoverOptions = {
             html: true,
             trigger: 'manual',
-            content: '<div class="plot-preview"></div>',
+            content: '<div class="plot-preview" style="width: 400px; height: 300px;"></div>',
             placement: 'auto',
             container: 'body'
         };
