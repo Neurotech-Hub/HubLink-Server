@@ -40,12 +40,12 @@ def get_plot_info(plot):
     try:
         # Load the stored plot data (which includes the plotly_json)
         plot_data = json.loads(plot.data) if plot.data else {}
-        logger.debug(f"Plot {plot.id} data: {plot_data}")  # Debug plot data
+        logger.debug(f"Plot {plot.id} data: {plot_data}")
         
         # If we have valid plotly_json in the stored data, use it
         if plot_data.get('plotly_json'):
             plotly_json = plot_data['plotly_json']
-            logger.debug(f"Found plotly_json for plot {plot.id}")  # Debug plotly_json existence
+            logger.debug(f"Found plotly_json for plot {plot.id}")
         else:
             logger.warning(f"No plotly_json found for plot {plot.id}, using empty data")
             plotly_json = json.dumps({
@@ -53,27 +53,19 @@ def get_plot_info(plot):
                 'layout': get_default_layout(plot.name)
             })
 
-        # Verify plotly_json structure
-        parsed_json = json.loads(plotly_json)
-        logger.debug(f"Plot {plot.id} data structure: {list(parsed_json.keys())}")  # Debug JSON structure
-        if 'data' not in parsed_json or 'layout' not in parsed_json:
-            logger.error(f"Invalid plotly_json structure for plot {plot.id}")
-            
+        return {
+            'plot_id': plot.id,
+            'name': plot.name,
+            'type': plot.type,
+            'source_name': plot.source.name,
+            'config': config,
+            'plotly_json': plotly_json,
+            'source_data': plot_data.get('source_data'),
+            'error': plot_data.get('error')
+        }
     except Exception as e:
-        logger.error(f"Error parsing plot data for plot {plot.id}: {e}")
-        plotly_json = json.dumps({
-            'data': [],
-            'layout': get_default_layout(plot.name)
-        })
-    
-    return {
-        'plot_id': plot.id,
-        'name': plot.name,
-        'type': plot.type,
-        'source_name': plot.source.name,
-        'config': config,
-        'plotly_json': plotly_json
-    }
+        logger.error(f"Error getting plot info: {e}", exc_info=True)
+        return None
 
 def get_default_layout(plot_name):
     return {
@@ -112,8 +104,8 @@ def process_timeseries_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
-        logger.debug(f"DataFrame shape: {df.shape}")  # Debug DataFrame size
-        logger.debug(f"DataFrame columns: {df.columns.tolist()}")  # Debug columns
+        logger.debug(f"DataFrame shape: {df.shape}")
+        logger.debug(f"DataFrame columns: {df.columns.tolist()}")
         
         try:
             df[x_data] = pd.to_datetime(df[x_data], format='%m/%d/%Y %H:%M:%S', errors='coerce')
@@ -123,8 +115,6 @@ def process_timeseries_plot(plot, csv_content):
         
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[x_data, y_data])
-        
-        logger.debug(f"DataFrame shape after cleaning: {df.shape}")  # Debug cleaned DataFrame size
         
         if len(df) == 0:
             return {'error': 'No valid data points after cleaning'}
@@ -143,9 +133,8 @@ def process_timeseries_plot(plot, csv_content):
         
         fig.update_layout(get_default_layout(plot.name))
         
+        # Wrap the plotly JSON in the expected format
         plotly_json = fig.to_json()
-        logger.debug(f"Generated plotly_json length: {len(plotly_json)}")  # Debug JSON size
-        
         return {
             'plotly_json': plotly_json,
             'error': None

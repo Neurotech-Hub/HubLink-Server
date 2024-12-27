@@ -144,11 +144,23 @@ def account_data(account_url, device_id=None):
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         db.session.commit()
-        # Get total_limit from URL parameters, default to 100 if not provided
-        total_limit = request.args.get('total_limit', 100, type=int)
+        
+        # Pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 30
         
         # Get recent files for the account, optionally filtered by device_id
-        recent_files = get_latest_files(account.id, total=total_limit, device_id=device_id)
+        query = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .order_by(File.last_modified.desc())
+        
+        if device_id:
+            device_prefix = f"{device_id}/"
+            query = query.filter(File.key.like(f"{device_prefix}%"))
+        
+        # Get paginated results
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        recent_files = pagination.items
         
         # Retrieve a list of unique device IDs for display in the template
         unique_devices = get_unique_devices(account.id)
@@ -159,7 +171,7 @@ def account_data(account_url, device_id=None):
             recent_files=recent_files,
             unique_devices=unique_devices,
             device_id=device_id,
-            total_limit=total_limit
+            pagination=pagination
         )
     except Exception as e:
         logging.error(f"Error loading data for {account_url} and device {device_id}: {e}")
@@ -697,36 +709,32 @@ def create_plot(account_url, source_id):
 @accounts_bp.route('/<account_url>/plot/<int:plot_id>/delete', methods=['POST'])
 def delete_plot(account_url, plot_id):
     try:
-        # First verify the account exists and the plot belongs to it
         account = Account.query.filter_by(url=account_url).first_or_404()
-        plot = Plot.query.join(Source).filter(
-            Plot.id == plot_id,
-            Source.account_id == account.id
-        ).first_or_404()
+        plot = Plot.query.filter_by(id=plot_id, source_id=Source.query.filter_by(account_id=account.id).first().id).first_or_404()
         
-        # Store plot name for flash message
-        plot_name = plot.name
+        # Get all layouts for this account
+        layouts = Layout.query.filter_by(account_id=account.id).all()
         
-        # Delete the plot
+        # Update each layout's config to remove the deleted plot
+        for layout in layouts:
+            try:
+                config = json.loads(layout.config)
+                # Remove any widgets that reference the deleted plot
+                config = [widget for widget in config if widget.get('plotId') != str(plot_id)]
+                layout.config = json.dumps(config)
+            except json.JSONDecodeError:
+                logging.error(f"Failed to parse layout config for layout {layout.id}")
+                continue
+        
         db.session.delete(plot)
-        
-        # Update each layout's config to remove the plot entry
-        for layout in account.layouts:
-            config = json.loads(layout.config)
-            # Filter out the plot with the given plot_id
-            updated_config = [entry for entry in config if entry.get('plotId') != plot_id]
-            layout.config = json.dumps(updated_config)
-        
         db.session.commit()
-        
-        flash(f'Plot "{plot_name}" deleted successfully.', 'success')
-        return redirect(url_for('accounts.account_plots', account_url=account_url))
-    
+        flash('Plot deleted successfully.', 'success')
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error deleting plot {plot_id} for account {account_url}: {e}")
+        logging.error(f"Error deleting plot {plot_id}: {e}")
         flash('Error deleting plot.', 'error')
-        return redirect(url_for('accounts.account_plots', account_url=account_url))
+    
+    return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['POST'])
 def update_layout(account_url, layout_id):

@@ -79,7 +79,7 @@
                                         <option value="never" {% if settings.dt_rule=='never' %}selected{% endif %}>Never
                                         </option>
                                     </select>
-                                    <div class="form-text">Folder structure for archiving files</div>
+                                    <div class="form-text">Sets folder structure, see <a href="/docs">docs</a></div>
                                 </div>
                             </div>
                             
@@ -88,7 +88,7 @@
                                     <label for="max_file_size" class="form-label">Max File Size (bytes):</label>
                                     <input type="number" id="max_file_size" name="max_file_size" class="form-control"
                                         value="{{ settings.max_file_size }}" required>
-                                    <div class="form-text">Maximum allowed size for individual files</div>
+                                    <div class="form-text">Maximum allowed file size</div>
                                 </div>
                             </div>
                             
@@ -142,7 +142,7 @@
                             <input type="text" id="device_name_includes" name="device_name_includes"
                                 class="form-control" value="{{ settings.device_name_includes }}"
                                 required minlength="1">
-                            <div class="form-text">Device name should include this string, can not be blank</div>
+                            <div class="form-text">Device name must include this string (can not be blank)</div>
                             <div class="invalid-feedback">Device filter cannot be empty</div>
                         </div>
 

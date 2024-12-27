@@ -8,18 +8,18 @@
     <!-- Device Filter Pills -->
     <div class="mb-3">
         <!-- All Devices pill -->
-        <span class="badge {{ 'bg-primary' if device_id is none else 'bg-light' }}">
+        <span class="badge rounded-pill {{ 'border border-primary text-primary' if device_id is none else 'border text-secondary' }}">
             <a href="{{ url_for('accounts.account_data', account_url=account.url, total_limit=total_limit) }}"
-                class="text-decoration-none text-dark">
+                class="text-decoration-none {{ 'text-primary' if device_id is none else 'text-secondary' }}">
                 All Devices
             </a>
         </span>
 
         <!-- Individual Device Pills -->
         {% for device in unique_devices %}
-        <span class="badge {{ 'bg-primary' if device_id == device else 'bg-light' }}">
+        <span class="badge rounded-pill {{ 'border border-primary text-primary' if device_id == device else 'border text-secondary' }}">
             <a href="{{ url_for('accounts.account_data', account_url=account.url, device_id=device, total_limit=total_limit) }}"
-                class="text-decoration-none text-dark">
+                class="text-decoration-none {{ 'text-primary' if device_id == device else 'text-secondary' }}">
                 {{ device }}
             </a>
         </span>
@@ -47,7 +47,7 @@
         <div class="small">
             <span class="fileActive text-muted rounded px-2 py-1">checked &lt;30 min ago</span>
         </div>
-        <p class="small text-muted mb-0">Limited to {{ total_limit }} recent files</p>
+        <p class="small text-muted mb-0">Page {{ pagination.page }} of {{ pagination.pages }}</p>
     </div>
 
     <!-- File Table -->
@@ -96,6 +96,49 @@
                     {% endif %}
                 </tbody>
             </table>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    <!-- Previous button -->
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                        <a class="page-link" href="{{ url_for('accounts.account_data', 
+                            account_url=account.url, 
+                            device_id=device_id, 
+                            page=pagination.prev_num) if pagination.has_prev else '#' }}">
+                            Previous
+                        </a>
+                    </li>
+                    
+                    <!-- Page numbers -->
+                    {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
+                        {% if page_num %}
+                            <li class="page-item {{ 'active' if page_num == pagination.page }}">
+                                <a class="page-link" href="{{ url_for('accounts.account_data', 
+                                    account_url=account.url, 
+                                    device_id=device_id, 
+                                    page=page_num) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <!-- Next button -->
+                    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                        <a class="page-link" href="{{ url_for('accounts.account_data', 
+                            account_url=account.url, 
+                            device_id=device_id, 
+                            page=pagination.next_num) if pagination.has_next else '#' }}">
+                            Next
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
 
             <!-- Delete Files Button (only shows when device_id is present) -->
             {% if device_id %}

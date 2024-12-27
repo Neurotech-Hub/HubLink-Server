@@ -1185,3 +1185,21 @@ table td code {
 .info-icon:hover {
     opacity: 1;
 }
+
+/* Device Filter Pills */
+.badge.rounded-pill {
+    padding: 0.25em 0.5em;
+    font-weight: normal;
+    font-size: 0.7em;
+    margin-right: 0.5em;
+    background-color: transparent;
+    transition: all 0.2s ease;
+}
+
+.badge.rounded-pill:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.badge.rounded-pill a {
+    transition: all 0.2s ease;
+}

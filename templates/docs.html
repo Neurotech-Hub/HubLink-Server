@@ -36,26 +36,26 @@
             <h2 class="border-bottom pb-2 mb-4">Available Settings</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <h3 class="h5">Cloud Storage Settings</h3>
+                    <h3 class="h5">Storage Settings</h3>
                     <ul>
                         <li><strong>AWS Access Key ID:</strong> AWS credential for S3 access</li>
                         <li><strong>AWS Secret Access Key:</strong> AWS credential for S3 access</li>
                         <li><strong>S3 Bucket Name:</strong> Destination bucket for file storage</li>
-                        <li><strong>Use Cloud:</strong> Enable/disable cloud storage uploads</li>
                     </ul>
 
-                    <h3 class="h5 mt-4">Data Management</h3>
+                    <h3 class="h5 mt-4">Gateway Settings</h3>
                     <ul>
-                        <li><strong>Archive Rule:</strong> Time-based folder structure (seconds to years)</li>
+                        <li><strong>Archive Rule:</strong> How to organize files in time-based folders (see below)</li>
                         <li><strong>Max File Size:</strong> Maximum allowed file size in bytes</li>
-                        <li><strong>Delete Scans:</strong> Enable/disable automatic scan deletion</li>
-                        <li><strong>Delete Scans Older Than:</strong> Remove files older than specified days</li>
-                        <li><strong>Delete Scans Percent Remaining:</strong> Storage threshold for deletion</li>
+                        <li><strong>Use/Upload to Cloud:</strong> Enable or disable cloud storage</li>
+                        <li><strong>Delete Scans from Gateway:</strong> Free up storage space on gateway</li>
+                        <li><strong>Delete Scans Older Than:</strong> Age threshold for deletion (use -1 to ignore)</li>
+                        <li><strong>Delete Scans Percent Remaining:</strong> Storage threshold percentage (use -1 to ignore)</li>
                     </ul>
 
-                    <h3 class="h5 mt-4">Device Configuration</h3>
+                    <h3 class="h5 mt-4">Device Settings</h3>
                     <ul>
-                        <li><strong>Device Filter by Name:</strong> Filter for specific device names</li>
+                        <li><strong>Device Filter by Name:</strong> Device name should include this string, cannot be blank</li>
                     </ul>
                 </div>
             </div>
@@ -68,7 +68,7 @@
                 <div class="card-body">
                     <p>Files in S3 are organized by device ID and time-based folders, following this structure:</p>
                     <pre><code>bucket_name/
-├── device_id/                    # Unique device identifier
+├── device_id/                   # Unique device identifier
 │   ├── {datetime}/              # Time-based folder (optional)
 │   │   └── filename.txt         # Actual files
 │   └── filename.txt             # Direct files when datetime is disabled
