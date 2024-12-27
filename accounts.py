@@ -69,6 +69,13 @@ def update_settings(account_url):
     try:
         account.count_settings_updated += 1
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Validate device_name_includes is not empty
+        device_name_includes = request.form.get('device_name_includes', '').strip()
+        if not device_name_includes:
+            flash("Device Filter by Name cannot be empty", "error")
+            return redirect(url_for('accounts.account_settings', account_url=account_url))
+
         # Track original values
         original_access_key = settings.aws_access_key_id
         original_secret_key = settings.aws_secret_access_key
@@ -84,10 +91,11 @@ def update_settings(account_url):
         settings.delete_scans = request.form['delete_scans'] == 'true'
         settings.delete_scans_days_old = int(request.form['delete_scans_days_old']) if request.form['delete_scans_days_old'] else None
         settings.delete_scans_percent_remaining = int(request.form['delete_scans_percent_remaining']) if request.form['delete_scans_percent_remaining'] else None
-        settings.device_name_includes = request.form['device_name_includes']
-        settings.alert_file_starts_with = request.form['alert_file_starts_with']
-        settings.alert_email = request.form['alert_email']
-        settings.node_payload = request.form['node_payload']
+        settings.device_name_includes = device_name_includes
+        # These fields are commented out in the form, so we'll keep their existing values
+        # settings.alert_file_starts_with = request.form.get('alert_file_starts_with', settings.alert_file_starts_with)
+        # settings.alert_email = request.form.get('alert_email', settings.alert_email)
+        # settings.node_payload = request.form.get('node_payload', settings.node_payload)
 
         # Check if any of the AWS settings were updated
         if (original_access_key != settings.aws_access_key_id or

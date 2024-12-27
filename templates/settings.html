@@ -33,9 +33,10 @@
             {% endif %}
             {% endwith %}
 
-            <form id="settings-form" action="/{{ account.url }}/settings/update" method="POST">
+            <form id="settings-form" action="/{{ account.url }}/settings/update" method="POST" class="needs-validation" novalidate>
                 <div class="row g-4">
                     <div class="col-12">
+                        <h3>Storage</h3>
                         <!-- AWS Settings -->
                         <div class="mb-4">
                             <label for="aws_access_key_id" class="form-label fw-bold">AWS Access Key ID:</label>
@@ -54,6 +55,8 @@
                             <input type="text" id="bucket_name" name="bucket_name" class="form-control"
                                 value="{{ settings.bucket_name }}">
                         </div>
+
+                        <h3>Gateway</h3>
 
                         <!-- Data Management Settings -->
                         <div class="row g-4">
@@ -76,6 +79,7 @@
                                         <option value="never" {% if settings.dt_rule=='never' %}selected{% endif %}>Never
                                         </option>
                                     </select>
+                                    <div class="form-text">Folder structure for archiving files</div>
                                 </div>
                             </div>
                             
@@ -84,6 +88,7 @@
                                     <label for="max_file_size" class="form-label">Max File Size (bytes):</label>
                                     <input type="number" id="max_file_size" name="max_file_size" class="form-control"
                                         value="{{ settings.max_file_size }}" required>
+                                    <div class="form-text">Maximum allowed size for individual files</div>
                                 </div>
                             </div>
                             
@@ -94,6 +99,7 @@
                                         <option value="true" {% if settings.use_cloud %}selected{% endif %}>True</option>
                                         <option value="false" {% if not settings.use_cloud %}selected{% endif %}>False</option>
                                     </select>
+                                    <div class="form-text">Enable or disable cloud storage</div>
                                 </div>
                             </div>
                         </div>
@@ -101,11 +107,13 @@
                         <div class="row g-4">
                             <div class="col-12 col-md-4">
                                 <div class="mb-4">
-                                    <label for="delete_scans" class="form-label">Delete Scans from Hub:</label>
-                                    <select id="delete_scans" name="delete_scans" class="form-select">
+                                    <label for="delete_scans" class="form-label">Delete Scans from Gateway:</label>
+                                    <select id="delete_scans" name="delete_scans" class="form-select" 
+                                           onchange="toggleDeleteScanInputs()">
                                         <option value="true" {% if settings.delete_scans %}selected{% endif %}>True</option>
                                         <option value="false" {% if not settings.delete_scans %}selected{% endif %}>False</option>
                                     </select>
+                                    <div class="form-text">Free up storage space on gateway</div>
                                 </div>
                             </div>
                             
@@ -114,6 +122,7 @@
                                     <label for="delete_scans_days_old" class="form-label">Delete Scans Older Than (days):</label>
                                     <input type="number" id="delete_scans_days_old" name="delete_scans_days_old"
                                         class="form-control" value="{{ settings.delete_scans_days_old }}">
+                                    <div class="form-text">Age threshold (use "-1" to ignore)</div>
                                 </div>
                             </div>
                             
@@ -123,6 +132,7 @@
                                     <input type="number" id="delete_scans_percent_remaining"
                                         name="delete_scans_percent_remaining" class="form-control"
                                         value="{{ settings.delete_scans_percent_remaining }}">
+                                    <div class="form-text">Percent threshold (use "-1" to ignore)</div>
                                 </div>
                             </div>
                         </div>
@@ -130,7 +140,10 @@
                         <div class="mb-4">
                             <label for="device_name_includes" class="form-label">Device Filter by Name:</label>
                             <input type="text" id="device_name_includes" name="device_name_includes"
-                                class="form-control" value="{{ settings.device_name_includes }}">
+                                class="form-control" value="{{ settings.device_name_includes }}"
+                                required minlength="1">
+                            <div class="form-text">Device name should include this string, can not be blank</div>
+                            <div class="invalid-feedback">Device filter cannot be empty</div>
                         </div>
 
                         <!-- <div class="mb-4">
@@ -180,5 +193,32 @@
             console.error('Could not copy text: ', err);
         });
     }
+
+    function toggleDeleteScanInputs() {
+        const deleteScansEnabled = document.getElementById('delete_scans').value === 'true';
+        const daysOldInput = document.getElementById('delete_scans_days_old');
+        const percentInput = document.getElementById('delete_scans_percent_remaining');
+        
+        daysOldInput.disabled = !deleteScansEnabled;
+        percentInput.disabled = !deleteScansEnabled;
+        
+        // Optional: Add visual feedback by changing opacity
+        daysOldInput.style.opacity = deleteScansEnabled ? '1' : '0.5';
+        percentInput.style.opacity = deleteScansEnabled ? '1' : '0.5';
+    }
+
+    // Form validation
+    document.getElementById('settings-form').addEventListener('submit', function(event) {
+        if (!this.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        this.classList.add('was-validated');
+    }, false);
+
+    // Run on page load to set initial state
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleDeleteScanInputs();
+    });
 </script>
 {% endblock %}
