@@ -94,6 +94,12 @@
                                                 <h6 class="card-title mb-0 text-truncate">
                                                     {% if plot.type == 'timeline' %}
                                                         <i class="bi bi-graph-up"></i>
+                                                    {% elif plot.type == 'box' %}
+                                                        <i class="bi bi-box"></i>
+                                                    {% elif plot.type == 'bar' %}
+                                                        <i class="bi bi-bar-chart"></i>
+                                                    {% elif plot.type == 'table' %}
+                                                        <i class="bi bi-table"></i>
                                                     {% endif %}
                                                     {{ plot.name }}
                                                 </h6>
@@ -169,7 +175,9 @@
                         <h5 class="mb-0">{{ layout.name }}</h5>
                         <div class="text-muted small mt-1">
                             {% if layout_plot_names[layout.id] %}
-                                {{ layout_plot_names[layout.id]|join(", ") }}
+                                {% for plot_name in layout_plot_names[layout.id] %}
+                                    <span class="badge rounded-pill border text-secondary me-1 mb-1">{{ plot_name }}</span>
+                                {% endfor %}
                             {% else %}
                                 <em>No plots added</em>
                             {% endif %}
