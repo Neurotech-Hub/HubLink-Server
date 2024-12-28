@@ -66,7 +66,7 @@
             <h2 class="border-bottom pb-2 mb-4">File Structure</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <p>Files in S3 are organized by device ID and time-based folders, following this structure:</p>
+                    <p>Files in Amazon S3 are organized by device ID and time-based folders. You may use a <code>subject.id</code> in the meta.json file to override the device ID (see below), which is by default, the device's MAC address. The resulting file structure is:</p>
                     <pre><code>bucket_name/
 ├── device_id/                   # Unique device identifier
 │   ├── {datetime}/              # Time-based folder (optional)
@@ -163,15 +163,30 @@
                     <div class="bg-light p-3 rounded mb-3">
                         <pre class="mb-0"><code>{
   "hublink": {
-    "advertise": "CUSTOM_NAME",
+    "advertise": "HUBLINK",
     "advertise_every": 300,
     "advertise_for": 30,
+    "try_reconnect": true,
+    "reconnect_attempts": 3,
+    "reconnect_every": 30000,
     "disable": false
   },
   "subject": {
     "id": "mouse001",
     "strain": "C57BL/6",
-    "sex": "male"
+    "strain_options": [
+      "C57BL/6",
+      "BALB/c",
+      "129S1/SvImJ",
+      "F344",
+      "Long Evans",
+      "Sprague Dawley"
+    ],
+    "sex": "male",
+    "sex_options": [
+      "male",
+      "female"
+    ]
   }
 }</code></pre>
                     </div>
@@ -189,7 +204,7 @@
                             <tr>
                                 <td><code>advertise</code></td>
                                 <td>Custom BLE advertising name</td>
-                                <td>See library</td>
+                                <td>HUBLINK</td>
                             </tr>
                             <tr>
                                 <td><code>advertise_every</code></td>
@@ -202,6 +217,21 @@
                                 <td>30</td>
                             </tr>
                             <tr>
+                                <td><code>try_reconnect</code></td>
+                                <td>Enable/disable automatic reconnection attempts</td>
+                                <td><code>true</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>reconnect_attempts</code></td>
+                                <td>Number of reconnection attempts if initial connection fails</td>
+                                <td>3</td>
+                            </tr>
+                            <tr>
+                                <td><code>reconnect_every</code></td>
+                                <td>Milliseconds between reconnection attempts</td>
+                                <td>30000</td>
+                            </tr>
+                            <tr>
                                 <td><code>disable</code></td>
                                 <td>Disable Hublink functionality</td>
                                 <td><code>false</code></td>
@@ -210,16 +240,16 @@
                     </table>
 
                     <h5 class="mt-4">Custom Metadata</h5>
-                    <p>You can add any additional JSON objects to track metadata about your experiment. This data will be uploaded along with your files:</p>
+                    <p>You can add any additional JSON objects to track metadata about your experiment. The example above shows:</p>
                     <ul>
-                        <li>Subject information (ID, strain, sex, etc.)</li>
-                        <li>Experimental conditions</li>
-                        <li>Device configuration</li>
-                        <li>Any other relevant metadata</li>
+                        <li>Subject information (ID, strain, sex)</li>
+                        <li>Predefined options for strain and sex selection</li>
+                        <li>Program settings with available options</li>
+                        <li>Any other relevant metadata specific to your experiment</li>
                     </ul>
 
                     <div class="mt-4">
-                        <small class="text-muted">Note: The configuration file is processed using the ArduinoJson library.</small>
+                        <small class="text-muted">Note: The configuration file is processed using the ArduinoJson library. All metadata will be uploaded along with your files.</small>
                     </div>
                 </div>
             </div>
