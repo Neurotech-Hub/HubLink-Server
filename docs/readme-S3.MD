@@ -2,7 +2,14 @@
 
 This guide outlines the steps to configure an Amazon S3 bucket and IAM user for secure file uploads, downloads, and listing operations in your web application.
 
-## 1. Create an S3 Bucket
+## Automated Management
+
+### Deleting Accounts
+Deleting accounts in the admin panel will not delete the S3 bucket, IAM user, or associated policies. You need to manually delete all three of these resources or creating a user with the same name in the future will fail.
+
+## Manual Management (deprecated)
+
+### 1. Create an S3 Bucket
 
 1. Log in to the [AWS Management Console](https://aws.amazon.com/console/)
 2. Navigate to the **S3 Dashboard**
@@ -28,7 +35,7 @@ This guide outlines the steps to configure an Amazon S3 bucket and IAM user for 
     ]
 }
 
-## 2. Set Up IAM User for Bucket Access
+### 2. Set Up IAM User for Bucket Access
 
 1. Navigate to the [IAM Dashboard](https://console.aws.amazon.com/iam/)
 2. Click **Users** → **Add users**:
@@ -68,7 +75,7 @@ This guide outlines the steps to configure an Amazon S3 bucket and IAM user for 
 2. Name the policy: `user-access-s3`
 3. Run the `test_s3.py` script to verify the user has access to the bucket
 
-## Error Handling
+### Error Handling
 
 The `test_s3.py` script includes error handling for:
 - Missing or invalid credential files
@@ -81,7 +88,7 @@ The `test_s3.py` script includes error handling for:
 
 If any errors occur, the script will display a detailed error message and exit with status code 1.
 
-## 3. Create a Lambda Function and Policy/Role
+### 3. Create a Lambda Function and Policy/Role
 
 1. Navigate to the [Lambda Dashboard](https://console.aws.amazon.com/lambda/home)
 2. Click **Create function**
