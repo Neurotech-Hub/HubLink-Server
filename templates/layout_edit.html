@@ -125,6 +125,96 @@ function addWidget(size) {
     });
 }
 
+function showLayoutNameEdit() {
+    const display = document.getElementById('layoutNameDisplay');
+    const edit = document.getElementById('layoutNameEdit');
+    display.style.display = 'none';
+    edit.style.display = 'inline-block';
+    edit.value = display.textContent.trim();
+    edit.focus();
+}
+
+function hideLayoutNameEdit() {
+    const display = document.getElementById('layoutNameDisplay');
+    const edit = document.getElementById('layoutNameEdit');
+    const newName = edit.value.trim();
+    
+    if (newName) {
+        display.textContent = newName;
+        display.style.display = 'inline-block';
+        edit.style.display = 'none';
+    } else {
+        edit.focus(); // Keep focus if empty
+    }
+}
+
+function handleLayoutNameKey(event) {
+    if (event.key === 'Enter') {
+        hideLayoutNameEdit();
+    } else if (event.key === 'Escape') {
+        const display = document.getElementById('layoutNameDisplay');
+        const edit = document.getElementById('layoutNameEdit');
+        edit.value = display.textContent.trim();
+        hideLayoutNameEdit();
+    }
+}
+
+function makeEditable(element) {
+    if (element.getAttribute('contenteditable') === 'true') {
+        return; // Already editable
+    }
+
+    element.contentEditable = true;
+    element.focus();
+    
+    // Save the original text in case we need to revert
+    element.dataset.originalText = element.textContent;
+    
+    // Select all text
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Add event listeners for saving/canceling
+    element.addEventListener('blur', saveEdit);
+    element.addEventListener('keydown', handleEditKeydown);
+    
+    // Prevent click event from firing while editing
+    element.addEventListener('click', function(e) {
+        if (element.getAttribute('contenteditable') === 'true') {
+            e.stopPropagation();
+        }
+    });
+}
+
+function saveEdit(event) {
+    const element = event.target;
+    const newText = element.textContent.trim();
+    
+    if (newText === '') {
+        // Revert to original text if empty
+        element.textContent = element.dataset.originalText;
+    }
+    
+    element.contentEditable = false;
+    element.blur(); // Ensure element loses focus
+    element.removeEventListener('blur', saveEdit);
+    element.removeEventListener('keydown', handleEditKeydown);
+}
+
+function handleEditKeydown(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        event.target.blur();
+    } else if (event.key === 'Escape') {
+        event.preventDefault();
+        event.target.textContent = event.target.dataset.originalText;
+        event.target.blur();
+    }
+}
+
 function saveLayout() {
     const serializedData = grid.save();
     const widgets = serializedData.map(item => {
@@ -143,6 +233,12 @@ function saveLayout() {
     }
 
     const timeRange = document.getElementById('timeRange').value;
+    const layoutName = document.getElementById('layoutTitle').textContent.trim();
+    
+    if (!layoutName) {
+        alert('Layout name cannot be empty');
+        return;
+    }
 
     fetch('/{{ account.url }}/layout/{{ layout.id }}', {
         method: 'POST',
@@ -150,7 +246,7 @@ function saveLayout() {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            name: '{{ layout.name }}',
+            name: layoutName,
             config: widgets,
             time_range: timeRange
         })

@@ -743,6 +743,16 @@ def update_layout(account_url, layout_id):
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         
         data = request.get_json()
+        
+        # Validate layout name
+        name = data.get('name', '').strip()
+        if not name:
+            return jsonify({
+                'success': False,
+                'error': 'Layout name cannot be empty'
+            }), 400
+            
+        layout.name = name
         layout.config = json.dumps(data['config'])
         layout.time_range = data['time_range']
         

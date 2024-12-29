@@ -1,6 +1,10 @@
 <div class="mb-3">
-    <div class="d-flex justify-content-between align-items-center">
-        <h2>{{ layout.name }}</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 id="layoutTitle" 
+            class="{% if request.endpoint == 'accounts.layout_edit' %}editable-title{% endif %}"
+            {% if request.endpoint == 'accounts.layout_edit' %}onclick="makeEditable(this)"{% endif %}
+            >{{ layout.name }}</h2>
+        <div class="d-flex align-items-center">
         
         <!-- Mode Toggle -->
         <div class="toggle-container">
