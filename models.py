@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 import logging
 import json
+from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
@@ -18,6 +19,9 @@ class Account(db.Model):
     count_page_loads = db.Column(db.Integer, nullable=False, default=0)
     count_file_downloads = db.Column(db.Integer, nullable=False, default=0)
     count_settings_updated = db.Column(db.Integer, nullable=False, default=0)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    password_hash = db.Column(db.String(256), nullable=True)
+    use_password = db.Column(db.Boolean, nullable=False, default=False)
 
     # Define relationship with settings
     settings = db.relationship('Setting', backref='account', uselist=False, cascade="all, delete-orphan")
@@ -27,6 +31,19 @@ class Account(db.Model):
 
     def __repr__(self):
         return f"<Account {self.name}>"
+
+    def set_password(self, password):
+        if password:
+            self.password_hash = generate_password_hash(password)
+            self.use_password = True
+        else:
+            self.password_hash = None
+            self.use_password = False
+
+    def check_password(self, password):
+        if not self.use_password or not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
 
 # Define the settings model
 class Setting(db.Model):

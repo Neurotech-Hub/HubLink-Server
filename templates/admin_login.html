@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    {% include 'head.html' %}
+    {% block head %}
+    <title>Admin Login | hublink</title>
+    <meta name="description" content="Hublink admin login portal for managing accounts and analytics">
+    <meta name="keywords" content="hublink, admin, login, dashboard, analytics">
+    {% endblock %}
+</head>
+<body>
+    {% include 'nav.html' %}
+
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <h4 class="card-title text-center mb-4">Admin Login</h4>
+                        
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                            {% if messages %}
+                                {% for category, message in messages %}
+                                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                        {{ message }}
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
+                        {% endwith %}
+
+                        <form method="post" action="{{ url_for('admin') }}">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Account Name</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Login</button>
+                            </div>
+                            <script>
+                                document.getElementById('togglePassword').addEventListener('click', function() {
+                                    const password = document.getElementById('password');
+                                    const icon = this.querySelector('i');
+                                    
+                                    // Toggle password visibility
+                                    if (password.type === 'password') {
+                                        password.type = 'text';
+                                        icon.classList.remove('bi-eye');
+                                        icon.classList.add('bi-eye-slash');
+                                    } else {
+                                        password.type = 'password';
+                                        icon.classList.remove('bi-eye-slash');
+                                        icon.classList.add('bi-eye');
+                                    }
+                                });
+                            </script>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'footer.html' %}
+</body>
+</html> 

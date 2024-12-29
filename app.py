@@ -1,4 +1,4 @@
-from flask import Flask, g, redirect, render_template, jsonify, request, url_for
+from flask import Flask, g, redirect, render_template, jsonify, request, url_for, session, flash
 from flask_migrate import Migrate, upgrade
 from models import db, Account, Setting, File, Gateway, Source # db locations
 from S3Manager import generate_s3_url
@@ -13,6 +13,7 @@ from flask_moment import Moment
 import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
+from functools import wraps
 
 load_dotenv(override=True)
 
@@ -41,9 +42,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # timezone handling
 moment = Moment(app)
-
-# security by obscurity
-admin_route = os.getenv('ADMIN_ROUTE', 'admin')
 
 # Initialize SQLAlchemy
 db.init_app(app)
@@ -123,37 +121,80 @@ def index():
         logger.error(f"Error loading index: {e}")
         return "There was an issue loading the homepage.", 500
 
-# Define location dynamically
-@app.route(f'/{admin_route}', methods=['GET'])
-def add_route_handler():
-    g.title = "Admin"
-    try:
-        all_accounts = Account.query.all()
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'admin_id' not in session:
+            return redirect(url_for('admin'))
         
-        # Count unique gateway names
-        total_gateways = db.session.query(Gateway.name).distinct().count()
+        account = Account.query.get(session['admin_id'])
+        if not account or not account.is_admin:
+            session.pop('admin_id', None)
+            return redirect(url_for('admin'))
+            
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    # Check if user is logged in and is admin
+    if 'admin_id' in session:
+        account = Account.query.get(session['admin_id'])
+        if account and account.is_admin:
+            # Handle GET request - show dashboard
+            if request.method == 'GET':
+                g.title = "Admin"
+                try:
+                    all_accounts = Account.query.all()
+                    total_gateways = db.session.query(Gateway.name).distinct().count()
+                    
+                    analytics = {
+                        'total_accounts': len(all_accounts),
+                        'total_gateways': total_gateways,
+                        'total_gateway_pings': db.session.query(db.func.sum(Account.count_gateway_pings)).scalar() or 0,
+                        'total_page_loads': db.session.query(db.func.sum(Account.count_page_loads)).scalar() or 0,
+                        'active_accounts': db.session.query(Account).filter(Account.count_page_loads > 0).count(),
+                        'total_file_downloads': db.session.query(db.func.sum(Account.count_file_downloads)).scalar() or 0,
+                        'total_settings_updated': db.session.query(db.func.sum(Account.count_settings_updated)).scalar() or 0,
+                        'total_uploaded_files': db.session.query(db.func.sum(Account.count_uploaded_files)).scalar() or 0
+                    }
+                    
+                    return render_template('admin.html', 
+                                         accounts=all_accounts,
+                                         admin_route='admin',
+                                         analytics=analytics)
+                except Exception as e:
+                    logger.error(f"Error loading admin dashboard: {e}")
+                    return "There was an issue loading the page.", 500
+            
+            # Handle POST request - create new account
+            else:
+                return submit()
+    
+    # If not logged in or not admin, handle login
+    if request.method == 'POST':
+        name = request.form.get('name')
+        password = request.form.get('password')
         
-        analytics = {
-            'total_accounts': len(all_accounts),
-            'total_gateways': total_gateways,  # Now counts unique gateways
-            'total_gateway_pings': db.session.query(db.func.sum(Account.count_gateway_pings)).scalar() or 0,
-            'total_page_loads': db.session.query(db.func.sum(Account.count_page_loads)).scalar() or 0,
-            'active_accounts': db.session.query(Account).filter(Account.count_page_loads > 0).count(),
-            'total_file_downloads': db.session.query(db.func.sum(Account.count_file_downloads)).scalar() or 0,
-            'total_settings_updated': db.session.query(db.func.sum(Account.count_settings_updated)).scalar() or 0,
-            'total_uploaded_files': db.session.query(db.func.sum(Account.count_uploaded_files)).scalar() or 0
-        }
+        account = Account.query.filter_by(name=name).first()
         
-        return render_template('admin.html', 
-                             accounts=all_accounts,
-                             admin_route=admin_route,
-                             analytics=analytics)
-    except Exception as e:
-        logger.error(f"Error loading new account page: {e}")
-        return "There was an issue loading the page.", 500
+        if account and account.is_admin and account.check_password(password):
+            session['admin_id'] = account.id
+            return redirect(url_for('admin'))
+        else:
+            flash('Invalid credentials', 'danger')
+    
+    # Show login page
+    return render_template('admin_login.html')
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_id', None)
+    flash('Successfully logged out', 'success')
+    return redirect(url_for('admin'))
 
 # Route to submit a new account
-@app.route(f'/{admin_route}', methods=['POST'])
+@app.route('/admin', methods=['POST'])
 def submit():
     user_name = request.form['name']
     unique_path = generate_random_string()
