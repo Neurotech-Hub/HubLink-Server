@@ -213,11 +213,11 @@ def submit():
         logger.info(f"Admin has AWS credentials: {bool(admin_account and admin_account.settings and admin_account.settings.aws_access_key_id)}")
         
         if not admin_account or not admin_account.settings:
-            flash('Admin AWS credentials not configured', 'danger')
+            flash('Error: Admin AWS credentials are not configured. Please set up AWS credentials for the admin account first.', 'danger')
             return redirect(url_for('admin'))
 
         if not admin_account.settings.aws_access_key_id or not admin_account.settings.aws_secret_access_key:
-            flash('Admin AWS credentials are incomplete', 'danger')
+            flash('Error: Admin AWS credentials are incomplete. Both Access Key ID and Secret Access Key are required.', 'danger')
             return redirect(url_for('admin'))
 
         # Setup AWS resources
@@ -228,7 +228,9 @@ def submit():
         )
 
         if not success:
-            flash(f'Failed to setup AWS resources: {error}', 'danger')
+            flash(f'AWS Setup Error: {error}', 'danger')
+            if 'AccessDenied' in str(error):
+                flash('Hint: The admin account may need additional AWS permissions. Check the documentation for required permissions.', 'warning')
             return redirect(url_for('admin'))
 
         try:
