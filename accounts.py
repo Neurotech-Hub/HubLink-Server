@@ -122,19 +122,16 @@ def update_settings(account_url):
 # Route to delete an account
 @accounts_bp.route('/<account_url>/delete', methods=['POST'])
 def delete_account(account_url):
-    account_to_delete = Account.query.filter_by(url=account_url).first_or_404()
-    settings_to_delete = Setting.query.filter_by(account_id=account_to_delete.id).first()
+    account = Account.query.filter_by(url=account_url).first_or_404()
     try:
-        if settings_to_delete:
-            db.session.delete(settings_to_delete)
-        db.session.delete(account_to_delete)
+        db.session.delete(account)
         db.session.commit()
-        logging.debug(f"Account and settings deleted for account URL {account_url}")
-        return redirect(url_for('index'))
+        flash('Account deleted successfully', 'success')
     except Exception as e:
         db.session.rollback()
-        logging.error(f"There was an issue deleting the account: {e}")
-        return "There was an issue deleting the account."
+        flash('Error deleting account', 'error')
+        logging.error(f"Error deleting account {account_url}: {e}")
+    return redirect(url_for('admin'))
 
 @accounts_bp.route('/<account_url>/data', methods=['GET'])
 @accounts_bp.route('/<account_url>/data/<device_id>', methods=['GET'])

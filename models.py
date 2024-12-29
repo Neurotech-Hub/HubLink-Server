@@ -24,10 +24,20 @@ class Account(db.Model):
     use_password = db.Column(db.Boolean, nullable=False, default=False)
 
     # Define relationship with settings
-    settings = db.relationship('Setting', backref='account', uselist=False, cascade="all, delete-orphan")
+    settings = db.relationship('Setting', backref='account', uselist=False, 
+                             cascade="all, delete-orphan")
 
     # Define relationship with gateways
-    gateways = db.relationship('Gateway', backref='account', cascade="all, delete-orphan")
+    gateways = db.relationship('Gateway', backref='account', 
+                             cascade="all, delete-orphan")
+
+    # Define relationship with sources
+    sources = db.relationship('Source', backref='account', 
+                            cascade="all, delete-orphan")
+
+    # Define relationship with layouts
+    layouts = db.relationship('Layout', backref='account', 
+                            cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<Account {self.name}>"
@@ -145,9 +155,6 @@ class Source(db.Model):
     include_archive = db.Column(db.Boolean, nullable=False, default=False)
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
-    # Add relationship to Account
-    account = db.relationship('Account', backref=db.backref('sources', lazy=True))
-
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"
 
@@ -213,9 +220,6 @@ class Layout(db.Model):
     show_nav = db.Column(db.Boolean, nullable=False, default=False)
     time_range = db.Column(db.String(20), nullable=False, default="all")  # all, week, month, 90days, year
     
-    # Add relationship to Account
-    account = db.relationship('Account', backref=db.backref('layouts', lazy=True))
-
     def __repr__(self):
         return f"<Layout {self.name} for Account {self.account_id}>"
 

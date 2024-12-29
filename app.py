@@ -1,7 +1,7 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for, session, flash
 from flask_migrate import Migrate, upgrade
 from models import db, Account, Setting, File, Gateway, Source # db locations
-from S3Manager import generate_s3_url
+from S3Manager import generate_s3_url, setup_aws_resources, cleanup_aws_resources
 import os
 import logging
 import random
@@ -127,7 +127,7 @@ def admin_required(f):
         if 'admin_id' not in session:
             return redirect(url_for('admin'))
         
-        account = Account.query.get(session['admin_id'])
+        account = db.session.get(Account, session['admin_id'])
         if not account or not account.is_admin:
             session.pop('admin_id', None)
             return redirect(url_for('admin'))
@@ -196,22 +196,93 @@ def admin_logout():
 # Route to submit a new account
 @app.route('/admin', methods=['POST'])
 def submit():
-    user_name = request.form['name']
-    unique_path = generate_random_string()
-    new_account = Account(name=user_name, url=unique_path)
+    if 'admin_id' not in session:
+        flash('Admin access required', 'danger')
+        return redirect(url_for('admin'))
 
-    try:
-        db.session.add(new_account)
-        db.session.flush()
-        create_default_settings(new_account.id)
-        db.session.commit()
+    user_name = request.form.get('name')
+    aws_user_name = request.form.get('aws_user_name')
+    bucket_name = request.form.get('bucket_name')
+    unique_path = generate_random_string()
+
+    # If AWS credentials are requested
+    if aws_user_name and bucket_name:
+        # Get admin account's settings for AWS operations
+        admin_account = Account.query.filter_by(is_admin=True).first()
+        logger.info(f"Found admin account: {admin_account.name if admin_account else 'None'}")
+        logger.info(f"Admin has AWS credentials: {bool(admin_account and admin_account.settings and admin_account.settings.aws_access_key_id)}")
         
-        logger.debug(f"New account created: {new_account} with URL: {new_account.url}")
-        return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"There was an issue adding your account: {e}")
-        return "There was an issue adding your account."
+        if not admin_account or not admin_account.settings:
+            flash('Admin AWS credentials not configured', 'danger')
+            return redirect(url_for('admin'))
+
+        if not admin_account.settings.aws_access_key_id or not admin_account.settings.aws_secret_access_key:
+            flash('Admin AWS credentials are incomplete', 'danger')
+            return redirect(url_for('admin'))
+
+        # Setup AWS resources
+        success, credentials, error = setup_aws_resources(
+            admin_account.settings,
+            bucket_name,
+            aws_user_name
+        )
+
+        if not success:
+            flash(f'Failed to setup AWS resources: {error}', 'danger')
+            return redirect(url_for('admin'))
+
+        try:
+            new_account = Account(name=user_name, url=unique_path)
+            db.session.add(new_account)
+            db.session.flush()  # Get the new account ID
+
+            # Create settings with AWS credentials
+            new_settings = Setting(
+                account_id=new_account.id,
+                aws_access_key_id=credentials['aws_access_key_id'],
+                aws_secret_access_key=credentials['aws_secret_access_key'],
+                bucket_name=credentials['bucket_name'],
+                dt_rule='days',
+                max_file_size=5000000,
+                use_cloud=True,
+                delete_scans=True,
+                delete_scans_days_old=90,
+                delete_scans_percent_remaining=10,
+                device_name_includes='HUBLINK',
+                alert_file_starts_with='alert_',
+                alert_email='',
+                node_payload=''
+            )
+            db.session.add(new_settings)
+            db.session.commit()
+            
+            logger.info(f"New account created with AWS resources: {new_account.name} (ID: {new_account.id})")
+            flash('Account created successfully with AWS configuration', 'success')
+            return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
+
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Database error creating account: {e}")
+            flash('Failed to create account in database', 'danger')
+            return redirect(url_for('admin'))
+
+    else:
+        # Create account without AWS credentials
+        try:
+            new_account = Account(name=user_name, url=unique_path)
+            db.session.add(new_account)
+            db.session.flush()
+            create_default_settings(new_account.id)
+            db.session.commit()
+            
+            logger.debug(f"New account created without AWS: {new_account.name} (ID: {new_account.id})")
+            flash('Account created successfully', 'success')
+            return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"There was an issue adding your account: {e}")
+            flash('Failed to create account', 'danger')
+            return redirect(url_for('admin'))
 
 # Route to view documentation
 @app.route('/docs', methods=['GET'])
@@ -350,6 +421,36 @@ def from_json_filter(value):
     except Exception as e:
         print(f"Error parsing JSON: {e}")
         return []
+
+# Add this new route
+@app.route('/admin/account/<int:account_id>/edit', methods=['POST'])
+@admin_required
+def edit_account(account_id):
+    try:
+        account = Account.query.get_or_404(account_id)
+        
+        # Update basic fields
+        account.name = request.form.get('name', account.name).strip()
+        account.url = request.form.get('url', account.url).strip()
+        account.is_admin = request.form.get('is_admin') == 'on'
+        account.use_password = request.form.get('use_password') == 'on'
+        
+        # Handle password update
+        new_password = request.form.get('password', '').strip()
+        if new_password or (account.use_password and not account.password_hash):
+            account.set_password(new_password)
+        elif not account.use_password:
+            account.password_hash = None
+            
+        db.session.commit()
+        flash('Account updated successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating account {account_id}: {e}")
+        flash('Error updating account', 'error')
+        
+    return redirect(url_for('admin'))
 
 if __name__ == '__main__':
     app.run(debug=True)

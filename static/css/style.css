@@ -603,13 +603,6 @@ table td code {
     border-bottom: none;
 }
 
-/* Layout button group styling */
-.list-group-item .btn-group .btn {
-    padding: 0.375rem 1rem;
-    font-weight: 500;
-    border-radius: 4px;
-}
-
 /* .list-group-item .btn-group .btn:not(:last-child) {
     margin-right: 0.5rem;
 } */

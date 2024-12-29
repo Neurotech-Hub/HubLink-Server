@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from models import *
 import json
 from dateutil import parser
+import time
 
 def rebuild_S3_files(account_settings):
     retries = 3
@@ -449,3 +450,313 @@ def get_source_file_header(account_settings, source, num_lines=1):
     except Exception as e:
         logging.error(f"Error downloading header for source {source.name}: {e}")
         return None
+
+def setup_aws_resources(admin_settings, new_bucket_name, new_user_name):
+    """
+    Creates AWS resources (S3 bucket and IAM user) for a new account.
+    Uses admin credentials to create these resources.
+    """
+    try:
+        logging.info(f"Setting up AWS resources with admin credentials")
+        logging.info(f"Creating bucket: {new_bucket_name}")
+        logging.info(f"Creating IAM user: {new_user_name}")
+        logging.info(f"Using region: {os.getenv('AWS_REGION', 'us-east-1')}")
+        
+        # Test AWS credentials before proceeding
+        try:
+            sts_client = boto3.client(
+                'sts',
+                aws_access_key_id=admin_settings.aws_access_key_id,
+                aws_secret_access_key=admin_settings.aws_secret_access_key,
+                region_name=os.getenv('AWS_REGION', 'us-east-1')
+            )
+            identity = sts_client.get_caller_identity()
+            logging.info(f"AWS credentials valid. Account ID: {identity['Account']}")
+        except Exception as e:
+            logging.error(f"AWS credentials test failed: {str(e)}")
+            return False, None, f"Invalid AWS credentials: {str(e)}"
+
+        # Create boto3 clients using admin credentials
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=admin_settings.aws_access_key_id,
+            aws_secret_access_key=admin_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        
+        iam_client = boto3.client(
+            'iam',
+            aws_access_key_id=admin_settings.aws_access_key_id,
+            aws_secret_access_key=admin_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+
+        # Pre-check if bucket exists
+        try:
+            s3_client.head_bucket(Bucket=new_bucket_name)
+            logging.error(f"Bucket {new_bucket_name} already exists")
+            return False, None, f"Bucket {new_bucket_name} already exists"
+        except s3_client.exceptions.ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code')
+            if error_code != '404':  # If error is not 'bucket does not exist'
+                logging.error(f"Error checking bucket existence: {str(e)}")
+                return False, None, f"Error checking bucket: {str(e)}"
+
+        # Pre-check if IAM user exists
+        try:
+            iam_client.get_user(UserName=new_user_name)
+            logging.error(f"IAM user {new_user_name} already exists")
+            return False, None, f"IAM user {new_user_name} already exists"
+        except iam_client.exceptions.NoSuchEntityException:
+            pass  # This is what we want - user doesn't exist
+        except Exception as e:
+            logging.error(f"Error checking IAM user existence: {str(e)}")
+            return False, None, f"Error checking IAM user: {str(e)}"
+
+        # 1. Create S3 bucket
+        try:
+            if os.getenv('AWS_REGION', 'us-east-1') == 'us-east-1':
+                # For us-east-1, don't specify LocationConstraint
+                s3_client.create_bucket(
+                    Bucket=new_bucket_name,
+                    ObjectOwnership='BucketOwnerPreferred'
+                )
+            else:
+                # For other regions, specify LocationConstraint
+                s3_client.create_bucket(
+                    Bucket=new_bucket_name,
+                    ObjectOwnership='BucketOwnerPreferred',
+                    CreateBucketConfiguration={
+                        'LocationConstraint': os.getenv('AWS_REGION', 'us-east-1')
+                    }
+                )
+            logging.info(f"Successfully created bucket: {new_bucket_name}")
+
+            # Disable block public access settings for the bucket
+            s3_client.put_public_access_block(
+                Bucket=new_bucket_name,
+                PublicAccessBlockConfiguration={
+                    'BlockPublicAcls': False,
+                    'IgnorePublicAcls': False,
+                    'BlockPublicPolicy': False,
+                    'RestrictPublicBuckets': False
+                }
+            )
+            logging.info(f"Disabled block public access settings for bucket: {new_bucket_name}")
+
+            # Wait a moment for the settings to propagate
+            time.sleep(2)
+
+        except s3_client.exceptions.BucketAlreadyExists:
+            logging.error(f"Bucket {new_bucket_name} already exists")
+            return False, None, f"Bucket {new_bucket_name} already exists"
+        except Exception as e:
+            logging.error(f"Failed to create bucket: {str(e)}")
+            return False, None, f"Failed to create bucket: {str(e)}"
+
+        # 2. Apply bucket policy
+        bucket_policy = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Sid": "PublicReadGetObject",
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "s3:GetObject",
+                    "Resource": f"arn:aws:s3:::{new_bucket_name}/.hublink/source/*"
+                }
+            ]
+        }
+        s3_client.put_bucket_policy(
+            Bucket=new_bucket_name,
+            Policy=json.dumps(bucket_policy)
+        )
+
+        # 3. Create IAM user
+        try:
+            iam_client.create_user(UserName=new_user_name)
+            logging.info(f"Successfully created IAM user: {new_user_name}")
+        except iam_client.exceptions.EntityAlreadyExistsException:
+            # Cleanup bucket before returning error
+            logging.error(f"IAM user {new_user_name} already exists")
+            try:
+                s3_client.delete_bucket(Bucket=new_bucket_name)
+                logging.info(f"Cleaned up bucket {new_bucket_name} after user creation failed")
+            except Exception as cleanup_error:
+                logging.error(f"Failed to cleanup bucket: {cleanup_error}")
+            return False, None, f"IAM user {new_user_name} already exists"
+        except Exception as e:
+            logging.error(f"Failed to create IAM user: {str(e)}")
+            # Cleanup bucket since user creation failed
+            try:
+                s3_client.delete_bucket(Bucket=new_bucket_name)
+                logging.info(f"Cleaned up bucket {new_bucket_name} after user creation failed")
+            except Exception as cleanup_error:
+                logging.error(f"Failed to cleanup bucket: {cleanup_error}")
+            return False, None, f"Failed to create IAM user: {str(e)}"
+
+        # 4. Create and attach user policy
+        try:
+            user_policy = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:ListBucket"
+                        ],
+                        "Resource": f"arn:aws:s3:::{new_bucket_name}"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:PutObject",
+                            "s3:DeleteObject"
+                        ],
+                        "Resource": f"arn:aws:s3:::{new_bucket_name}/*"
+                    }
+                ]
+            }
+
+            policy_name = f"{new_user_name}-s3-access"
+            policy_response = iam_client.create_policy(
+                PolicyName=policy_name,
+                PolicyDocument=json.dumps(user_policy)
+            )
+            logging.info(f"Created IAM policy: {policy_name}")
+
+            iam_client.attach_user_policy(
+                UserName=new_user_name,
+                PolicyArn=policy_response['Policy']['Arn']
+            )
+            logging.info(f"Attached policy to user {new_user_name}")
+        except Exception as e:
+            logging.error(f"Failed to create/attach policy: {str(e)}")
+            # Cleanup user and bucket
+            try:
+                iam_client.delete_user(UserName=new_user_name)
+                s3_client.delete_bucket(Bucket=new_bucket_name)
+                logging.info(f"Cleaned up user and bucket after policy creation failed")
+            except Exception as cleanup_error:
+                logging.error(f"Failed to cleanup resources: {cleanup_error}")
+            return False, None, f"Failed to setup user permissions: {str(e)}"
+
+        # 5. Create access key for the user
+        try:
+            key_response = iam_client.create_access_key(UserName=new_user_name)
+            logging.info(f"Created access key for user {new_user_name}")
+        except Exception as e:
+            logging.error(f"Failed to create access key: {str(e)}")
+            # Cleanup everything
+            try:
+                iam_client.detach_user_policy(
+                    UserName=new_user_name,
+                    PolicyArn=policy_response['Policy']['Arn']
+                )
+                iam_client.delete_policy(PolicyArn=policy_response['Policy']['Arn'])
+                iam_client.delete_user(UserName=new_user_name)
+                s3_client.delete_bucket(Bucket=new_bucket_name)
+                logging.info(f"Cleaned up all resources after access key creation failed")
+            except Exception as cleanup_error:
+                logging.error(f"Failed to cleanup resources: {cleanup_error}")
+            return False, None, f"Failed to create access key: {str(e)}"
+
+        credentials = {
+            'aws_access_key_id': key_response['AccessKey']['AccessKeyId'],
+            'aws_secret_access_key': key_response['AccessKey']['SecretAccessKey'],
+            'bucket_name': new_bucket_name
+        }
+
+        return True, credentials, None
+
+    except Exception as e:
+        logging.error(f"Unexpected error in setup_aws_resources: {str(e)}")
+        
+        # Only attempt cleanup if we got past bucket creation
+        if 'new_bucket_name' in locals():
+            # Attempt to cleanup any resources that were created
+            try:
+                s3_client.delete_bucket(Bucket=new_bucket_name)
+                logging.info(f"Cleaned up bucket {new_bucket_name} after unexpected error")
+            except Exception as cleanup_error:
+                logging.error(f"Error during cleanup: {cleanup_error}")
+
+        return False, None, f"Error setting up AWS resources: {str(e)}"
+
+def cleanup_aws_resources(admin_settings, user_name, bucket_name):
+    """
+    Cleanup AWS resources when account creation fails.
+    
+    Args:
+        admin_settings: Setting object containing admin AWS credentials
+        user_name: Name of the IAM user to delete
+        bucket_name: Name of the S3 bucket to delete
+    """
+    try:
+        # Create boto3 clients using admin credentials
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=admin_settings.aws_access_key_id,
+            aws_secret_access_key=admin_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        
+        iam_client = boto3.client(
+            'iam',
+            aws_access_key_id=admin_settings.aws_access_key_id,
+            aws_secret_access_key=admin_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+
+        # 1. List and delete all access keys for the user
+        try:
+            keys = iam_client.list_access_keys(UserName=user_name)
+            for key in keys.get('AccessKeyMetadata', []):
+                iam_client.delete_access_key(
+                    UserName=user_name,
+                    AccessKeyId=key['AccessKeyId']
+                )
+        except Exception as e:
+            logging.error(f"Error deleting access keys: {e}")
+
+        # 2. List and detach all user policies
+        try:
+            policies = iam_client.list_attached_user_policies(UserName=user_name)
+            for policy in policies.get('AttachedPolicies', []):
+                iam_client.detach_user_policy(
+                    UserName=user_name,
+                    PolicyArn=policy['PolicyArn']
+                )
+                # Also delete the policy if it's a user-specific policy
+                if user_name in policy['PolicyArn']:
+                    iam_client.delete_policy(PolicyArn=policy['PolicyArn'])
+        except Exception as e:
+            logging.error(f"Error cleaning up policies: {e}")
+
+        # 3. Delete the IAM user
+        try:
+            iam_client.delete_user(UserName=user_name)
+        except Exception as e:
+            logging.error(f"Error deleting IAM user: {e}")
+
+        # 4. Delete the S3 bucket
+        try:
+            # First, delete all objects in the bucket
+            paginator = s3_client.get_paginator('list_objects_v2')
+            for page in paginator.paginate(Bucket=bucket_name):
+                if 'Contents' in page:
+                    objects = [{'Key': obj['Key']} for obj in page['Contents']]
+                    s3_client.delete_objects(
+                        Bucket=bucket_name,
+                        Delete={'Objects': objects}
+                    )
+            
+            # Then delete the bucket itself
+            s3_client.delete_bucket(Bucket=bucket_name)
+        except Exception as e:
+            logging.error(f"Error deleting S3 bucket: {e}")
+
+    except Exception as e:
+        logging.error(f"Error during AWS resource cleanup: {e}")
+        raise
