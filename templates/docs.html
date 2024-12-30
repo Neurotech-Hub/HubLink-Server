@@ -160,8 +160,11 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <p>Create a file named <code>meta.json</code> on your SD card to configure node behavior and store metadata. The file uses JSON format:</p>
-                    <div class="bg-light p-3 rounded mb-3">
-                        <pre class="mb-0"><code>{
+                    <div class="bg-light p-3 rounded mb-3 position-relative">
+                        <button class="btn btn-sm btn-primary position-absolute top-0 end-0 m-3" onclick="downloadMetaJson()">
+                            <i class="fa-solid fa-download"></i> Download meta.json
+                        </button>
+                        <pre class="mb-0" id="metaJsonContent"><code>{
   "hublink": {
     "advertise": "HUBLINK",
     "advertise_every": 300,
@@ -190,6 +193,19 @@
   }
 }</code></pre>
                     </div>
+
+                    <script>
+                        function downloadMetaJson() {
+                            const content = JSON.parse(document.getElementById('metaJsonContent').textContent);
+                            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(content, null, 2));
+                            const downloadAnchor = document.createElement('a');
+                            downloadAnchor.setAttribute("href", dataStr);
+                            downloadAnchor.setAttribute("download", "meta.json");
+                            document.body.appendChild(downloadAnchor);
+                            downloadAnchor.click();
+                            downloadAnchor.remove();
+                        }
+                    </script>
 
                     <h5 class="mt-4">Hublink Settings</h5>
                     <table class="table table-bordered">
