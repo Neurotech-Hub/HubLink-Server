@@ -50,10 +50,16 @@ main {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    /* min-height: 100vh; */
     width: 100%;
     margin-top: 200px;
     box-sizing: border-box;
+}
+
+/* Add responsive margin for smaller screens */
+@media (max-width: 768px) {
+    .center-area {
+        margin-top: 100px;
+    }
 }
 
 .center-area>* {
