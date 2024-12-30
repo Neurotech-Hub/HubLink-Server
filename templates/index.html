@@ -535,15 +535,21 @@ void loop()
             
             // Use requestAnimationFrame for smoother animations
             let ticking = false;
+            let scrollTimeout;
             document.addEventListener('scroll', function() {
-                if (!ticking) {
-                    window.requestAnimationFrame(function() {
-                        updateIconPositions();
-                        ticking = false;
-                    });
-                    ticking = true;
+                if (!scrollTimeout) {
+                    scrollTimeout = setTimeout(function() {
+                        if (!ticking) {
+                            window.requestAnimationFrame(function() {
+                                updateIconPositions();
+                                ticking = false;
+                            });
+                            ticking = true;
+                        }
+                        scrollTimeout = null;
+                    }, 16); // ~60fps
                 }
-            });
+            }, { passive: true });
             
             // Handle window resize
             window.addEventListener('resize', updateIconPositions);

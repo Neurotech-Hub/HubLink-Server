@@ -1247,22 +1247,11 @@ table td code {
 /* Memory Flow Animation */
 .memoryFlow {
     position: relative;
-    height: 40vh;
-    /* Relative height instead of fixed pixels */
-    min-height: 200px;
-    /* Minimum height for very small screens */
-    max-height: 300px;
-    /* Maximum height for large screens */
+    height: 30vh;
     width: 100vw;
-    margin: 4rem 0;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    /* Add flexbox */
-    align-items: center;
-    /* Vertical centering */
-    justify-content: center;
-    /* Horizontal centering */
+    /* ... other existing properties ... */
+    touch-action: pan-y pinch-zoom;
+    /* Optimize touch handling */
 }
 
 .memoryFlow .icon {
