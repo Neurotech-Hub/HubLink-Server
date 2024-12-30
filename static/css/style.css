@@ -11,6 +11,26 @@
 
 body {
     background-color: #f8f9fa;
+    position: relative;
+}
+
+/* Add noise overlay to body */
+body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Allows clicking through the overlay */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 200px;
+    opacity: 0.1;
+    /* Very subtle noise */
+    z-index: -1;
+    /* Place behind content */
 }
 
 body,
@@ -21,6 +41,8 @@ html {
 
 main {
     padding-bottom: 40px;
+    position: relative;
+    z-index: 1;
 }
 
 .center-area {
@@ -28,17 +50,10 @@ main {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
+    /* min-height: 100vh; */
     width: 100%;
-    padding: 10rem 1rem 2rem;
-    margin-top: 56px;
+    margin-top: 200px;
     box-sizing: border-box;
-}
-
-@media (max-width: 576px) {
-    .center-area {
-        padding: 5rem 1rem 2rem;
-    }
 }
 
 .center-area>* {
@@ -190,7 +205,7 @@ main {
 }
 
 .tagline {
-    font-size: 4rem;
+    font-size: 5rem;
     font-weight: 700;
     color: #333;
 }
@@ -200,7 +215,7 @@ main {
     font-style: italic;
     font-size: 1.2em;
     padding: 0.2em 0;
-    margin-top: -0.2em;
+    margin-top: -0.3em;
     position: relative;
     z-index: -1;
     display: inline-block;
@@ -1227,4 +1242,97 @@ table td code {
 .editable-title[contenteditable="true"] {
     outline: 2px solid #0d6efd;
     background-color: white;
+}
+
+/* Memory Flow Animation */
+.memoryFlow {
+    position: relative;
+    height: 40vh;
+    /* Relative height instead of fixed pixels */
+    min-height: 200px;
+    /* Minimum height for very small screens */
+    max-height: 300px;
+    /* Maximum height for large screens */
+    width: 100vw;
+    margin: 4rem 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    /* Add flexbox */
+    align-items: center;
+    /* Vertical centering */
+    justify-content: center;
+    /* Horizontal centering */
+}
+
+.memoryFlow .icon {
+    position: absolute;
+    width: min(300px, 40vw);
+    /* Responsive width */
+    height: auto;
+    /* Maintain aspect ratio */
+    aspect-ratio: 1;
+    /* Force square aspect ratio */
+    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+    will-change: transform;
+}
+
+.memoryFlow .memory-icon {
+    left: -100px;
+    /* Initial position from left edge */
+    transform: rotate(-15deg);
+    /* Only rotation, no translation */
+    opacity: 0.15;
+}
+
+.memoryFlow .cloud-icon {
+    right: -100px;
+    /* Initial position from right edge */
+    transform: rotate(15deg);
+    /* Only rotation, no translation */
+    width: min(360px, 48vw);
+    height: auto;
+    opacity: 0.15;
+}
+
+/* Add media queries for smaller screens */
+@media (max-width: 768px) {
+    .memoryFlow {
+        height: 30vh;
+        /* Slightly smaller height on mobile */
+        margin: 2rem 0;
+        /* Reduced margin */
+    }
+
+    .memoryFlow .icon {
+        width: min(300px, 65vw);
+        min-width: 190px;
+    }
+
+    .memoryFlow .cloud-icon {
+        width: min(360px, 78vw);
+        min-width: 220px;
+    }
+}
+
+/* Magical text effect */
+.highlight-text {
+    background: linear-gradient(120deg,
+            #1b4ae9 0%,
+            #790596 50%,
+            #1b4ae9 100%);
+    background-size: 200% auto;
+    color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    font-weight: 600;
+    display: inline;
+    animation: shine 8s linear infinite;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
 }
