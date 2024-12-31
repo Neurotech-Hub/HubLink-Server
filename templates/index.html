@@ -134,13 +134,13 @@ void loop()
         <section class="mb-5">
             <div class="container-fluid">
                 <h2>How it works</h2>
-                <p class="lead">Hublink is a turn-key platform for <strong>managing</strong>, <strong>syncing</strong>,
-                    and <strong>monitoring</strong> data. <span class="highlight-text">Magically get your memory cards to the cloud.</span></p>
+                <p class="lead">Hublink is a platform for <strong>managing</strong>, <strong>syncing</strong>,
+                    and <strong>monitoring</strong> data. <span class="highlight-text">It magically transfers your memory cards to the cloud.</span></p>
                     
-                <p><strong>Nodes</strong> are any device that collect data onto a memory card.
-                    <strong>Gateways</strong> are centralized devices (one or many) used for
-                    gathering data from nodes (one or many). Gateways use <a href="/">hublink.cloud</a> to
-                    coordinate settings and data transfer to the cloud (e.g., Amazon S3).
+                <p>We call <strong>nodes</strong> any device that collects data onto a memory card, like an Arduino.
+                    <strong>Gateways</strong> are the centralized devices used for
+                    gathering data from nodes. Gateways use Hublink to
+                    coordinate settings and data transfer to the cloud (e.g., Amazon S3) while the Hublink dashboard provides data analytics and insights.
                 </p>
             </div>
         </section>
@@ -151,7 +151,7 @@ void loop()
         <section class="mb-5 mt-5">
             <h2>Full Stack Solution</h2>
             <p>
-                Hublink is the only full-stack solution for managing data from edge devices using Bluetooth Low
+                Hublink is the only full-stack solution (from node to cloud) focused on transferring whole files using Bluetooth Low
                 Energy (BLE). Standalone or grouped gateways make data transfer ultra-efficient and give you
                 reconfigurability on the fly from the Hublink dashboard.
             </p>
@@ -187,7 +187,7 @@ void loop()
                                         <h5 class="card-title mb-2 mb-sm-0">Hublink Gateway</h5>
                                         <span class="badge bg-danger text-white rounded-pill">Proprietary</span>
                                     </div>
-                                    <p class="card-text small mb-1">A device used to find, connect, and manage data
+                                    <p class="card-text small mb-1">A centralized device used to find, connect, and manage data
                                         transfer from nodes to the cloud.</p>
                                     <div class="text-muted">
                                         <small>Linux • Raspberry Pi • BLE</small>
@@ -208,7 +208,7 @@ void loop()
                                         <span class="badge bg-danger text-white rounded-pill">Proprietary</span>
                                     </div>
                                     <p class="card-text small mb-1">A dashboard web-app with API endpoints to sync
-                                        gateway settings.</p>
+                                        gateway settings while providing data access and insights.</p>
                                     <div class="text-muted">
                                         <small>Managed Server • REST API • Amazon S3</small>
                                     </div>
@@ -239,7 +239,12 @@ void loop()
                 </div>
             </div>
 
+            <div class="text-center mt-3 mb-5">
+                <p class="text-muted">Learn more in the <a href="/docs" class="text-decoration-none">documentation →</a></p>
+            </div>
+
         </section>
+
 
         <!-- Table Selector and Tables Container -->
         <div class="px-2 px-sm-2 px-md-4"> <!-- Responsive padding -->
