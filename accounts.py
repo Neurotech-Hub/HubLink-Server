@@ -219,16 +219,40 @@ def rebuild(account_url):
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
-        # Get count of new files from rebuild operation
-        new_files = rebuild_S3_files(settings)
-        if new_files > 0:
+        # Get list of affected files from rebuild operation
+        affected_files = rebuild_S3_files(settings)
+        
+        # Track counts for response
+        new_files = len(affected_files)
+        updated_plots = 0
+
+        if affected_files:
+            # Update account counter
             account.count_uploaded_files += new_files
-            logging.info(f"Added {new_files} new files for account {account.id}")
+            
+            # Get all sources that reference the affected files
+            affected_file_ids = [file.id for file in affected_files]
+            sources = Source.query.filter(Source.file_id.in_(affected_file_ids)).all()
+            
+            # Update plots for each affected source
+            for source in sources:
+                for plot in source.plots:
+                    try:
+                        plot_data = get_plot_data(plot, source, account)
+                        plot.data = json.dumps(plot_data)
+                        updated_plots += 1
+                        logging.info(f"Successfully updated plot {plot.id}")
+                    except Exception as e:
+                        logging.error(f"Error updating plot {plot.id}: {e}")
+                        continue
+
             db.session.commit()
+            logging.info(f"Added/updated {new_files} files and updated {updated_plots} plots for account {account.id}")
 
         return jsonify({
             "message": "Rebuild completed successfully",
-            "new_files": new_files
+            "new_files": new_files,
+            "updated_plots": updated_plots
         }), 200
     except Exception as e:
         logging.error(f"Error during '/rebuild' endpoint: {e}")

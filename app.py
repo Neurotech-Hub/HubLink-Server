@@ -278,7 +278,6 @@ def submit():
             db.session.commit()
             
             logger.debug(f"New account created without AWS: {new_account.name} (ID: {new_account.id})")
-            flash('Account created successfully', 'success')
             return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
         except Exception as e:
             db.session.rollback()
