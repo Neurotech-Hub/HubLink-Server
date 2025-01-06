@@ -323,19 +323,32 @@ def create_source():
         data = request.get_json()
         print(f"Request data: {data}")
         
-        if not data or 'name' not in data:
+        if not data or 'bucket_name' not in data or 'key' not in data:
             print("Missing required fields in request")
             return jsonify({
-                'error': 'Missing required fields',
+                'error': 'Missing required fields (bucket_name or key)',
                 'status': 400
             }), 400
         
-        # Find the source by name
-        source = Source.query.filter_by(name=data['name']).first()
-        if not source:
-            print(f"Source not found: {data['name']}")
+        # First find the account using the bucket name
+        settings = Setting.query.filter_by(bucket_name=data['bucket_name']).first()
+        if not settings:
+            print(f"No account found for bucket: {data['bucket_name']}")
             return jsonify({
-                'error': f"Source '{data['name']}' not found",
+                'error': f"No account found for bucket '{data['bucket_name']}'",
+                'status': 404
+            }), 404
+            
+        # Then find the source using the account and file key
+        source = Source.query.join(File).filter(
+            Source.account_id == settings.account_id,
+            File.key == data['key']
+        ).first()
+        
+        if not source:
+            print(f"No source found for key: {data['key']}")
+            return jsonify({
+                'error': f"No source found for key '{data['key']}'",
                 'status': 404
             }), 404
         

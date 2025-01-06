@@ -143,3 +143,59 @@ pip install -r requirements.txt
 ### Render Config
 Disks > /var/data
 Environment > DATABASE_URL = sqlite:////var/data/accounts.db
+
+### Automated Plot Update Workflow
+
+This section describes the complete workflow of how plots are automatically updated when files change in S3.
+
+#### Step 1: Rebuild Process (`S3Manager.py`)
+1. When `/rebuild` endpoint is called, `rebuild_S3_files()` in `S3Manager.py`:
+   - Scans the S3 bucket for changes
+   - Compares S3 files with database records
+   - Returns a list of affected files (both new and updated)
+   - Each file has properties: key, size, last_modified, etc.
+
+#### Step 2: Source Matching (`accounts.py`)
+1. The `/rebuild` endpoint in `accounts.py`:
+   - Receives the list of affected files
+   - Gets all sources for the account
+   - For each source:
+     - Converts its `file_filter` (e.g., "device1/*", "[^/]+/data.csv") to regex
+     - Checks if any affected files match this pattern
+     - If match found, adds source to refresh list
+
+#### Step 3: Lambda Trigger
+1. For each affected source, `initiate_source_refresh()`:
+   - Prepares source data for Lambda (name, file_filter, etc.)
+   - Makes non-blocking POST request to Lambda function
+   - Uses 0.1s timeout to prevent blocking
+   - Lambda processes files matching source's pattern
+
+#### Step 4: Lambda Callback (`/source` endpoint)
+1. When Lambda completes, it POSTs to `/source` endpoint with:
+   ```json
+   {
+       "bucket_name": "bucket-name",
+       "key": "path/to/file.csv",
+       "size": 1234,
+       "devices": ["device1", "device2"],
+       "error": null
+   }
+   ```
+2. The `/source` endpoint in `app.py`:
+   - Finds account using bucket_name
+   - Finds source using account_id and file key
+   - Updates source status and metadata
+   - If successful, updates all plots for that source
+
+#### Step 5: Plot Updates
+1. For each plot in the source:
+   - Calls `get_plot_data()` to process new data
+   - Updates plot configuration and data
+   - Saves changes to database
+
+This automated workflow ensures that when files change in S3:
+1. Changes are detected during rebuild
+2. Affected sources are identified
+3. Lambda processes the data asynchronously
+4. Plots are automatically updated when processing completes

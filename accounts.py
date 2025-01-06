@@ -213,22 +213,69 @@ def check_files(account_url):
         logging.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": "There was an issue processing your request."}), 500
 
+def s3_pattern_to_regex(pattern):
+    """Convert an S3 pattern to a regex pattern."""
+    # Escape special regex characters
+    pattern = re.escape(pattern)
+    # Convert S3 wildcards to regex patterns
+    pattern = pattern.replace('\\*', '[^/]*')  # Single-level wildcard
+    pattern = pattern.replace('\\[\\^/\\]\\+', '[^/]+')  # Keep [^/]+ as is
+    pattern = f'^{pattern}$'  # Ensure full string match
+    return pattern
+
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
 def rebuild(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
-        # Get count of new files from rebuild operation
-        new_files = rebuild_S3_files(settings)
-        if new_files > 0:
-            account.count_uploaded_files += new_files
-            logging.info(f"Added {new_files} new files for account {account.id}")
+        # Get list of affected files from rebuild operation
+        affected_files = rebuild_S3_files(settings)
+        
+        if affected_files:
+            # Update account counter
+            account.count_uploaded_files += len(affected_files)
+            
+            # Get all sources for this account
+            sources = Source.query.filter_by(account_id=account.id).all()
+            affected_sources = set()  # Use set to ensure uniqueness
+            
+            # For each source, check if any affected files match its pattern
+            for source in sources:
+                try:
+                    pattern = s3_pattern_to_regex(source.file_filter)
+                    regex = re.compile(pattern)
+                    
+                    # Check each affected file against this source's pattern
+                    for file in affected_files:
+                        if regex.match(file.key):
+                            affected_sources.add(source)
+                            break  # One matching file is enough to trigger a refresh
+                except Exception as e:
+                    logging.error(f"Error matching pattern for source {source.id}: {e}")
+                    continue
+            
+            # Trigger refresh for each affected source
+            refresh_count = 0
+            for source in affected_sources:
+                try:
+                    success, error = initiate_source_refresh(source, settings)
+                    if success:
+                        refresh_count += 1
+                        logging.info(f"Initiated refresh for source {source.id}")
+                    else:
+                        logging.error(f"Failed to refresh source {source.id}: {error}")
+                except Exception as e:
+                    logging.error(f"Error refreshing source {source.id}: {e}")
+                    continue
+
             db.session.commit()
+            logging.info(f"Added/updated {len(affected_files)} files and triggered {refresh_count} source refreshes for account {account.id}")
 
         return jsonify({
             "message": "Rebuild completed successfully",
-            "new_files": new_files
+            "affected_files": len(affected_files),
+            "refreshed_sources": refresh_count if 'refresh_count' in locals() else 0
         }), 200
     except Exception as e:
         logging.error(f"Error during '/rebuild' endpoint: {e}")
