@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="container-fluid">
     <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -221,10 +220,12 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block modals %}
 <!-- Source Modal -->
 <div class="modal fade" id="sourceModal" tabindex="-1" aria-labelledby="sourceModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="sourceModalLabel">Add Source</h5>
@@ -342,7 +343,7 @@
 
 <!-- Plot Modal -->
 <div class="modal fade" id="plotModal" tabindex="-1" aria-labelledby="plotModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="plotModalLabel">New Plot</h5>
@@ -404,7 +405,7 @@
 
 <!-- Layout Modal -->
 <div class="modal fade" id="layoutModal" tabindex="-1" aria-labelledby="layoutModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="layoutModalLabel">Add Layout</h5>
@@ -432,7 +433,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <!-- Plotly.js -->
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
@@ -454,9 +457,9 @@
         document.getElementById('dataPoints').value = source.data_points;
         document.getElementById('tailOnly').checked = source.tail_only;
 
-        // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('sourceModal'));
-        modal.show();
+        // Show modal using Bootstrap's API
+        const sourceModal = new bootstrap.Modal(document.getElementById('sourceModal'));
+        sourceModal.show();
     }
 
     // Add reset function for "Add Source" button
@@ -467,6 +470,15 @@
             form.action = `/{{ account.url }}/source`;
             document.getElementById('sourceModalLabel').textContent = 'Add Source';
             document.getElementById('sourceId').value = '';
+        });
+
+        // Remove any existing show classes or inline styles that might interfere with Bootstrap
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.removeAttribute('style');
+            modal.removeAttribute('aria-modal');
+            modal.setAttribute('aria-hidden', 'true');
         });
 
         // Enable Bootstrap form validation
@@ -846,5 +858,4 @@
 <!-- Add this in the head section or before closing body -->
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
 <link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css" rel="stylesheet" type="text/css" />
-
 {% endblock %}

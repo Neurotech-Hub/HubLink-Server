@@ -107,11 +107,13 @@ def process_timeseries_plot(plot, csv_content):
         logger.debug(f"DataFrame shape: {df.shape}")
         logger.debug(f"DataFrame columns: {df.columns.tolist()}")
         
+        # Try to parse datetime with pandas' flexible parser first
         try:
-            df[x_data] = pd.to_datetime(df[x_data], format='%m/%d/%Y %H:%M:%S', errors='coerce')
-        except Exception as e:
-            logger.warning(f"Standard date parsing failed: {e}, attempting flexible parsing")
             df[x_data] = pd.to_datetime(df[x_data], errors='coerce')
+            logger.debug(f"Successfully parsed datetime column {x_data} using flexible parser")
+        except Exception as e:
+            logger.error(f"Failed to parse datetime column {x_data}: {str(e)}")
+            return {'error': f'Could not parse datetime column {x_data}'}
         
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[x_data, y_data])
