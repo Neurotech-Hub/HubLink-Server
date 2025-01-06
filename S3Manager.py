@@ -10,12 +10,12 @@ import time
 def rebuild_S3_files(account_settings):
     retries = 3
     account_id = account_settings.account_id
-    affected_files = []  # Track affected files
+    new_files_count = 0  # Track number of new files
 
     # Validate required settings
     if not account_settings.aws_access_key_id or not account_settings.aws_secret_access_key or not account_settings.bucket_name:
         logging.error(f"Missing AWS credentials or bucket name for account {account_id}.")
-        return []
+        return 0
 
     try:
         s3_client = boto3.client(
@@ -26,7 +26,7 @@ def rebuild_S3_files(account_settings):
         )
     except Exception as e:
         logging.error(f"Failed to create S3 client: {e}")
-        return []
+        return 0
 
     for attempt in range(retries):
         try:
@@ -58,10 +58,9 @@ def rebuild_S3_files(account_settings):
                                 existing_file.last_modified = obj['LastModified']
                                 existing_file.last_checked = datetime.now(timezone.utc)
                                 existing_file.version += 1  # Increment version when size changes
-                                # always update the url and commit
-                                existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
-                                db.session.add(existing_file)
-                                affected_files.append(existing_file)  # Add to affected files
+                            # always update the url and commit
+                            existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
+                            db.session.add(existing_file)
                         else:
                             # New file - create new entry
                             new_file = File(
@@ -74,7 +73,7 @@ def rebuild_S3_files(account_settings):
                                 version=1  # Initial version for new files
                             )
                             db.session.add(new_file)
-                            affected_files.append(new_file)  # Add to affected files
+                            new_files_count += 1
 
                 # Handle pagination
                 if response.get('IsTruncated'):
@@ -93,14 +92,14 @@ def rebuild_S3_files(account_settings):
             # After successful rebuild, sync source files
             sync_source_files(account_settings)
             
-            return affected_files
+            return new_files_count
 
         except Exception as e:
             logging.error(f"Attempt {attempt + 1} failed accessing S3 bucket: {e}")
             if attempt < retries - 1:
                 logging.debug("Retrying...")
             else:
-                return []
+                return 0
 
 def generate_download_link(account_settings, key, expires_in=3600):
     # Validate that required settings are not empty
