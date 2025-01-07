@@ -267,7 +267,11 @@
                                 {% endfor %}
                             </ul>
                         </div>
-                        <div class="form-text">Enter a pattern for matching files, or select from common patterns. "/*" matches all files in a directory, "/[^/]+/" matches all files in a directory and all subdirectories.</div>
+                        <div class="form-text">
+                            Enter a pattern for matching CSV files, or select from common patterns. "/*" matches all files in a directory, "/[^/]+/" matches all files in a directory and all subdirectories.
+                            <br>
+                            <small class="text-muted">Note: Only CSV files will be processed for sources.</small>
+                        </div>
                         <div class="invalid-feedback">Please provide a file filter pattern.</div>
                     </div>
                     <div class="mb-3">
