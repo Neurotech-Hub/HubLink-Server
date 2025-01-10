@@ -1331,3 +1331,15 @@ table td code {
         background-position: 200% center;
     }
 }
+
+/* Admin page mobile optimizations */
+@media (max-width: 576px) {
+    .list-group-item .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .list-group-item .d-flex.gap-2 {
+        gap: 0.25rem !important;
+    }
+}

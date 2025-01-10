@@ -133,6 +133,18 @@ def process_timeseries_plot(plot, csv_content):
                          'hublink_device_id': 'Device'
                      })
         
+        # Add markers and customize appearance
+        fig.update_traces(
+            mode='lines+markers',
+            marker=dict(
+                size=6,
+                opacity=0.7
+            ),
+            line=dict(
+                width=2
+            )
+        )
+        
         fig.update_layout(get_default_layout(plot.name))
         
         # Wrap the plotly JSON in the expected format
