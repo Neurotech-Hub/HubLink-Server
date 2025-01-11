@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file
 from models import db, Account, Setting, File, Gateway, Source, Plot, Layout
 from datetime import datetime, timedelta, timezone
 import logging
@@ -10,6 +10,11 @@ import requests
 import os
 import json
 from plot_utils import get_plot_info, get_plot_data
+import tempfile
+import zipfile
+from werkzeug.utils import secure_filename
+import io
+import shutil
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -994,3 +999,65 @@ def get_file_header(account_url, file_id):
             'success': False,
             'error': str(e)
         }), 500
+
+@accounts_bp.route('/<account_url>/download', methods=['POST'])
+def download_files(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        account_settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        data = request.get_json()
+        file_ids = data.get('file_ids', [])
+        files = File.query.filter(File.id.in_(file_ids)).all()
+        
+        if not files:
+            return jsonify({'error': 'No files found'}), 404
+            
+        # For single file, download directly
+        if len(files) == 1:
+            content = download_s3_file(account_settings, files[0])
+            if not content:
+                return jsonify({'error': 'Failed to download file'}), 500
+                
+            return send_file(
+                io.BytesIO(content),
+                download_name=files[0].key.split('/')[-1],
+                as_attachment=True
+            )
+            
+        # For multiple files, create zip with directory structure
+        temp_dir = None
+        try:
+            temp_dir = tempfile.mkdtemp()
+            zip_path = os.path.join(temp_dir, 'files.zip')
+            
+            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for file in files:
+                    content = download_s3_file(account_settings, file)
+                    if not content:
+                        continue
+                        
+                    # Use the full key path as the archive path
+                    zipf.writestr(file.key, content)
+            
+            # Generate timestamp for unique filename
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            download_name = f'hublink_{timestamp}.zip'
+            
+            return send_file(
+                zip_path,
+                download_name=download_name,
+                as_attachment=True
+            )
+            
+        except Exception as e:
+            print(f"Error creating zip file: {str(e)}")
+            return jsonify({'error': 'Failed to create zip file'}), 500
+            
+        finally:
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+                
+    except Exception as e:
+        print(f"Error in download_files: {str(e)}")
+        return jsonify({'error': 'Server error'}), 500

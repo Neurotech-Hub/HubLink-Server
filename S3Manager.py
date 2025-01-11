@@ -6,6 +6,7 @@ from models import *
 import json
 from dateutil import parser
 import time
+import botocore.exceptions
 
 def rebuild_S3_files(account_settings):
     retries = 3
@@ -49,13 +50,17 @@ def rebuild_S3_files(account_settings):
                             
                         s3_files.add(file_key)
 
-                        # Get the latest version ID for this file
-                        version_response = s3_client.list_object_versions(
-                            Bucket=account_settings.bucket_name,
-                            Prefix=file_key,
-                            MaxKeys=1
-                        )
-                        version_id = version_response.get('Versions', [{}])[0].get('VersionId', 'null')
+                        # Get the version count for this file
+                        try:
+                            version_response = s3_client.list_object_versions(
+                                Bucket=account_settings.bucket_name,
+                                Prefix=file_key
+                            )
+                            # Count all versions including the 'null' version
+                            version_count = len(version_response.get('Versions', []))
+                        except Exception as ve:
+                            logging.error(f"Error getting versions for {file_key}: {ve}")
+                            version_count = 1  # Default to 1 if we can't get versions
 
                         if file_key in db_files:
                             # File exists - check if size has changed
@@ -65,7 +70,7 @@ def rebuild_S3_files(account_settings):
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
                                 existing_file.last_checked = datetime.now(timezone.utc)
-                                existing_file.version = version_id  # Use S3's version ID
+                                existing_file.version = version_count  # Store version count
                                 existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                                 db.session.add(existing_file)
                                 affected_files.append(existing_file)  # Add updated file
@@ -78,7 +83,7 @@ def rebuild_S3_files(account_settings):
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
                                 last_checked=datetime.now(timezone.utc),
-                                version=version_id  # Use S3's version ID
+                                version=version_count  # Store version count
                             )
                             db.session.add(new_file)
                             affected_files.append(new_file)  # Add new file
@@ -124,19 +129,11 @@ def generate_download_link(account_settings, key, expires_in=3600):
             region_name=os.getenv('AWS_REGION', 'us-east-1')  # Default to 'us-east-1' if not set
         )
 
-        # Get the file object to get its version
-        file = File.query.filter_by(account_id=account_settings.account_id, key=key).first()
-        if not file:
-            logging.error(f"File {key} not found in database")
-            return None
-
-        # Generate presigned URL for the given key and version
+        # Generate presigned URL for the given key (always latest version)
         params = {
             'Bucket': account_settings.bucket_name,
             'Key': key
         }
-        if file.version and file.version != 'null':
-            params['VersionId'] = file.version
 
         pre_signed_url = s3_client.generate_presigned_url(
             'get_object',
@@ -326,15 +323,11 @@ def download_source_file(account_settings, source):
             logging.error(f"File {source.file_id} not found for source {source.name}")
             return None
 
-        # Download file from S3 with specific version
-        params = {
-            'Bucket': account_settings.bucket_name,
-            'Key': file.key
-        }
-        if file.version and file.version != 'null':
-            params['VersionId'] = file.version
-
-        response = s3_client.get_object(**params)
+        # Download file from S3 (always latest version)
+        response = s3_client.get_object(
+            Bucket=account_settings.bucket_name,
+            Key=file.key
+        )
         
         # Read the content as string
         csv_content = response['Body'].read().decode('utf-8')
@@ -709,3 +702,54 @@ def cleanup_aws_resources(admin_settings, user_name, bucket_name):
     except Exception as e:
         logging.error(f"Error during AWS resource cleanup: {e}")
         raise
+
+def download_s3_file(account_settings, file):
+    """
+    Download a file from S3 into memory.
+    Returns: File content as bytes, or None if error
+    
+    Args:
+        account_settings: Setting object containing AWS credentials
+        file: File object containing the key to download
+    """
+    try:
+        print("DEBUG: Step 1 - Creating S3 client...")
+        # Test S3 client creation independently
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        print("DEBUG: Step 1 - S3 client created successfully")
+
+        print(f"DEBUG: Step 2 - Testing S3 connection for bucket {account_settings.bucket_name}...")
+        # Test bucket access
+        s3_client.head_bucket(Bucket=account_settings.bucket_name)
+        print("DEBUG: Step 2 - Bucket access confirmed")
+
+        print(f"DEBUG: Step 3 - Attempting to get object {file.key}...")
+        # Download file from S3 (always latest version)
+        response = s3_client.get_object(
+            Bucket=account_settings.bucket_name,
+            Key=file.key
+        )
+        print("DEBUG: Step 3 - Got S3 response successfully")
+        
+        print("DEBUG: Step 4 - Reading file content...")
+        # Read the content as bytes
+        content = response['Body'].read()
+        print(f"DEBUG: Step 4 - Successfully read {len(content)} bytes")
+        
+        return content
+
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+        error_message = e.response.get('Error', {}).get('Message', str(e))
+        print(f"DEBUG: AWS Error - Code: {error_code}, Message: {error_message}")
+        logging.error(f"AWS error downloading file {file.key}: {error_message}")
+        return None
+    except Exception as e:
+        print(f"DEBUG: General error: {str(e)}")
+        logging.error(f"Error downloading file {file.key}: {str(e)}")
+        return None

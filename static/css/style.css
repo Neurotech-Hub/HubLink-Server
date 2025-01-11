@@ -1343,3 +1343,32 @@ table td code {
         gap: 0.25rem !important;
     }
 }
+
+.device-filters {
+    max-width: 70%;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 5px;
+}
+
+.download-selection {
+    min-width: 250px;
+}
+
+/* Ensure no horizontal scrollbar appears */
+.device-filters::-webkit-scrollbar {
+    height: 3px;
+}
+
+.device-filters::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+.device-filters::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.device-filters::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
