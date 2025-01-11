@@ -138,9 +138,35 @@ def delete_account(account_url):
         logging.error(f"Error deleting account {account_url}: {e}")
     return redirect(url_for('admin'))
 
+def get_directory_paths(account_id):
+    """Get unique directory paths from files for an account, including all intermediate directories."""
+    files = File.query.filter_by(account_id=account_id)\
+        .filter(~File.key.like('.%'))\
+        .filter(~File.key.contains('/.')) \
+        .all()
+    directories = set()
+    
+    for file in files:
+        # Split the path into components
+        path_parts = file.key.split('/')
+        # Build up the path one component at a time
+        current_path = ""
+        for part in path_parts[:-1]:  # Exclude the filename
+            if current_path:
+                current_path = f"{current_path}/{part}"
+            else:
+                current_path = part
+                
+            # Only add if it doesn't start with a dot
+            if not any(p.startswith('.') for p in current_path.split('/')):
+                directories.add(current_path)
+    
+    # Convert to sorted list
+    return sorted(list(directories))
+
 @accounts_bp.route('/<account_url>/data', methods=['GET'])
-@accounts_bp.route('/<account_url>/data/<device_id>', methods=['GET'])
-def account_data(account_url, device_id=None):
+@accounts_bp.route('/<account_url>/data/<path:directory>', methods=['GET'])
+def account_data(account_url, directory=None):
     g.title = "Data"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
@@ -151,32 +177,34 @@ def account_data(account_url, device_id=None):
         page = request.args.get('page', 1, type=int)
         per_page = 30
         
-        # Get recent files for the account, optionally filtered by device_id
+        # Get recent files for the account, optionally filtered by directory
         query = File.query.filter_by(account_id=account.id)\
             .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.'))\
             .order_by(File.last_modified.desc())
         
-        if device_id:
-            device_prefix = f"{device_id}/"
-            query = query.filter(File.key.like(f"{device_prefix}%"))
+        if directory:
+            # Escape special characters in the directory path for the LIKE query
+            escaped_directory = directory.replace('%', '\\%').replace('_', '\\_')
+            query = query.filter(File.key.like(f"{escaped_directory}/%"))
         
         # Get paginated results
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         recent_files = pagination.items
         
-        # Retrieve a list of unique device IDs for display in the template
-        unique_devices = get_unique_devices(account.id)
+        # Get unique directory paths for the dropdown
+        directories = get_directory_paths(account.id)
         
         return render_template(
             'data.html',
             account=account,
             recent_files=recent_files,
-            unique_devices=unique_devices,
-            device_id=device_id,
+            directories=directories,
+            current_directory=directory,
             pagination=pagination
         )
     except Exception as e:
-        logging.error(f"Error loading data for {account_url} and device {device_id}: {e}")
+        logging.error(f"Error loading data for {account_url} and directory {directory}: {e}")
         return "There was an issue loading the data page.", 500
 
 @accounts_bp.route('/<account_url>/files', methods=['POST'])
@@ -1000,64 +1028,77 @@ def get_file_header(account_url, file_id):
             'error': str(e)
         }), 500
 
-@accounts_bp.route('/<account_url>/download', methods=['POST'])
+@accounts_bp.route('/<account_url>/download_files', methods=['POST'])
 def download_files(account_url):
+    account = Account.query.filter_by(url=account_url).first_or_404()
+    account_settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+    
+    data = request.get_json()
+    file_ids = data.get('file_ids', [])
+    directory = data.get('directory')
+    
+    # If directory is provided, get all file IDs in that directory
+    if directory:
+        files = File.query.filter_by(account_id=account.id)\
+            .filter(File.key.like(f"{directory}/%"))\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.'))\
+            .all()
+        file_ids = [f.id for f in files]
+    
+    if not file_ids:
+        return jsonify({'error': 'No files selected'}), 400
+    
+    # Get all selected files
+    files = File.query.filter(File.id.in_(file_ids)).all()
+    if not files:
+        return jsonify({'error': 'No files found'}), 404
+    
+    # For single file, download directly
+    if len(files) == 1:
+        content = download_s3_file(account_settings, files[0])
+        if content is None:  # Only skip if download failed (None), not if file is empty
+            return jsonify({'error': 'Error downloading file'}), 500
+        
+        filename = files[0].key.split('/')[-1]
+        return send_file(
+            io.BytesIO(content),
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name=filename
+        )
+    
+    # For multiple files, create a zip
+    temp_dir = None
     try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        account_settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        temp_dir = tempfile.mkdtemp()
+        zip_path = os.path.join(temp_dir, 'files.zip')
         
-        data = request.get_json()
-        file_ids = data.get('file_ids', [])
-        files = File.query.filter(File.id.in_(file_ids)).all()
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for file in files:
+                content = download_s3_file(account_settings, file)
+                if content is None:  # Only skip if download failed (None), not if file is empty
+                    print(f"Failed to download {file.key}")
+                    continue
+                
+                # Use the full directory structure from the key
+                zipf.writestr(file.key, content)
         
-        if not files:
-            return jsonify({'error': 'No files found'}), 404
-            
-        # For single file, download directly
-        if len(files) == 1:
-            content = download_s3_file(account_settings, files[0])
-            if not content:
-                return jsonify({'error': 'Failed to download file'}), 500
-                
-            return send_file(
-                io.BytesIO(content),
-                download_name=files[0].key.split('/')[-1],
-                as_attachment=True
-            )
-            
-        # For multiple files, create zip with directory structure
-        temp_dir = None
-        try:
-            temp_dir = tempfile.mkdtemp()
-            zip_path = os.path.join(temp_dir, 'files.zip')
-            
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-                for file in files:
-                    content = download_s3_file(account_settings, file)
-                    if not content:
-                        continue
-                        
-                    # Use the full key path as the archive path
-                    zipf.writestr(file.key, content)
-            
-            # Generate timestamp for unique filename
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            download_name = f'hublink_{timestamp}.zip'
-            
-            return send_file(
-                zip_path,
-                download_name=download_name,
-                as_attachment=True
-            )
-            
-        except Exception as e:
-            print(f"Error creating zip file: {str(e)}")
-            return jsonify({'error': 'Failed to create zip file'}), 500
-            
-        finally:
-            if temp_dir and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
-                
+        # Generate timestamp for unique filename
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        download_name = f'hublink_{timestamp}.zip'
+        
+        return send_file(
+            zip_path,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=download_name
+        )
+    
     except Exception as e:
-        print(f"Error in download_files: {str(e)}")
-        return jsonify({'error': 'Server error'}), 500
+        print(f"Error creating zip file: {str(e)}")
+        return jsonify({'error': 'Failed to create zip file'}), 500
+    
+    finally:
+        if temp_dir and os.path.exists(temp_dir):
+            shutil.rmtree(temp_dir)

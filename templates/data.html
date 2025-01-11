@@ -8,23 +8,27 @@
     
     <!-- Device Filter Pills and Download Bar -->
     <div class="d-flex justify-content-between align-items-start mb-3">
-        <!-- Device Pills -->
-        <div class="device-filters">
-            <span class="badge rounded-pill {{ 'border border-primary text-primary' if device_id is none else 'border text-secondary' }}">
-                <a href="{{ url_for('accounts.account_data', account_url=account.url, total_limit=total_limit) }}"
-                    class="text-decoration-none {{ 'text-primary' if device_id is none else 'text-secondary' }}">
-                    All Devices
-                </a>
-            </span>
-
-            {% for device in unique_devices %}
-            <span class="badge rounded-pill {{ 'border border-primary text-primary' if device_id == device else 'border text-secondary' }}">
-                <a href="{{ url_for('accounts.account_data', account_url=account.url, device_id=device, total_limit=total_limit) }}"
-                    class="text-decoration-none {{ 'text-primary' if device_id == device else 'text-secondary' }}">
-                    {{ device }}
-                </a>
-            </span>
-            {% endfor %}
+        <!-- Directory Filter and Download All -->
+        <div class="d-flex align-items-center gap-2">
+            <div class="directory-filter">
+                <select class="form-select" id="directorySelect" onchange="window.location.href=this.value">
+                    <option value="{{ url_for('accounts.account_data', account_url=account.url) }}" 
+                            {{ 'selected' if not current_directory }}>
+                        Recent
+                    </option>
+                    {% for directory in directories %}
+                    <option value="{{ url_for('accounts.account_data', account_url=account.url, directory=directory) }}"
+                            {{ 'selected' if current_directory == directory }}>
+                        {{ directory }}/
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% if current_directory %}
+            <button class="btn btn-outline-primary btn-sm" onclick="downloadAllFiles('{{ current_directory }}')">
+                Download All
+            </button>
+            {% endif %}
         </div>
 
         <!-- Download Selection Info -->
@@ -111,7 +115,7 @@
                     <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
                         <a class="page-link" href="{{ url_for('accounts.account_data', 
                             account_url=account.url, 
-                            device_id=device_id, 
+                            directory=current_directory, 
                             page=pagination.prev_num) if pagination.has_prev else '#' }}">
                             Previous
                         </a>
@@ -123,7 +127,7 @@
                             <li class="page-item {{ 'active' if page_num == pagination.page }}">
                                 <a class="page-link" href="{{ url_for('accounts.account_data', 
                                     account_url=account.url, 
-                                    device_id=device_id, 
+                                    directory=current_directory, 
                                     page=page_num) }}">
                                     {{ page_num }}
                                 </a>
@@ -137,7 +141,7 @@
                     <li class="page-item {{ 'disabled' if not pagination.has_next }}">
                         <a class="page-link" href="{{ url_for('accounts.account_data', 
                             account_url=account.url, 
-                            device_id=device_id, 
+                            directory=current_directory, 
                             page=pagination.next_num) if pagination.has_next else '#' }}">
                             Next
                         </a>
@@ -397,5 +401,55 @@
             modal.setAttribute('aria-hidden', 'true');
         });
     });
+
+    async function downloadAllFiles(directory) {
+        const progressModal = new bootstrap.Modal(document.getElementById('downloadProgressModal'));
+        progressModal.show();
+        
+        try {
+            const response = await fetch('{{ url_for("accounts.download_files", account_url=account.url) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ directory: directory })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Download failed');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Generate timestamp for zip filename
+            const now = new Date();
+            const timestamp = now.getFullYear().toString() +
+                (now.getMonth() + 1).toString().padStart(2, '0') +
+                now.getDate().toString().padStart(2, '0') +
+                now.getHours().toString().padStart(2, '0') +
+                now.getMinutes().toString().padStart(2, '0') +
+                now.getSeconds().toString().padStart(2, '0');
+            a.download = `hublink_${timestamp}.zip`;
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            // Ensure modal is hidden after successful download
+            progressModal.hide();
+            document.querySelector('.modal-backdrop')?.remove();
+            document.body.classList.remove('modal-open');
+        } catch (error) {
+            document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
+            setTimeout(() => {
+                progressModal.hide();
+            }, 2000);
+        }
+    }
 </script>
 {% endblock %}

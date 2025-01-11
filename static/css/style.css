@@ -1372,3 +1372,22 @@ table td code {
 .device-filters::-webkit-scrollbar-thumb:hover {
     background: #555;
 }
+
+.directory-filter {
+    min-width: 200px;
+    max-width: 70%;
+}
+
+.directory-filter .form-select {
+    font-size: 0.875rem;
+    padding: 0.25rem 2rem 0.25rem 0.5rem;
+    background-position: right 0.5rem center;
+}
+
+/* Ensure dropdown text doesn't overflow */
+.directory-filter .form-select option {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
