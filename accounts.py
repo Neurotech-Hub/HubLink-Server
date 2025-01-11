@@ -90,7 +90,7 @@ def update_settings(account_url):
         settings.aws_access_key_id = request.form['aws_access_key_id']
         settings.aws_secret_access_key = request.form['aws_secret_access_key']
         settings.bucket_name = request.form['bucket_name']
-        settings.dt_rule = request.form['dt_rule']
+        # settings.dt_rule = request.form['dt_rule']
         settings.max_file_size = int(request.form['max_file_size'])
         settings.use_cloud = request.form['use_cloud'] == 'true'
         settings.delete_scans = request.form['delete_scans'] == 'true'
@@ -340,7 +340,7 @@ def account_dashboard(account_url):
         # Get recent gateway activity
         gateways = Gateway.query.filter_by(account_id=account.id)\
             .order_by(Gateway.created_at.desc())\
-            .limit(10)\
+            .limit(100)\
             .all()
         
         db.session.commit()

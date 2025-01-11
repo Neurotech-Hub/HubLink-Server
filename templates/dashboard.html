@@ -40,7 +40,7 @@
                                 <tr>
                                     <th>IP Address</th>
                                     <th>Gateway Name</th>
-                                    <th>Created At</th>
+                                    <th>Last Ping</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -48,9 +48,7 @@
                                 <tr>
                                     <td>{{ gateway.ip_address }}</td>
                                     <td>{{ gateway.name }}</td>
-                                    <td data-timestamp="{{ gateway.created_at.isoformat() }}">
-                                        {{ gateway.created_at }}
-                                    </td>
+                                    <td>{{ moment(gateway.created_at).fromNow() }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

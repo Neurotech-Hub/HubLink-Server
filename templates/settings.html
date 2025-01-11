@@ -60,7 +60,7 @@
 
                         <!-- Data Management Settings -->
                         <div class="row g-4">
-                            <div class="col-12 col-md-4">
+                            <!-- <div class="col-12 col-md-4">
                                 <div class="mb-4">
                                     <label for="dt_rule" class="form-label">Archive Rule:</label>
                                     <select id="dt_rule" name="dt_rule" class="form-select">
@@ -81,6 +81,17 @@
                                     </select>
                                     <div class="form-text">Sets folder structure, see <a href="/docs">docs</a></div>
                                 </div>
+                            </div> -->
+
+                            <div class="col-12 col-md-4">
+                                <div class="mb-4">
+                                    <label for="use_cloud" class="form-label">Use/Upload to Cloud:</label>
+                                    <select id="use_cloud" name="use_cloud" class="form-select">
+                                        <option value="true" {% if settings.use_cloud %}selected{% endif %}>True</option>
+                                        <option value="false" {% if not settings.use_cloud %}selected{% endif %}>False</option>
+                                    </select>
+                                    <div class="form-text">Enable or disable cloud storage</div>
+                                </div>
                             </div>
                             
                             <div class="col-12 col-md-4">
@@ -92,16 +103,6 @@
                                 </div>
                             </div>
                             
-                            <div class="col-12 col-md-4">
-                                <div class="mb-4">
-                                    <label for="use_cloud" class="form-label">Use/Upload to Cloud:</label>
-                                    <select id="use_cloud" name="use_cloud" class="form-select">
-                                        <option value="true" {% if settings.use_cloud %}selected{% endif %}>True</option>
-                                        <option value="false" {% if not settings.use_cloud %}selected{% endif %}>False</option>
-                                    </select>
-                                    <div class="form-text">Enable or disable cloud storage</div>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="row g-4">
