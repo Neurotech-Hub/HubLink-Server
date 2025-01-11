@@ -154,23 +154,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block modals %}
 <!-- File Details Modal -->
-<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true">
+<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="fileDetailsModalLabel">File Details</h5>
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <table class="table table-sm">
                     <tbody>
                         <tr>
                             <th scope="row">Filename</th>
-                            <td id="modalFileName" style="word-break: break-all;"></td>
+                            <td id="modalFileName" class="text-break"></td>
                         </tr>
                         <tr>
                             <th scope="row">Size</th>
@@ -191,10 +191,15 @@
                     </tbody>
                 </table>
             </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
     function updateActiveFiles() {
         fetch('{{ url_for("accounts.get_recent_checks", account_url=account.url) }}')
@@ -232,5 +237,16 @@
         const modal = new bootstrap.Modal(document.getElementById('fileDetailsModal'));
         modal.show();
     }
+
+    // Remove any existing show classes or inline styles that might interfere with Bootstrap
+    document.addEventListener('DOMContentLoaded', function() {
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.removeAttribute('style');
+            modal.removeAttribute('aria-modal');
+            modal.setAttribute('aria-hidden', 'true');
+        });
+    });
 </script>
 {% endblock %}

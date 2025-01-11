@@ -139,7 +139,7 @@ def admin_required(f):
 def admin():
     # Check if user is logged in and is admin
     if 'admin_id' in session:
-        account = Account.query.get(session['admin_id'])
+        account = db.session.get(Account, session['admin_id'])
         if account and account.is_admin:
             # Handle GET request - show dashboard
             if request.method == 'GET':
@@ -442,7 +442,7 @@ def from_json_filter(value):
 @admin_required
 def edit_account(account_id):
     try:
-        account = Account.query.get_or_404(account_id)
+        account = db.session.get(Account, account_id)
         
         # Update basic fields
         account.name = request.form.get('name', account.name).strip()
