@@ -77,11 +77,39 @@
                             <i class="fa fa-database"></i>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path.startswith('/' + account.url + '/plots') or request.path.startswith('/' + account.url + '/layout/') %}active{% endif %}"
-                            href="/{{ account.url }}/plots" aria-label="Plots">
-                            <i class="fa fa-chart-line"></i>
-                        </a>
+                    <li class="nav-item dropup">
+                        {% if account.layouts|selectattr('show_nav')|list %}
+                            <a class="nav-link {% if request.path.startswith('/' + account.url + '/plots') or request.path.startswith('/' + account.url + '/layout/') %}active{% endif %}"
+                                href="#" 
+                                data-bs-toggle="dropdown" 
+                                aria-expanded="false"
+                                aria-label="Plots and Layouts">
+                                <i class="fa fa-chart-line"></i>
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" href="/{{ account.url }}/plots">
+                                        <i class="fa fa-chart-line me-2"></i>Plots
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                {% for layout in account.layouts|sort(attribute='name') %}
+                                    {% if layout.show_nav %}
+                                    <li>
+                                        <a class="dropdown-item {% if request.path == '/' + account.url + '/layout/' + layout.id|string %}active{% endif %}" 
+                                           href="/{{ account.url }}/layout/{{ layout.id }}">
+                                            {{ layout.name }}
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            <a class="nav-link {% if request.path.startswith('/' + account.url + '/plots') %}active{% endif %}"
+                                href="/{{ account.url }}/plots" aria-label="Plots">
+                                <i class="fa fa-chart-line"></i>
+                            </a>
+                        {% endif %}
                     </li>
                 </ul>
             </nav>
