@@ -65,12 +65,12 @@ def rebuild_S3_files(account_settings):
                         if file_key in db_files:
                             # File exists - check if size has changed
                             existing_file = db_files[file_key]
-                            if existing_file.size != obj['Size']:
-                                logging.info(f"File {file_key} size changed from {existing_file.size} to {obj['Size']}")
+                            if existing_file.version != version_count:
+                                logging.info(f"File {file_key} version changed from {existing_file.version} to {version_count}")
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
                                 existing_file.last_checked = datetime.now(timezone.utc)
-                                existing_file.version = version_count  # Store version count
+                                existing_file.version = version_count
                                 existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                                 db.session.add(existing_file)
                                 affected_files.append(existing_file)  # Add updated file
@@ -545,7 +545,8 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name):
                     {
                         "Effect": "Allow",
                         "Action": [
-                            "s3:ListBucket"
+                            "s3:ListBucket",
+                            "s3:ListBucketVersions"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}"
                     },

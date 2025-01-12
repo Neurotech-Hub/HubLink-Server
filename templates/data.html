@@ -7,10 +7,10 @@
     <h2 class="mb-4">Data</h2>
     
     <!-- Device Filter Pills and Download Bar -->
-    <div class="d-flex justify-content-between align-items-start mb-3">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-3">
         <!-- Directory Filter and Download All -->
-        <div class="d-flex align-items-center gap-2">
-            <div class="directory-filter">
+        <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
+            <div class="directory-filter flex-grow-1 flex-md-grow-0">
                 <select class="form-select" id="directorySelect" onchange="window.location.href=this.value">
                     <option value="{{ url_for('accounts.account_data', account_url=account.url) }}" 
                             {{ 'selected' if not current_directory }}>
@@ -32,17 +32,21 @@
         </div>
 
         <!-- Download Selection Info -->
-        <div class="download-selection d-flex align-items-center" id="downloadSelectionBar">
-            <span class="text-muted me-2">
-                <span id="selectedCount">0</span> files selected
-                (<span id="selectedSize">0 B</span>)
-            </span>
-            <button class="btn btn-outline-secondary btn-sm me-2" id="clearSelectionBtn" disabled>
-                Clear Selection
-            </button>
-            <button class="btn btn-primary btn-sm" id="downloadSelectedBtn" disabled>
-                Download Selected
-            </button>
+        <div class="download-selection d-flex flex-column flex-md-row align-items-end gap-2 w-100 w-md-auto">
+            <div class="d-flex gap-2 justify-content-end w-100">
+                <span class="text-muted text-nowrap">
+                    <span id="selectedCount">0</span> files selected
+                    (<span id="selectedSize">0 B</span>)
+                </span>
+            </div>
+            <div class="d-flex gap-2 justify-content-end w-100">
+                <button class="btn btn-outline-secondary btn-sm" id="clearSelectionBtn" disabled>
+                    Clear Selection
+                </button>
+                <button class="btn btn-primary btn-sm" id="downloadSelectedBtn" disabled>
+                    Download Selected
+                </button>
+            </div>
         </div>
     </div>
 
@@ -79,9 +83,9 @@
                             </div>
                         </td>
                         <td>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="file-name">{{ file.key }}</span>
-                                <span class="badge border border-secondary text-secondary small fw-normal" role="button"
+                            <div class="d-flex justify-content-between align-items-start gap-2">
+                                <span class="file-name text-break">{{ file.key }}</span>
+                                <span class="badge border border-secondary text-secondary small fw-normal flex-shrink-0" role="button"
                                     onclick="showFileDetails(
                                         '{{ file.id }}',
                                         '{{ file.key | replace("'", "\\'") }}',
