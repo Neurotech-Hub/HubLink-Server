@@ -475,8 +475,8 @@ void loop()
                 if (rect.top >= viewportHeight) {
                     memoryIcon.style.transform = `rotate(-15deg)`;
                     cloudIcon.style.transform = `rotate(15deg)`;
-                    memoryIcon.style.opacity = 0.25;
-                    cloudIcon.style.opacity = 0.25;
+                    memoryIcon.style.opacity = 0.15;
+                    cloudIcon.style.opacity = 0.15;
                     if (hasConverged) {
                         confetti.reset();
                         hasConverged = false;
@@ -494,7 +494,7 @@ void loop()
                 }
                 
                 // Calculate target positions relative to center
-                const baseOffset = 10;
+                const baseOffset = 50;
                 const responsiveOffset = Math.min(
                     baseOffset,
                     window.innerWidth < 768 ? -40 : Math.max(5, (memoryIconWidth * 0.05))
@@ -530,7 +530,7 @@ void loop()
                     memoryIcon.style.transform = `translateX(${leftTarget}px) rotate(-5deg)`;
                     cloudIcon.style.transform = `translateX(${-leftTarget}px) rotate(5deg)`;
                 } else {
-                    const opacity = 0.25 + (progress * 0.75);
+                    const opacity = 0.15 + (progress * 0.75);
                     memoryIcon.style.opacity = opacity;
                     cloudIcon.style.opacity = opacity;
                     memoryIcon.style.transform = `translateX(${leftTranslate}px) rotate(${leftRotation}deg)`;

@@ -23,14 +23,11 @@ body::before {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    /* Allows clicking through the overlay */
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 600'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.25' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
     background-repeat: repeat;
-    background-size: 200px;
-    opacity: 0.1;
-    /* Very subtle noise */
+    background-size: 300px;
+    opacity: 0.2;
     z-index: -1;
-    /* Place behind content */
 }
 
 body,
@@ -1254,10 +1251,7 @@ table td code {
 .memoryFlow {
     position: relative;
     height: 30vh;
-    width: 100vw;
-    /* ... other existing properties ... */
     touch-action: pan-y pinch-zoom;
-    /* Optimize touch handling */
 }
 
 .memoryFlow .icon {
@@ -1274,17 +1268,13 @@ table td code {
 
 .memoryFlow .memory-icon {
     left: -100px;
-    /* Initial position from left edge */
     transform: rotate(-15deg);
-    /* Only rotation, no translation */
     opacity: 0.15;
 }
 
 .memoryFlow .cloud-icon {
     right: -100px;
-    /* Initial position from right edge */
     transform: rotate(15deg);
-    /* Only rotation, no translation */
     width: min(360px, 48vw);
     height: auto;
     opacity: 0.15;
@@ -1294,18 +1284,16 @@ table td code {
 @media (max-width: 768px) {
     .memoryFlow {
         height: 30vh;
-        /* Slightly smaller height on mobile */
         margin: 2rem 0;
-        /* Reduced margin */
     }
 
     .memoryFlow .icon {
-        width: min(300px, 65vw);
+        width: min(240px, 55vw);
         min-width: 190px;
     }
 
     .memoryFlow .cloud-icon {
-        width: min(360px, 78vw);
+        width: min(280px, 65vw);
         min-width: 220px;
     }
 }
