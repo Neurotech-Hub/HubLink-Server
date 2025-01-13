@@ -98,7 +98,7 @@ def create_default_settings(account_id):
             use_cloud=False,
             delete_scans=True,
             delete_scans_days_old=90,
-            delete_scans_percent_remaining=90,
+            delete_scans_percent_remaining=10,
             device_name_includes='HUBLINK',
             alert_file_starts_with='alert_',
             alert_email='',
