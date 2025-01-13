@@ -105,7 +105,7 @@
                             
                         </div>
 
-                        <div class="row g-4">
+                        <div class="row g-4" id="delete-scans-row">
                             <div class="col-12 col-md-4">
                                 <div class="mb-4">
                                     <label for="delete_scans" class="form-label">Delete Scans from Gateway:</label>
@@ -122,8 +122,10 @@
                                 <div class="mb-4">
                                     <label for="delete_scans_days_old" class="form-label">Delete Scans Older Than (days):</label>
                                     <input type="number" id="delete_scans_days_old" name="delete_scans_days_old"
-                                        class="form-control" value="{{ settings.delete_scans_days_old }}">
+                                        class="form-control" value="{{ settings.delete_scans_days_old }}"
+                                        min="-1">
                                     <div class="form-text">Age threshold (use "-1" to ignore)</div>
+                                    <div class="invalid-feedback">Must be -1 or a positive number</div>
                                 </div>
                             </div>
                             
@@ -132,8 +134,16 @@
                                     <label for="delete_scans_percent_remaining" class="form-label">Delete Scans Percent Remaining:</label>
                                     <input type="number" id="delete_scans_percent_remaining"
                                         name="delete_scans_percent_remaining" class="form-control"
-                                        value="{{ settings.delete_scans_percent_remaining }}">
-                                    <div class="form-text">Percent threshold (use "-1" to ignore)</div>
+                                        value="{{ settings.delete_scans_percent_remaining }}"
+                                        min="-1" max="100">
+                                    <div class="form-text">Percent threshold (0–100; use "-1" to ignore)</div>
+                                    <div class="invalid-feedback">Must be -1 or between 0 and 100</div>
+                                </div>
+                            </div>
+                            <div id="delete-scans-warning" class="col-12 d-none">
+                                <div class="alert alert-danger">
+                                    <i class="fa fa-exclamation-triangle me-2"></i>
+                                    You will be responsible for ensuring memory is available.
                                 </div>
                             </div>
                         </div>
@@ -199,17 +209,57 @@
         const deleteScansEnabled = document.getElementById('delete_scans').value === 'true';
         const daysOldInput = document.getElementById('delete_scans_days_old');
         const percentInput = document.getElementById('delete_scans_percent_remaining');
+        const warningDiv = document.getElementById('delete-scans-warning');
+        const row = document.getElementById('delete-scans-row');
         
+        // Toggle input fields
         daysOldInput.disabled = !deleteScansEnabled;
         percentInput.disabled = !deleteScansEnabled;
         
-        // Optional: Add visual feedback by changing opacity
-        daysOldInput.style.opacity = deleteScansEnabled ? '1' : '0.5';
-        percentInput.style.opacity = deleteScansEnabled ? '1' : '0.5';
+        if (deleteScansEnabled) {
+            row.classList.remove('border', 'border-danger', 'rounded', 'p-3');
+            warningDiv.classList.add('d-none');
+            // Add required validation when enabled
+            daysOldInput.setAttribute('required', '');
+            percentInput.setAttribute('required', '');
+            // Set default values to 90
+            daysOldInput.value = '90';
+            percentInput.value = '90';
+        } else {
+            row.classList.add('border', 'border-danger', 'rounded', 'p-3');
+            warningDiv.classList.remove('d-none');
+            // Remove required validation when disabled
+            daysOldInput.removeAttribute('required');
+            percentInput.removeAttribute('required');
+            // Clear the values
+            daysOldInput.value = '';
+            percentInput.value = '';
+        }
     }
 
     // Form validation
     document.getElementById('settings-form').addEventListener('submit', function(event) {
+        const deleteScansEnabled = document.getElementById('delete_scans').value === 'true';
+        
+        if (deleteScansEnabled) {
+            const daysOld = parseInt(document.getElementById('delete_scans_days_old').value);
+            const percent = parseInt(document.getElementById('delete_scans_percent_remaining').value);
+            
+            if (isNaN(daysOld) || (daysOld !== -1 && daysOld < 0)) {
+                event.preventDefault();
+                document.getElementById('delete_scans_days_old').setCustomValidity('Must be -1 or a positive number');
+            } else {
+                document.getElementById('delete_scans_days_old').setCustomValidity('');
+            }
+            
+            if (isNaN(percent) || (percent !== -1 && (percent < 0 || percent > 100))) {
+                event.preventDefault();
+                document.getElementById('delete_scans_percent_remaining').setCustomValidity('Must be -1 or between 0 and 100');
+            } else {
+                document.getElementById('delete_scans_percent_remaining').setCustomValidity('');
+            }
+        }
+        
         if (!this.checkValidity()) {
             event.preventDefault();
             event.stopPropagation();

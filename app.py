@@ -97,9 +97,9 @@ def create_default_settings(account_id):
             max_file_size=5000000,
             use_cloud=False,
             delete_scans=True,
-            delete_scans_days_old=-1,
-            delete_scans_percent_remaining=-1,
-            device_name_includes='ESP32',
+            delete_scans_days_old=90,
+            delete_scans_percent_remaining=90,
+            device_name_includes='HUBLINK',
             alert_file_starts_with='alert_',
             alert_email='',
             node_payload=''

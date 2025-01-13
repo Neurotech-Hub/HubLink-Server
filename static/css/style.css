@@ -1429,3 +1429,15 @@ table td code {
         font-size: 0.65rem;
     }
 }
+
+/* Delete scans row styling */
+#delete-scans-row.border-danger {
+    margin-top: 0.25rem;
+    margin-bottom: 1rem;
+}
+
+/* Ensure consistent spacing in delete scans inputs */
+#delete-scans-row .form-control:disabled {
+    background-color: #e9ecef;
+    opacity: 0.65;
+}
