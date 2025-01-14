@@ -1437,3 +1437,24 @@ table td code {
     background-color: #e9ecef;
     opacity: 0.65;
 }
+
+/* Footer email link styling */
+.footer-email {
+    transition: color 0.2s ease;
+}
+
+.footer-email:hover {
+    color: #fff !important;
+}
+
+/* Ensure email is visible on mobile */
+@media (max-width: 768px) {
+    .footer .container-fluid {
+        padding-right: 1rem;
+        padding-left: 1rem;
+    }
+
+    .footer-email {
+        font-size: 0.85rem;
+    }
+}
