@@ -1256,18 +1256,14 @@ table td code {
 
 .memoryFlow .icon {
     position: absolute;
-    width: min(300px, 40vw);
-    /* Responsive width */
     height: auto;
-    /* Maintain aspect ratio */
-    aspect-ratio: 1;
-    /* Force square aspect ratio */
     transition: transform 0.3s ease-out, opacity 0.3s ease-out;
     will-change: transform;
 }
 
 .memoryFlow .memory-icon {
     left: -100px;
+    width: min(200px, 40vw);
     transform: rotate(-15deg);
     opacity: 0.15;
 }
