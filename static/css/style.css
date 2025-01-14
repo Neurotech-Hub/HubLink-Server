@@ -1279,18 +1279,18 @@ table td code {
 /* Add media queries for smaller screens */
 @media (max-width: 768px) {
     .memoryFlow {
-        height: 30vh;
+        height: 15vh;
         margin: 2rem 0;
     }
 
     .memoryFlow .icon {
-        width: min(240px, 55vw);
-        min-width: 190px;
+        width: min(120px, 40vw);
+        min-width: 140px;
     }
 
     .memoryFlow .cloud-icon {
         width: min(280px, 65vw);
-        min-width: 220px;
+        min-width: 200px;
     }
 }
 
