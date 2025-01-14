@@ -1279,7 +1279,7 @@ table td code {
 /* Add media queries for smaller screens */
 @media (max-width: 768px) {
     .memoryFlow {
-        height: 15vh;
+        height: 20vh;
         margin: 2rem 0;
     }
 
