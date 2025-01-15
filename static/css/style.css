@@ -438,7 +438,6 @@ table:has(.highlight-column) td:last-child::after {
 /* Update main content area */
 main[role="main"] {
     padding-top: 76px;
-    padding-bottom: 80px;
     min-height: 100vh;
     position: relative;
 }
