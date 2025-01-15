@@ -205,53 +205,6 @@ def do_files_exist(account_id, files):
         logging.error(f"Error in 'do_files_exist' function: {e}")
         return [False] * len(files)
 
-def delete_device_files_from_s3(account_settings, device_id):
-    """
-    Delete all files for a specific device from S3.
-    Returns (success, error_message)
-    """
-    # Validate required settings
-    if not account_settings.aws_access_key_id or not account_settings.aws_secret_access_key or not account_settings.bucket_name:
-        return False, "Missing AWS credentials or bucket name"
-
-    try:
-        # Create S3 client
-        s3_client = boto3.client(
-            's3',
-            aws_access_key_id=account_settings.aws_access_key_id,
-            aws_secret_access_key=account_settings.aws_secret_access_key,
-            region_name=os.getenv('AWS_REGION', 'us-east-1')
-        )
-
-        # Get all files for this device from the database to know what to delete
-        files_to_delete = File.query.filter_by(
-            account_id=account_settings.account_id
-        ).filter(
-            File.key.startswith(f"{device_id}/")
-        ).all()
-
-        # Delete files from S3
-        failed_deletions = []
-        for file in files_to_delete:
-            try:
-                s3_client.delete_object(
-                    Bucket=account_settings.bucket_name,
-                    Key=file.key
-                )
-            except Exception as e:
-                failed_deletions.append(f"{file.key}: {str(e)}")
-                logging.error(f"Failed to delete file {file.key} from S3: {e}")
-
-        # Return results
-        if failed_deletions:
-            return False, f"Failed to delete some files: {', '.join(failed_deletions)}"
-        return True, None
-
-    except Exception as e:
-        error_msg = f"Error deleting files from S3: {str(e)}"
-        logging.error(error_msg)
-        return False, error_msg
-
 def generate_s3_url(bucket_name, key):
     """Generate a publicly accessible HTTPS URL for a given bucket and key"""
     return f"https://{bucket_name}.s3.amazonaws.com/{key}"
@@ -754,3 +707,71 @@ def download_s3_file(account_settings, file):
         print(f"DEBUG: General error: {str(e)}")
         logging.error(f"Error downloading file {file.key}: {str(e)}")
         return None
+
+def delete_files_from_s3(account_settings, files):
+    """
+    Delete multiple files from S3 and the database.
+    
+    Args:
+        account_settings: Setting object containing AWS credentials
+        files: List of File objects to delete
+        
+    Returns:
+        Tuple of (success, error_message)
+    """
+    try:
+        # Create S3 client
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        
+        # Delete each file from S3
+        for file in files:
+            try:
+                # Delete all versions of the file
+                versions = s3_client.list_object_versions(
+                    Bucket=account_settings.bucket_name,
+                    Prefix=file.key
+                )
+                
+                # Delete version markers first
+                if 'DeleteMarkers' in versions:
+                    delete_markers = [
+                        {'Key': file.key, 'VersionId': marker['VersionId']}
+                        for marker in versions['DeleteMarkers']
+                    ]
+                    if delete_markers:
+                        s3_client.delete_objects(
+                            Bucket=account_settings.bucket_name,
+                            Delete={'Objects': delete_markers}
+                        )
+                
+                # Then delete all versions
+                if 'Versions' in versions:
+                    version_objects = [
+                        {'Key': file.key, 'VersionId': version['VersionId']}
+                        for version in versions['Versions']
+                    ]
+                    if version_objects:
+                        s3_client.delete_objects(
+                            Bucket=account_settings.bucket_name,
+                            Delete={'Objects': version_objects}
+                        )
+                
+                # Delete the file from database
+                db.session.delete(file)
+                
+            except Exception as e:
+                logging.error(f"Error deleting file {file.key}: {e}")
+                continue
+        
+        db.session.commit()
+        return True, None
+        
+    except Exception as e:
+        logging.error(f"Error in delete_files_from_s3: {e}")
+        db.session.rollback()
+        return False, str(e)

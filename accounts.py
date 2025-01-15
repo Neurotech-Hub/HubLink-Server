@@ -15,6 +15,7 @@ import zipfile
 from werkzeug.utils import secure_filename
 import io
 import shutil
+from utils import admin_required  # Import admin_required from utils
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -143,20 +144,6 @@ def update_settings(account_url):
         logging.error(f"There was an issue updating the settings: {e}")
         return "There was an issue updating the settings."
 
-# Route to delete an account
-@accounts_bp.route('/<account_url>/delete', methods=['POST'])
-def delete_account(account_url):
-    account = Account.query.filter_by(url=account_url).first_or_404()
-    try:
-        db.session.delete(account)
-        db.session.commit()
-        flash('Account deleted successfully', 'success')
-    except Exception as e:
-        db.session.rollback()
-        flash('Error deleting account', 'error')
-        logging.error(f"Error deleting account {account_url}: {e}")
-    return redirect(url_for('admin'))
-
 def get_directory_paths(account_id):
     """Get unique directory paths from files for an account, including all intermediate directories."""
     files = File.query.filter_by(account_id=account_id)\
@@ -205,7 +192,15 @@ def account_data(account_url, directory=None):
         if directory:
             # Escape special characters in the directory path for the LIKE query
             escaped_directory = directory.replace('%', '\\%').replace('_', '\\_')
-            query = query.filter(File.key.like(f"{escaped_directory}/%"))
+            directory_query = query.filter(File.key.like(f"{escaped_directory}/%"))
+            
+            # Check if the directory has any files
+            if directory_query.count() == 0:
+                # If no files found in this directory, redirect to base data page
+                flash(f'No files found in directory "{directory}"', 'info')
+                return redirect(url_for('accounts.account_data', account_url=account_url))
+            
+            query = directory_query
         
         # Get paginated results
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -1121,3 +1116,106 @@ def download_files(account_url):
     finally:
         if temp_dir and os.path.exists(temp_dir):
             shutil.rmtree(temp_dir)
+
+@accounts_bp.route('/<account_url>/files/delete', methods=['POST'])
+@admin_required
+def delete_files(account_url):
+    try:
+        # Get target account and its settings
+        target_account = Account.query.filter_by(url=account_url).first_or_404()
+        target_settings = Setting.query.filter_by(account_id=target_account.id).first_or_404()
+        
+        # Get admin account settings for deletion
+        admin_account = Account.query.filter_by(is_admin=True).first()
+        if not admin_account:
+            return jsonify({'error': 'Admin account not found'}), 500
+            
+        admin_settings = Setting.query.filter_by(account_id=admin_account.id).first()
+        if not admin_settings:
+            return jsonify({'error': 'Admin settings not found'}), 500
+        
+        data = request.get_json()
+        file_ids = data.get('file_ids', [])
+        current_directory = data.get('directory')  # Get the current directory from request
+        
+        if not file_ids:
+            return jsonify({'error': 'No files selected for deletion'}), 400
+            
+        # Get all selected files from target account
+        files = File.query.filter(File.id.in_(file_ids), File.account_id == target_account.id).all()
+        if not files:
+            return jsonify({'error': 'No files found'}), 404
+            
+        # Delete files using admin settings
+        success, error_message = delete_files_from_s3(admin_settings, files)
+        
+        if success:
+            # Rebuild S3 files using target account settings
+            rebuild_S3_files(target_settings)
+            
+            # If we were in a directory view, check if it still has files
+            if current_directory:
+                # Check if directory still has files
+                has_files = File.query.filter_by(account_id=target_account.id)\
+                    .filter(File.key.like(f"{current_directory}/%"))\
+                    .first() is not None
+                
+                if not has_files:
+                    # Return flag to redirect to base data page
+                    return jsonify({
+                        'message': 'Files deleted successfully',
+                        'redirect': url_for('accounts.account_data', account_url=account_url)
+                    })
+            
+            return jsonify({'message': 'Files deleted successfully'})
+        else:
+            return jsonify({'error': error_message}), 500
+            
+    except Exception as e:
+        logging.error(f"Error deleting files for account {account_url}: {e}")
+        return jsonify({'error': 'There was an error deleting the files'}), 500
+    
+# Route to delete an account
+@accounts_bp.route('/<account_url>/delete', methods=['POST'])
+@admin_required
+def delete_account(account_url):
+    try:
+        # Get target account and its settings
+        target_account = Account.query.filter_by(url=account_url).first_or_404()
+        target_settings = Setting.query.filter_by(account_id=target_account.id).first_or_404()
+        
+        # Get admin account settings for AWS cleanup
+        admin_account = Account.query.filter_by(is_admin=True).first()
+        if not admin_account:
+            flash('Admin account not found', 'error')
+            return redirect(url_for('admin'))
+            
+        admin_settings = Setting.query.filter_by(account_id=admin_account.id).first()
+        if not admin_settings:
+            flash('Admin settings not found', 'error')
+            return redirect(url_for('admin'))
+        
+        # Only attempt AWS cleanup if the target account has AWS resources configured
+        if target_settings.bucket_name and target_settings.aws_access_key_id:
+            try:
+                cleanup_aws_resources(
+                    admin_settings,  # Use admin credentials for cleanup
+                    target_settings.aws_access_key_id.split('/')[-1],  # Extract username from access key
+                    target_settings.bucket_name
+                )
+            except Exception as e:
+                logging.error(f"Error cleaning up AWS resources for account {account_url}: {e}")
+                flash('Error cleaning up AWS resources', 'error')
+                return redirect(url_for('admin'))
+        
+        # Delete the account from database (this will cascade delete settings and files)
+        db.session.delete(target_account)
+        db.session.commit()
+        flash('Account deleted successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting account', 'error')
+        logging.error(f"Error deleting account {account_url}: {e}")
+        
+    return redirect(url_for('admin'))

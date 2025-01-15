@@ -14,6 +14,7 @@ import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
 from functools import wraps
+from utils import admin_required  # Import admin_required from utils
 
 load_dotenv(override=True)
 

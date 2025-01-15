@@ -389,13 +389,6 @@ table td a {
     /* Gives consistent space for labels */
 }
 
-/* Hide footer on mobile devices */
-@media (max-width: 768px) {
-    footer {
-        display: none;
-    }
-}
-
 /* Table Highlighting */
 table:has(.highlight-column) th:last-child,
 table:has(.highlight-column) td:last-child {
@@ -442,37 +435,6 @@ table:has(.highlight-column) td:last-child::after {
     font-weight: 600;
 }
 
-/* Footer styling */
-.footer {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    z-index: 99;
-    /* Below mobile nav but above content */
-}
-
-/* Hide footer when mobile nav is visible */
-@media (max-width: 768px) {
-    .footer {
-        display: none;
-    }
-
-    /* Add padding to main content to prevent overlap with mobile nav */
-    main[role="main"] {
-        padding-bottom: 60px;
-        /* Height of mobile nav */
-    }
-}
-
-/* Ensure footer links are visible on dark background */
-.footer a {
-    transition: opacity 0.2s ease-in-out;
-}
-
-.footer a:hover {
-    opacity: 0.8;
-}
-
 /* Update main content area */
 main[role="main"] {
     padding-top: 76px;
@@ -495,13 +457,38 @@ main[role="main"] {
     /* For full-width pages (like index) */
 }
 
-/* Ensure proper padding for mobile */
+/* Footer styling */
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    z-index: 99;
+}
+
+.footer small {
+    white-space: nowrap;
+}
+
+/* Hide bullet points on mobile */
 @media (max-width: 767.98px) {
     main[role="main"] {
         padding-left: 15px;
         padding-right: 15px;
         padding-bottom: 60px;
     }
+
+    .footer {
+        display: none;
+    }
+}
+
+/* Footer email link styling */
+.footer-email {
+    transition: color 0.2s ease;
+}
+
+.footer-email:hover {
+    color: #fff !important;
 }
 
 /* Public pages specific container */
@@ -534,28 +521,6 @@ main[role="main"] {
     .navbar-nav .nav-link {
         padding: 0.5rem 1rem;
         text-align: center;
-    }
-}
-
-/* Adjust footer text with sidebar */
-@media (min-width: 768px) {
-    .has-sidebar .footer .container-fluid {
-        padding-left: calc(16.666667% + 1rem);
-        /* sidebar width + padding */
-    }
-}
-
-/* Hide footer on mobile */
-@media (max-width: 991.98px) {
-    .footer {
-        display: none;
-    }
-
-    main[role="main"] {
-        padding-bottom: 60px;
-        /* Space for mobile nav */
-        padding-left: 15px;
-        padding-right: 15px;
     }
 }
 
@@ -1456,5 +1421,20 @@ table td code {
 
     .footer-email {
         font-size: 0.85rem;
+    }
+}
+
+/* Adjust footer text with sidebar */
+@media (min-width: 768px) {
+    .has-sidebar .footer .container-fluid {
+        padding-left: calc(16.666667% + 1rem);
+        /* sidebar width + padding */
+    }
+}
+
+/* Hide footer only when mobile nav is present */
+@media (max-width: 767.98px) {
+    .has-sidebar .footer {
+        display: none;
     }
 }

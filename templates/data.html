@@ -6,6 +6,10 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4">Data</h2>
     
+    <!-- Flash Messages -->
+    <div id="alertContainer" class="mb-4">
+    </div>
+    
     <!-- Device Filter Pills and Download Bar -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-3">
         <!-- Directory Filter and Download All -->
@@ -46,6 +50,11 @@
                 <button class="btn btn-primary btn-sm" id="downloadSelectedBtn" disabled>
                     Download Selected
                 </button>
+                {% if session.get('admin_id') %}
+                <button class="btn btn-danger btn-sm" id="deleteSelectedBtn" disabled>
+                    Delete Selected
+                </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -153,18 +162,6 @@
                 </ul>
             </nav>
             {% endif %}
-
-            <!-- Delete Files Button (only shows when device_id is present) -->
-            {% if device_id %}
-            <div class="d-flex justify-content-end mt-5">
-                <form action="/{{ account.url }}/data" method="POST" class="d-inline"
-                    onsubmit="return confirm('Are you sure you want to delete all files for device {{ device_id }}?');">
-                    <input type="hidden" name="device_id" value="{{ device_id }}">
-                    <button type="submit" class="btn btn-outline-danger btn-sm shadow-sm px-4">Delete Files for {{ device_id
-                        }}</button>
-                </form>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -226,6 +223,21 @@
         </div>
     </div>
 </div>
+
+<!-- Delete Progress Modal -->
+<div class="modal fade" id="deleteProgressModal" tabindex="-1" aria-labelledby="deleteProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-4">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 class="mb-3">Deleting Files</h5>
+                <p class="text-muted mb-0" id="deleteStatus">Processing selected files...</p>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -238,6 +250,9 @@
         const selectedSize = document.getElementById('selectedSize');
         const downloadBtn = document.getElementById('downloadSelectedBtn');
         const clearBtn = document.getElementById('clearSelectionBtn');
+        {% if session.get('admin_id') %}
+        const deleteBtn = document.getElementById('deleteSelectedBtn');
+        {% endif %}
         
         selectedCount.textContent = selectedFiles.size;
         
@@ -250,6 +265,9 @@
         // Update button states
         clearBtn.disabled = selectedFiles.size === 0;
         downloadBtn.disabled = selectedFiles.size === 0 || totalSize > ONE_GB;
+        {% if session.get('admin_id') %}
+        deleteBtn.disabled = selectedFiles.size === 0;
+        {% endif %}
         
         if (totalSize > ONE_GB) {
             downloadBtn.title = "File download exceeds 1GB. Please connect to your S3 bucket using API methods.";
@@ -361,6 +379,79 @@
             }, 2000);
         }
     });
+
+    {% if session.get('admin_id') %}
+    // Delete selected files
+    document.getElementById('deleteSelectedBtn').addEventListener('click', async function() {
+        if (selectedFiles.size === 0) return;
+        
+        if (!confirm('Are you sure you want to delete these files? This action cannot be undone.')) {
+            return;
+        }
+        
+        const fileIds = Array.from(selectedFiles.keys());
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteProgressModal'));
+        deleteModal.show();
+        
+        try {
+            const response = await fetch('{{ url_for("accounts.delete_files", account_url=account.url) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    file_ids: fileIds,
+                    directory: '{{ current_directory }}'
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Delete failed');
+            }
+            
+            const data = await response.json();
+            
+            // Hide the modal
+            deleteModal.hide();
+            document.querySelector('.modal-backdrop')?.remove();
+            document.body.classList.remove('modal-open');
+            
+            // Show success message using Bootstrap alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.getElementById('alertContainer').appendChild(alertDiv);
+            
+            // Wait a moment to show the message before redirecting/refreshing
+            setTimeout(() => {
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    window.location.reload();
+                }
+            }, 3000);
+            
+        } catch (error) {
+            // Hide the modal
+            deleteModal.hide();
+            document.querySelector('.modal-backdrop')?.remove();
+            document.body.classList.remove('modal-open');
+            
+            // Show error in alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ${error.message || 'Delete failed. Please try again.'}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            document.getElementById('alertContainer').appendChild(alertDiv);
+        }
+    });
+    {% endif %}
 
     function updateActiveFiles() {
         fetch('{{ url_for("accounts.get_recent_checks", account_url=account.url) }}')
