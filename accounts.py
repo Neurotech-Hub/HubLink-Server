@@ -1136,7 +1136,7 @@ def delete_files(account_url):
         
         data = request.get_json()
         file_ids = data.get('file_ids', [])
-        current_directory = data.get('directory')  # Get the current directory from request
+        current_directory = data.get('directory')
         
         if not file_ids:
             return jsonify({'error': 'No files selected for deletion'}), 400
@@ -1153,6 +1153,9 @@ def delete_files(account_url):
             # Rebuild S3 files using target account settings
             rebuild_S3_files(target_settings)
             
+            # Add flash message before redirect
+            flash('Files deleted successfully', 'success')
+            
             # If we were in a directory view, check if it still has files
             if current_directory:
                 # Check if directory still has files
@@ -1163,11 +1166,11 @@ def delete_files(account_url):
                 if not has_files:
                     # Return flag to redirect to base data page
                     return jsonify({
-                        'message': 'Files deleted successfully',
                         'redirect': url_for('accounts.account_data', account_url=account_url)
                     })
             
-            return jsonify({'message': 'Files deleted successfully'})
+            return jsonify({'success': True})
+            
         else:
             return jsonify({'error': error_message}), 500
             

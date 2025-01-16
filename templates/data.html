@@ -412,28 +412,12 @@
             
             const data = await response.json();
             
-            // Hide the modal
-            deleteModal.hide();
-            document.querySelector('.modal-backdrop')?.remove();
-            document.body.classList.remove('modal-open');
-            
-            // Show success message using Bootstrap alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-success alert-dismissible fade show';
-            alertDiv.innerHTML = `
-                ${data.message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            document.getElementById('alertContainer').appendChild(alertDiv);
-            
-            // Wait a moment to show the message before redirecting/refreshing
-            setTimeout(() => {
-                if (data.redirect) {
-                    window.location.href = data.redirect;
-                } else {
-                    window.location.reload();
-                }
-            }, 3000);
+            // Immediately redirect or refresh
+            if (data.redirect) {
+                window.location.href = data.redirect;
+            } else {
+                window.location.reload();
+            }
             
         } catch (error) {
             // Hide the modal

@@ -69,7 +69,7 @@ def rebuild_S3_files(account_settings):
                                 logging.info(f"File {file_key} version changed from {existing_file.version} to {version_count}")
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
-                                existing_file.last_checked = datetime.now(timezone.utc)
+                                existing_file.last_checked = existing_file.last_checked
                                 existing_file.version = version_count
                                 existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                                 db.session.add(existing_file)
