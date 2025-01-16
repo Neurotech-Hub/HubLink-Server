@@ -36,23 +36,23 @@
         </div>
 
         <!-- Download Selection Info -->
-        <div class="download-selection d-flex flex-column flex-md-row align-items-end gap-2 w-100 w-md-auto">
-            <div class="d-flex gap-2 justify-content-end w-100">
+        <div class="download-selection d-flex flex-column flex-md-row align-items-end gap-2">
+            <div class="d-flex gap-2 w-100">
                 <span class="text-muted text-nowrap">
                     <span id="selectedCount">0</span> files selected
                     (<span id="selectedSize">0 B</span>)
                 </span>
             </div>
-            <div class="d-flex gap-2 justify-content-end w-100">
-                <button class="btn btn-outline-secondary btn-sm" id="clearSelectionBtn" disabled>
-                    Clear Selection
+            <div class="d-flex gap-1">
+                <button class="btn btn-outline-secondary btn-sm text-nowrap" id="clearSelectionBtn" disabled>
+                    Clear
                 </button>
-                <button class="btn btn-primary btn-sm" id="downloadSelectedBtn" disabled>
-                    Download Selected
+                <button class="btn btn-primary btn-sm text-nowrap" id="downloadSelectedBtn" disabled>
+                    Download
                 </button>
                 {% if session.get('admin_id') %}
-                <button class="btn btn-danger btn-sm" id="deleteSelectedBtn" disabled>
-                    Delete Selected
+                <button class="btn btn-danger btn-sm text-nowrap" id="deleteSelectedBtn" disabled>
+                    Delete
                 </button>
                 {% endif %}
             </div>

@@ -1437,3 +1437,9 @@ table td code {
         display: none;
     }
 }
+
+/* Ensure download selection area doesn't overflow */
+.download-selection {
+    min-width: auto;
+    max-width: 100%;
+}
