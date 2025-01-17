@@ -15,7 +15,7 @@ import zipfile
 from werkzeug.utils import secure_filename
 import io
 import shutil
-from utils import admin_required  # Import admin_required from utils
+from utils import admin_required, get_analytics  # Import get_analytics
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -336,20 +336,124 @@ def account_dashboard(account_url):
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         
+        # Get analytics for this account
+        analytics = get_analytics(account.id)
+        if not analytics:
+            flash('Error loading analytics', 'error')
+            analytics = {}
+        
         # Get all files for this account
         files = File.query.filter_by(account_id=account.id).all()
         
         # Prepare data for charts
         file_uploads = [file.last_modified.isoformat() for file in files if file.last_modified]
         
-        # Get device upload counts
-        device_counts = {}
-        for file in files:
-            device = file.key.split('/')[0]  # Get device name from file key
-            device_counts[device] = device_counts.get(device, 0) + 1
+        # Analyze directory structure
+        dir_data = {}
+        common_prefix = None
         
-        devices = list(device_counts.keys())
-        device_upload_counts = [device_counts[device] for device in devices]
+        # First, collect all unique paths at each level
+        paths_by_level = {}
+        has_root_files = False
+        
+        for file in files:
+            path_parts = file.key.split('/')
+            # Skip hidden files and files in hidden directories
+            if any(part.startswith('.') for part in path_parts):
+                continue
+            
+            # Check if this is a root-level file
+            if len(path_parts) == 1:  # Just a filename
+                has_root_files = True
+                continue
+            
+            # Store unique directory names at each level
+            for i, part in enumerate(path_parts[:-1]):  # Exclude filename
+                if i not in paths_by_level:
+                    paths_by_level[i] = set()
+                paths_by_level[i].add(part)
+        
+        # If we have root files, we need to show distribution at root level
+        if has_root_files:
+            display_level = 0
+            paths_by_level[0] = paths_by_level.get(0, set())
+            paths_by_level[0].add('Root')
+        else:
+            # Find the first level where paths diverge (more than one unique directory)
+            display_level = 0
+            for level in sorted(paths_by_level.keys()):
+                if len(paths_by_level[level]) > 1:
+                    display_level = level
+                    break
+                elif len(paths_by_level[level]) == 1:
+                    display_level = level
+        
+        if paths_by_level or has_root_files:  # If we found any valid paths or root files
+            # Group files by the display level directory
+            for file in files:
+                path_parts = file.key.split('/')
+                
+                # Skip hidden files and files in hidden directories
+                if any(part.startswith('.') for part in path_parts):
+                    continue
+                
+                # Handle root-level files
+                if len(path_parts) == 1:
+                    dir_name = 'Root'
+                # Get the directory at the display level
+                elif len(path_parts) > display_level:
+                    dir_name = path_parts[display_level]
+                else:
+                    continue  # Skip files that don't have enough path depth
+                
+                if dir_name not in dir_data:
+                    dir_data[dir_name] = {
+                        'count': 0,
+                        'size': 0,
+                        'latest_date': None,
+                        'subdirs': set()
+                    }
+                
+                dir_data[dir_name]['count'] += 1
+                dir_data[dir_name]['size'] += file.size
+                
+                # Track latest modification date
+                if file.last_modified:
+                    if not dir_data[dir_name]['latest_date'] or \
+                       file.last_modified > dir_data[dir_name]['latest_date']:
+                        dir_data[dir_name]['latest_date'] = file.last_modified
+                
+                # Track subdirectories
+                if len(path_parts) > display_level + 1:
+                    # Only track non-hidden subdirectories
+                    subdirs = [d for d in path_parts[display_level + 1:-1] if not d.startswith('.')]
+                    dir_data[dir_name]['subdirs'].update(subdirs)
+            
+            # Set the common prefix for display (excluding hidden directories)
+            if display_level > 0:
+                # Get the first file's path as a reference for the common prefix
+                for file in files:
+                    path_parts = file.key.split('/')
+                    if any(part.startswith('.') for part in path_parts):
+                        continue
+                    if len(path_parts) > display_level:
+                        common_prefix = '/'.join(path_parts[:display_level])
+                        break
+        
+        # Convert directory data for the chart
+        dir_names = sorted(dir_data.keys())  # Sort directory names alphabetically
+        dir_counts = [dir_data[d]['count'] for d in dir_names]
+        dir_details = {
+            d: {
+                'size': dir_data[d]['size'],
+                'latest_date': dir_data[d]['latest_date'].isoformat() if dir_data[d]['latest_date'] else None,
+                'subdir_count': len(dir_data[d]['subdirs'])
+            } for d in dir_names
+        }
+        
+        # Debug logging
+        logging.info(f"Directory Names: {dir_names}")
+        logging.info(f"Directory Counts: {dir_counts}")
         
         # Get recent gateway activity
         gateways = Gateway.query.filter_by(account_id=account.id)\
@@ -363,9 +467,12 @@ def account_dashboard(account_url):
             'dashboard.html',
             account=account,
             file_uploads=file_uploads,
-            devices=devices,
-            device_upload_counts=device_upload_counts,
-            gateways=gateways
+            dir_names=dir_names,
+            dir_counts=dir_counts,
+            dir_details=dir_details,
+            common_prefix=common_prefix,
+            gateways=gateways,
+            analytics=analytics
         )
     except Exception as e:
         logging.error(f"Error loading dashboard for {account_url}: {e}")

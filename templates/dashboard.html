@@ -5,6 +5,62 @@
 {% block content %}
 <div class="container-fluid py-4">
     <h2 class="mb-4">Dashboard</h2>
+
+    <!-- Analytics Cards -->
+    <div class="row g-3 mb-4">
+        <!-- File Uploads Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted fw-normal mb-0">File Uploads</h6>
+                            <h4 class="mb-0">{{ analytics.total_uploaded_files }}</h4>
+                            <small class="text-muted">{{ analytics.total_file_downloads }} downloads</small>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-file-earmark text-success fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Page Views Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted fw-normal mb-0">Page Loads</h6>
+                            <h4 class="mb-0">{{ analytics.total_page_loads }}</h4>
+                            <small class="text-muted">{{ analytics.total_settings_updated }} settings updates</small>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-graph-up text-warning fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Gateway Activity Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted fw-normal mb-0">Gateways</h6>
+                            <h4 class="mb-0">{{ analytics.total_gateways }}</h4>
+                            <small class="text-muted">{{ analytics.total_gateway_pings }} pings</small>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-hdd-network text-info fs-3"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Line Chart Section: File Uploads Over Time -->
     <div class="row mb-4">
         <div class="col-12">
@@ -17,14 +73,21 @@
         </div>
     </div>
 
-    <!-- Side by Side Section: Uploads vs Device & Gateways Table -->
+    <!-- Side by Side Section: Directory Distribution & Gateways Table -->
     <div class="row">
-        <!-- Device Upload Chart -->
+        <!-- Directory Distribution Chart -->
         <div class="col-md-6 mb-4">
             <div class="card h-100">
                 <div class="card-body">
-                    <h5 class="card-title"><i class="bi bi-device-hdd"></i> File Uploads by Device</h5>
-                    <div id="uploadsBarChart"></div>
+                    <h5 class="card-title">
+                        <i class="bi bi-folder"></i> 
+                        {% if common_prefix %}
+                            Directory Distribution under /{{ common_prefix }}/
+                        {% else %}
+                            Directory Distribution
+                        {% endif %}
+                    </h5>
+                    <div id="directoryBarChart"></div>
                 </div>
             </div>
         </div>
@@ -63,105 +126,137 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Get raw timestamps from server
-        var fileUploads = {{ file_uploads | tojson | safe
-    }};
-    var devices = {{ devices | tojson | safe }};
-    var deviceUploadCounts = {{ device_upload_counts | tojson | safe }};
+        var fileUploads = {{ file_uploads | tojson | safe }};
+        var dirNames = {{ dir_names | tojson | safe }};
+        var dirCounts = {{ dir_counts | tojson | safe }};
+        var dirDetails = {{ dir_details | tojson | safe }};
 
-    // Process timestamps into daily buckets using browser's local timezone
-    var dailyCounts = {};
-    var today = new Date();
-    today.setHours(0, 0, 0, 0);
-    var startDate = new Date(today);
-    startDate.setDate(today.getDate() - 30);
+        // Process timestamps into daily buckets using browser's local timezone
+        var dailyCounts = {};
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
 
-    // Initialize all dates with 0 counts
-    for (let i = 0; i < 31; i++) {
-        let date = new Date(startDate);
-        date.setDate(startDate.getDate() + i);
-        dailyCounts[date.toISOString().split('T')[0]] = 0;
-    }
-
-    // Count files per day in local timezone
-    fileUploads.forEach(timestamp => {
-        let date = new Date(timestamp);
-        let dateStr = date.toISOString().split('T')[0];
-        if (dateStr in dailyCounts) {
-            dailyCounts[dateStr]++;
+        // Initialize all dates with 0 counts
+        for (let i = 0; i < 31; i++) {
+            let date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            dailyCounts[date.toISOString().split('T')[0]] = 0;
         }
+
+        // Count files per day in local timezone
+        fileUploads.forEach(timestamp => {
+            let date = new Date(timestamp);
+            let dateStr = date.toISOString().split('T')[0];
+            if (dateStr in dailyCounts) {
+                dailyCounts[dateStr]++;
+            }
+        });
+
+        // Line Chart: File Uploads Over Time
+        var lineTrace = {
+            x: Object.keys(dailyCounts),
+            y: Object.values(dailyCounts),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            line: {
+                color: 'rgb(75, 192, 192)',
+                width: 2
+            },
+            fillcolor: 'rgba(75, 192, 192, 0.2)'
+        };
+
+        var lineLayout = {
+            height: 400,
+            margin: { t: 10, r: 10, b: 40, l: 40 },
+            xaxis: {
+                showgrid: true,
+                gridcolor: 'rgba(0,0,0,0.1)',
+                title: 'Date'
+            },
+            yaxis: {
+                showgrid: true,
+                gridcolor: 'rgba(0,0,0,0.1)',
+                zeroline: false,
+                title: 'Number of Uploads'
+            },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+        };
+
+        // Bar Chart: Directory Distribution
+        var barTrace = {
+            x: dirNames,
+            y: dirCounts,
+            type: 'bar',
+            marker: {
+                color: 'rgba(153, 102, 255, 0.6)',
+                line: {
+                    color: 'rgba(153, 102, 255, 1)',
+                    width: 1
+                }
+            },
+            hovertemplate: 
+                '<b>Full Path: /%{x}' + ({{ common_prefix | tojson | safe }} ? '/{{ common_prefix | tojson | safe }}' : '') + '</b><br>' +
+                'Files: %{y}<br>' +
+                'Size: %{customdata[0]}<br>' +
+                'Latest: %{customdata[1]}<br>' +
+                'Subdirs: %{customdata[2]}<br>' +
+                '<extra></extra>',
+            customdata: dirNames.map(name => [
+                formatFileSize(dirDetails[name].size),
+                dirDetails[name].latest_date ? moment(dirDetails[name].latest_date).format('MMM D, YYYY') : 'Never',
+                dirDetails[name].subdir_count
+            ])
+        };
+
+        var barLayout = {
+            height: 400,
+            margin: { t: 10, r: 10, b: 100, l: 40 },
+            xaxis: {
+                showgrid: false,
+                tickangle: -45,
+                title: {
+                    text: 'Directory',
+                    standoff: 40
+                },
+                type: 'category',
+                tickmode: 'array',
+                ticktext: dirNames,
+                tickvals: dirNames
+            },
+            yaxis: {
+                showgrid: true,
+                gridcolor: 'rgba(0,0,0,0.1)',
+                zeroline: false,
+                title: 'Number of Files'
+            },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        Plotly.newPlot('uploadsLineChart', [lineTrace], lineLayout, config);
+        Plotly.newPlot('directoryBarChart', [barTrace], barLayout, config);
     });
 
-    // Line Chart: File Uploads Over Time
-    var lineTrace = {
-        x: Object.keys(dailyCounts),
-        y: Object.values(dailyCounts),
-        type: 'scatter',
-        mode: 'lines',
-        fill: 'tozeroy',
-        line: {
-            color: 'rgb(75, 192, 192)',
-            width: 2
-        },
-        fillcolor: 'rgba(75, 192, 192, 0.2)'
-    };
-
-    var lineLayout = {
-        height: 400,
-        margin: { t: 10, r: 10, b: 40, l: 40 },
-        xaxis: {
-            showgrid: true,
-            gridcolor: 'rgba(0,0,0,0.1)',
-            title: 'Date'
-        },
-        yaxis: {
-            showgrid: true,
-            gridcolor: 'rgba(0,0,0,0.1)',
-            zeroline: false,
-            title: 'Number of Uploads'
-        },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)'
-    };
-
-    // Bar Chart: Device Uploads
-    var barTrace = {
-        x: devices,
-        y: deviceUploadCounts,
-        type: 'bar',
-        marker: {
-            color: 'rgba(153, 102, 255, 0.6)',
-            line: {
-                color: 'rgba(153, 102, 255, 1)',
-                width: 1
-            }
+    function formatFileSize(bytes) {
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let size = bytes;
+        let unitIndex = 0;
+        
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
         }
-    };
-
-    var barLayout = {
-        height: 400,
-        margin: { t: 10, r: 10, b: 60, l: 40 },
-        xaxis: {
-            showgrid: false,
-            tickangle: -45,
-            title: 'Device'
-        },
-        yaxis: {
-            showgrid: true,
-            gridcolor: 'rgba(0,0,0,0.1)',
-            zeroline: false,
-            title: 'Number of Files'
-        },
-        paper_bgcolor: 'rgba(0,0,0,0)',
-        plot_bgcolor: 'rgba(0,0,0,0)'
-    };
-
-    const config = {
-        responsive: true,
-        displayModeBar: false
-    };
-
-    Plotly.newPlot('uploadsLineChart', [lineTrace], lineLayout, config);
-    Plotly.newPlot('uploadsBarChart', [barTrace], barLayout, config);
-});
+        
+        return `${Math.round(size * 100) / 100} ${units[unitIndex]}`;
+    }
 </script>
 {% endblock %}

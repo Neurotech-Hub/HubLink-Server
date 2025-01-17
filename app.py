@@ -14,7 +14,7 @@ import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
 from functools import wraps
-from utils import admin_required  # Import admin_required from utils
+from utils import admin_required, get_analytics
 
 load_dotenv(override=True)
 
@@ -147,18 +147,11 @@ def admin():
                 g.title = "Admin"
                 try:
                     all_accounts = Account.query.all()
-                    total_gateways = db.session.query(Gateway.name).distinct().count()
+                    analytics = get_analytics()  # Get analytics for all accounts
                     
-                    analytics = {
-                        'total_accounts': len(all_accounts),
-                        'total_gateways': total_gateways,
-                        'total_gateway_pings': db.session.query(db.func.sum(Account.count_gateway_pings)).scalar() or 0,
-                        'total_page_loads': db.session.query(db.func.sum(Account.count_page_loads)).scalar() or 0,
-                        'active_accounts': db.session.query(Account).filter(Account.count_page_loads > 0).count(),
-                        'total_file_downloads': db.session.query(db.func.sum(Account.count_file_downloads)).scalar() or 0,
-                        'total_settings_updated': db.session.query(db.func.sum(Account.count_settings_updated)).scalar() or 0,
-                        'total_uploaded_files': db.session.query(db.func.sum(Account.count_uploaded_files)).scalar() or 0
-                    }
+                    if not analytics:
+                        flash('Error loading analytics', 'error')
+                        analytics = {}
                     
                     return render_template('admin.html', 
                                          accounts=all_accounts,
