@@ -133,7 +133,7 @@ def process_timeseries_plot(plot, csv_content):
                          'hublink_device_id': 'Device'
                      })
         
-        # Add markers and customize appearance
+        # Add markers and customize appearance for timeline
         fig.update_traces(
             mode='lines+markers',
             marker=dict(
@@ -141,8 +141,12 @@ def process_timeseries_plot(plot, csv_content):
                 opacity=0.7
             ),
             line=dict(
-                width=2
-            )
+                color='rgb(75, 192, 192)',  # Match dashboard.html color
+                width=2,
+                shape='spline'
+            ),
+            fill='tozeroy',
+            fillcolor='rgba(75, 192, 192, 0.2)'  # Match dashboard.html fill color
         )
         
         fig.update_layout(get_default_layout(plot.name))
@@ -176,6 +180,20 @@ def process_box_plot(plot, csv_content):
                         'hublink_device_id': 'Device',
                         y_data: config['y_data']
                     })
+        
+        # Update box appearance with blue color scheme
+        fig.update_traces(
+            marker=dict(
+                color='rgba(54, 162, 235, 0.6)',  # Light blue at 0.6 opacity
+                line=dict(
+                    color='rgba(54, 162, 235, 1)',  # Solid border
+                    width=1
+                )
+            ),
+            line=dict(
+                color='rgba(54, 162, 235, 1)'  # Solid border for whiskers and median line
+            )
+        )
         
         fig.update_layout(get_default_layout(plot.name))
         fig.update_layout(boxmode='group')
@@ -211,6 +229,17 @@ def process_bar_plot(plot, csv_content):
                          'mean': f'{y_data} (Mean)',
                          'std': 'Standard Deviation'
                      })
+        
+        # Update bar appearance to exactly match dashboard style
+        fig.update_traces(
+            marker=dict(
+                color='rgba(153, 102, 255, 0.6)',  # Purple at 0.6 opacity
+                line=dict(
+                    color='rgba(153, 102, 255, 1)',  # Solid border
+                    width=1
+                )
+            )
+        )
         
         fig.update_layout(get_default_layout(plot.name))
         
