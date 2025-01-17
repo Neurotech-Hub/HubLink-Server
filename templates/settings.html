@@ -33,7 +33,7 @@
             {% endif %}
             {% endwith %}
 
-            <form id="settings-form" action="/{{ account.url }}/settings/update" method="POST" class="needs-validation" novalidate>
+            <form id="settings-form" action="{{ url_for('accounts.update_settings', account_url=account.url) }}" method="post" class="needs-validation" novalidate>
                 <div class="row g-4">
                     <div class="col-12">
                         <h3>Storage</h3>
@@ -41,48 +41,37 @@
                         <div class="mb-4">
                             <label for="aws_access_key_id" class="form-label fw-bold">AWS Access Key ID:</label>
                             <input type="text" id="aws_access_key_id" name="aws_access_key_id" class="form-control"
-                                value="{{ settings.aws_access_key_id }}">
+                                value="{{ settings.aws_access_key_id }}" {% if not session.get('admin_id') %}readonly{% endif %}>
                         </div>
 
                         <div class="mb-4">
                             <label for="aws_secret_access_key" class="form-label fw-bold">AWS Secret Access Key:</label>
-                            <input type="text" id="aws_secret_access_key" name="aws_secret_access_key"
-                                class="form-control" value="{{ settings.aws_secret_access_key }}">
+                            <div class="password-field">
+                                <input type="password" id="aws_secret_access_key" name="aws_secret_access_key"
+                                    class="form-control" value="{{ settings.aws_secret_access_key }}" 
+                                    {% if not session.get('admin_id') %}readonly{% endif %}>
+                                <button type="button" class="password-toggle" onclick="toggleSecretKey()" tabindex="-1">
+                                    <i class="bi bi-eye" id="secretKeyToggleIcon"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="mb-4">
                             <label for="bucket_name" class="form-label">S3 Bucket Name:</label>
                             <input type="text" id="bucket_name" name="bucket_name" class="form-control"
-                                value="{{ settings.bucket_name }}">
+                                value="{{ settings.bucket_name }}" {% if not session.get('admin_id') %}readonly{% endif %}>
+                        </div>
+
+                        <div class="mb-4">
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" onclick="downloadAWSCredentials()">
+                                <i class="bi bi-download"></i> Download AWS Credentials
+                            </button>
                         </div>
 
                         <h3>Gateway</h3>
 
                         <!-- Data Management Settings -->
                         <div class="row g-4">
-                            <!-- <div class="col-12 col-md-4">
-                                <div class="mb-4">
-                                    <label for="dt_rule" class="form-label">Archive Rule:</label>
-                                    <select id="dt_rule" name="dt_rule" class="form-select">
-                                        <option value="seconds" {% if settings.dt_rule=='seconds' %}selected{% endif %}>Seconds
-                                            (YYYYMMDDHHMMSS)</option>
-                                        <option value="hours" {% if settings.dt_rule=='hours' %}selected{% endif %}>Hours
-                                            (YYYYMMDDHH)</option>
-                                        <option value="days" {% if settings.dt_rule=='days' %}selected{% endif %}>Days
-                                            (YYYYMMDD)</option>
-                                        <option value="weeks" {% if settings.dt_rule=='weeks' %}selected{% endif %}>Weeks
-                                            (YYYYWW)</option>
-                                        <option value="months" {% if settings.dt_rule=='months' %}selected{% endif %}>Months
-                                            (YYYYMM)</option>
-                                        <option value="years" {% if settings.dt_rule=='years' %}selected{% endif %}>Years (YYYY)
-                                        </option>
-                                        <option value="never" {% if settings.dt_rule=='never' %}selected{% endif %}>Never
-                                        </option>
-                                    </select>
-                                    <div class="form-text">Sets folder structure, see <a href="/docs">docs</a></div>
-                                </div>
-                            </div> -->
-
                             <div class="col-12 col-md-4">
                                 <div class="mb-4">
                                     <label for="use_cloud" class="form-label">Use/Upload to Cloud:</label>
@@ -96,54 +85,38 @@
                             
                             <div class="col-12 col-md-4">
                                 <div class="mb-4">
-                                    <label for="max_file_size" class="form-label">Max File Size (bytes):</label>
-                                    <input type="number" id="max_file_size" name="max_file_size" class="form-control"
-                                        value="{{ settings.max_file_size }}" required>
-                                    <div class="form-text">Maximum allowed file size</div>
-                                </div>
-                            </div>
-                            
-                        </div>
-
-                        <div class="row g-4" id="delete-scans-row">
-                            <div class="col-12 col-md-4">
-                                <div class="mb-4">
-                                    <label for="delete_scans" class="form-label">Delete Scans from Gateway:</label>
-                                    <select id="delete_scans" name="delete_scans" class="form-select" 
-                                           onchange="toggleDeleteScanInputs()">
-                                        <option value="true" {% if settings.delete_scans %}selected{% endif %}>True</option>
-                                        <option value="false" {% if not settings.delete_scans %}selected{% endif %}>False</option>
+                                    <label for="gateway_manages_memory" class="form-label">Gateway Manages Memory:</label>
+                                    <select id="gateway_manages_memory" name="gateway_manages_memory" class="form-select">
+                                        <option value="true" {% if settings.gateway_manages_memory %}selected{% endif %}>True</option>
+                                        <option value="false" {% if not settings.gateway_manages_memory %}selected{% endif %}>False</option>
                                     </select>
-                                    <div class="form-text">Free up storage space on gateway</div>
+                                    <div class="form-text">Allow the gateway to delete the oldest files if storage is limited</div>
                                 </div>
                             </div>
                             
                             <div class="col-12 col-md-4">
                                 <div class="mb-4">
-                                    <label for="delete_scans_days_old" class="form-label">Delete Scans Older Than (days):</label>
-                                    <input type="number" id="delete_scans_days_old" name="delete_scans_days_old"
-                                        class="form-control" value="{{ settings.delete_scans_days_old }}"
-                                        min="-1">
-                                    <div class="form-text">Age threshold (use "-1" to ignore)</div>
-                                    <div class="invalid-feedback">Must be -1 or a positive number</div>
-                                </div>
-                            </div>
-                            
-                            <div class="col-12 col-md-4">
-                                <div class="mb-4">
-                                    <label for="delete_scans_percent_remaining" class="form-label">Delete Scans Percent Remaining:</label>
-                                    <input type="number" id="delete_scans_percent_remaining"
-                                        name="delete_scans_percent_remaining" class="form-control"
-                                        value="{{ settings.delete_scans_percent_remaining }}"
-                                        min="-1" max="100">
-                                    <div class="form-text">Percent threshold (0–100; use "-1" to ignore)</div>
-                                    <div class="invalid-feedback">Must be -1 or between 0 and 100</div>
-                                </div>
-                            </div>
-                            <div id="delete-scans-warning" class="col-12 d-none">
-                                <div class="alert alert-danger">
-                                    <i class="fa fa-exclamation-triangle me-2"></i>
-                                    You will be responsible for ensuring memory is available.
+                                    <label for="max_file_size" class="form-label">Max File Size:</label>
+                                    <select id="max_file_size" name="max_file_size" class="form-select">
+                                        {% set size_options = {
+                                            '1048576': '1 MB',
+                                            '10485760': '10 MB',
+                                            '104857600': '100 MB',
+                                            '1073741824': '1 GB'
+                                        } %}
+                                        {% for value, label in size_options.items() %}
+                                            <option value="{{ value }}" 
+                                                {% if settings.max_file_size|int > 1073741824 or 
+                                                      (loop.last and settings.max_file_size|int not in size_options|map('int')) %}
+                                                    {% if loop.last %}selected{% endif %}
+                                                {% elif settings.max_file_size|int == value|int %}
+                                                    selected
+                                                {% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Maximum allowed file size</div>
                                 </div>
                             </div>
                         </div>
@@ -156,20 +129,6 @@
                             <div class="form-text">Device name must include this string (can not be blank)</div>
                             <div class="invalid-feedback">Device filter cannot be empty</div>
                         </div>
-
-                        <!-- <div class="mb-4">
-                            <label for="node_payload" class="form-label">Node Payload:</label>
-                            <input type="text" id="node_payload" name="node_payload" class="form-control"
-                                value="{{ settings.node_payload }}" pattern="^$|^[^=;]+=([^=;]+)(;[^=;]+=([^=;]+))*$"
-                                title="Format must be key=value or key=value;key=value">
-                            <small class="form-text text-muted">Example: rtc={timestamp};type=sensor</small>
-                        </div> -->
-
-                        <!-- <div class="mb-4">
-                            <label for="alert_file_starts_with" class="form-label">Alert File (Starts With):</label>
-                            <input type="text" id="alert_file_starts_with" name="alert_file_starts_with"
-                                class="form-control" value="{{ settings.alert_file_starts_with }}">
-                        </div> -->
 
                         <!-- <div class="mb-4">
                             <label for="alert_email" class="form-label">Alert Email:</label>
@@ -201,61 +160,8 @@
         });
     }
 
-    function toggleDeleteScanInputs() {
-        const deleteScansEnabled = document.getElementById('delete_scans').value === 'true';
-        const daysOldInput = document.getElementById('delete_scans_days_old');
-        const percentInput = document.getElementById('delete_scans_percent_remaining');
-        const warningDiv = document.getElementById('delete-scans-warning');
-        const row = document.getElementById('delete-scans-row');
-        
-        // Toggle input fields
-        daysOldInput.disabled = !deleteScansEnabled;
-        percentInput.disabled = !deleteScansEnabled;
-        
-        if (deleteScansEnabled) {
-            row.classList.remove('border', 'border-danger', 'rounded', 'p-3');
-            warningDiv.classList.add('d-none');
-            // Add required validation when enabled
-            daysOldInput.setAttribute('required', '');
-            percentInput.setAttribute('required', '');
-            // Set default values to 90/10
-            daysOldInput.value = '90';
-            percentInput.value = '10';
-        } else {
-            row.classList.add('border', 'border-danger', 'rounded', 'p-3');
-            warningDiv.classList.remove('d-none');
-            // Remove required validation when disabled
-            daysOldInput.removeAttribute('required');
-            percentInput.removeAttribute('required');
-            // Clear the values
-            daysOldInput.value = '';
-            percentInput.value = '';
-        }
-    }
-
     // Form validation
     document.getElementById('settings-form').addEventListener('submit', function(event) {
-        const deleteScansEnabled = document.getElementById('delete_scans').value === 'true';
-        
-        if (deleteScansEnabled) {
-            const daysOld = parseInt(document.getElementById('delete_scans_days_old').value);
-            const percent = parseInt(document.getElementById('delete_scans_percent_remaining').value);
-            
-            if (isNaN(daysOld) || (daysOld !== -1 && daysOld < 0)) {
-                event.preventDefault();
-                document.getElementById('delete_scans_days_old').setCustomValidity('Must be -1 or a positive number');
-            } else {
-                document.getElementById('delete_scans_days_old').setCustomValidity('');
-            }
-            
-            if (isNaN(percent) || (percent !== -1 && (percent < 0 || percent > 100))) {
-                event.preventDefault();
-                document.getElementById('delete_scans_percent_remaining').setCustomValidity('Must be -1 or between 0 and 100');
-            } else {
-                document.getElementById('delete_scans_percent_remaining').setCustomValidity('');
-            }
-        }
-        
         if (!this.checkValidity()) {
             event.preventDefault();
             event.stopPropagation();
@@ -263,9 +169,42 @@
         this.classList.add('was-validated');
     }, false);
 
-    // Run on page load to set initial state
-    document.addEventListener('DOMContentLoaded', function() {
-        toggleDeleteScanInputs();
-    });
+    function toggleSecretKey() {
+        const input = document.getElementById('aws_secret_access_key');
+        const icon = document.getElementById('secretKeyToggleIcon');
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.classList.remove('bi-eye');
+            icon.classList.add('bi-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.remove('bi-eye-slash');
+            icon.classList.add('bi-eye');
+        }
+    }
+
+    function downloadAWSCredentials() {
+        const credentials = {
+            aws_access_key_id: document.getElementById('aws_access_key_id').value,
+            aws_secret_access_key: document.getElementById('aws_secret_access_key').value,
+            bucket_name: document.getElementById('bucket_name').value
+        };
+
+        // Create a Blob with the JSON data
+        const blob = new Blob([JSON.stringify(credentials, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Create a temporary link and trigger download
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'aws_credentials.json';
+        document.body.appendChild(a);
+        a.click();
+        
+        // Cleanup
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    }
 </script>
 {% endblock %}

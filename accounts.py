@@ -82,27 +82,11 @@ def update_settings(account_url):
             flash("Device Filter by Name cannot be empty", "error")
             return redirect(url_for('accounts.account_settings', account_url=account_url))
 
-        # Validate delete scans settings
-        delete_scans = request.form['delete_scans'] == 'true'
-        if delete_scans:
-            days_old = request.form.get('delete_scans_days_old', '')
-            percent_remaining = request.form.get('delete_scans_percent_remaining', '')
-            
-            try:
-                days_old = int(days_old)
-                percent_remaining = int(percent_remaining)
-                
-                if days_old != -1 and days_old < 0:
-                    flash("Delete Scans Days Old must be -1 or a positive number", "error")
-                    return redirect(url_for('accounts.account_settings', account_url=account_url))
-                    
-                if percent_remaining != -1 and (percent_remaining < 0 or percent_remaining > 100):
-                    flash("Delete Scans Percent Remaining must be -1 or between 0 and 100", "error")
-                    return redirect(url_for('accounts.account_settings', account_url=account_url))
-                    
-            except ValueError:
-                flash("Invalid values for delete scans settings", "error")
-                return redirect(url_for('accounts.account_settings', account_url=account_url))
+        # Validate max_file_size is 1GB or less
+        max_file_size = int(request.form['max_file_size'])
+        if max_file_size > 1073741824:  # 1GB in bytes
+            flash("Max file size cannot exceed 1GB", "error")
+            return redirect(url_for('accounts.account_settings', account_url=account_url))
 
         # Track original values
         original_access_key = settings.aws_access_key_id
@@ -113,19 +97,9 @@ def update_settings(account_url):
         settings.aws_access_key_id = request.form['aws_access_key_id']
         settings.aws_secret_access_key = request.form['aws_secret_access_key']
         settings.bucket_name = request.form['bucket_name']
-        settings.max_file_size = int(request.form['max_file_size'])
+        settings.max_file_size = max_file_size
         settings.use_cloud = request.form['use_cloud'] == 'true'
-        settings.delete_scans = delete_scans
-        
-        # Only process these fields if delete_scans is True
-        if delete_scans:
-            settings.delete_scans_days_old = days_old
-            settings.delete_scans_percent_remaining = percent_remaining
-        else:
-            # Set to None when delete_scans is False
-            settings.delete_scans_days_old = None
-            settings.delete_scans_percent_remaining = None
-            
+        settings.gateway_manages_memory = request.form['gateway_manages_memory'] == 'true'
         settings.device_name_includes = device_name_includes
 
         # Check if any of the AWS settings were updated

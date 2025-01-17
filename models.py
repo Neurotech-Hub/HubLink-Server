@@ -3,25 +3,26 @@ from datetime import datetime, timezone
 import logging
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.sql import func
 
 db = SQLAlchemy()
 
 # Define the accounts model
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    url = db.Column(db.String(200), nullable=False, unique=True)
-    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    name = db.Column(db.String(100), nullable=False, server_default='')
+    url = db.Column(db.String(200), nullable=False, unique=True, server_default='')
+    updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
     # Add new tracking columns with default value of 0
-    count_gateway_pings = db.Column(db.Integer, nullable=False, default=0)
-    count_uploaded_files = db.Column(db.Integer, nullable=False, default=0)
-    count_page_loads = db.Column(db.Integer, nullable=False, default=0)
-    count_file_downloads = db.Column(db.Integer, nullable=False, default=0)
-    count_settings_updated = db.Column(db.Integer, nullable=False, default=0)
-    is_admin = db.Column(db.Boolean, nullable=False, default=False)
-    password_hash = db.Column(db.String(256), nullable=True)
-    use_password = db.Column(db.Boolean, nullable=False, default=False)
+    count_gateway_pings = db.Column(db.Integer, nullable=False, server_default='0')
+    count_uploaded_files = db.Column(db.Integer, nullable=False, server_default='0')
+    count_page_loads = db.Column(db.Integer, nullable=False, server_default='0')
+    count_file_downloads = db.Column(db.Integer, nullable=False, server_default='0')
+    count_settings_updated = db.Column(db.Integer, nullable=False, server_default='0')
+    is_admin = db.Column(db.Boolean, nullable=False, server_default='0')
+    password_hash = db.Column(db.String(256), nullable=True, server_default=None)
+    use_password = db.Column(db.Boolean, nullable=False, server_default='0')
 
     # Define relationship with settings
     settings = db.relationship('Setting', backref='account', uselist=False, 
@@ -59,19 +60,14 @@ class Account(db.Model):
 class Setting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    aws_access_key_id = db.Column(db.String(200), nullable=True)
-    aws_secret_access_key = db.Column(db.String(200), nullable=True)
-    bucket_name = db.Column(db.String(200), nullable=True)
-    dt_rule = db.Column(db.String(50), nullable=False)
-    max_file_size = db.Column(db.Integer, nullable=False)
-    use_cloud = db.Column(db.Boolean, nullable=False)
-    delete_scans = db.Column(db.Boolean, nullable=False)
-    delete_scans_days_old = db.Column(db.Integer, nullable=True)
-    delete_scans_percent_remaining = db.Column(db.Integer, nullable=True)
-    device_name_includes = db.Column(db.String(100), nullable=True)
-    alert_file_starts_with = db.Column(db.String(100), nullable=False, default="")
-    alert_email = db.Column(db.String(100), nullable=True)
-    node_payload = db.Column(db.String(100), nullable=False, default="")
+    aws_access_key_id = db.Column(db.String(200), nullable=True, server_default='')
+    aws_secret_access_key = db.Column(db.String(200), nullable=True, server_default='')
+    bucket_name = db.Column(db.String(200), nullable=True, server_default='')
+    max_file_size = db.Column(db.Integer, nullable=False, server_default='1073741824')
+    use_cloud = db.Column(db.Boolean, nullable=False, server_default='0')
+    device_name_includes = db.Column(db.String(100), nullable=True, server_default='HUBLINK')
+    alert_email = db.Column(db.String(100), nullable=True, server_default='')
+    gateway_manages_memory = db.Column(db.Boolean, nullable=False, server_default='1')
 
     def __repr__(self):
         return f"<Setting for Account {self.account_id}>"
@@ -81,27 +77,22 @@ class Setting(db.Model):
             'aws_access_key_id': self.aws_access_key_id,
             'aws_secret_access_key': self.aws_secret_access_key,
             'bucket_name': self.bucket_name,
-            'dt_rule': self.dt_rule,
             'max_file_size': self.max_file_size,
             'use_cloud': self.use_cloud,
-            'delete_scans': self.delete_scans,
-            'delete_scans_days_old': self.delete_scans_days_old,
-            'delete_scans_percent_remaining': self.delete_scans_percent_remaining,
             'device_name_includes': self.device_name_includes,
-            'alert_file_starts_with': self.alert_file_starts_with,
             'alert_email': self.alert_email,
-            'node_payload': self.node_payload
+            'gateway_manages_memory': self.gateway_manages_memory
         }
 
 # Define the files model
 class File(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    key = db.Column(db.String(200), nullable=False)
-    url = db.Column(db.String(500), nullable=False)
-    size = db.Column(db.Integer, nullable=False)
-    last_modified = db.Column(db.DateTime, nullable=False)
-    version = db.Column(db.Integer, nullable=False, default=1)
+    key = db.Column(db.String(200), nullable=False, server_default='')
+    url = db.Column(db.String(500), nullable=False, server_default='')
+    size = db.Column(db.Integer, nullable=False, server_default='0')
+    last_modified = db.Column(db.DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    version = db.Column(db.Integer, nullable=False, server_default='1')
     last_checked = db.Column(db.DateTime, nullable=True)
 
     def __repr__(self):
@@ -122,9 +113,9 @@ class File(db.Model):
 class Gateway(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    ip_address = db.Column(db.String(45), nullable=False)  # IPv4 is 15 characters max, IPv6 is up to 45 characters
-    name = db.Column(db.String(100), nullable=True)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False, server_default='')  # IPv4 is 15 characters max, IPv6 is up to 45 characters
+    name = db.Column(db.String(100), nullable=True, server_default='')
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
 
     def __repr__(self):
         return f"<Gateway {self.name} with IP {self.ip_address}>"
@@ -142,17 +133,17 @@ class Gateway(db.Model):
 class Source(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    file_filter = db.Column(db.String(200), nullable=False, default="*")
-    include_columns = db.Column(db.String(500), nullable=False, default="")
-    data_points = db.Column(db.Integer, nullable=False, default=0)
-    tail_only = db.Column(db.Boolean, nullable=False, default=False)
+    name = db.Column(db.String(100), nullable=False, server_default='')
+    file_filter = db.Column(db.String(200), nullable=False, server_default='*')
+    include_columns = db.Column(db.String(500), nullable=False, server_default='')
+    data_points = db.Column(db.Integer, nullable=False, server_default='0')
+    tail_only = db.Column(db.Boolean, nullable=False, server_default='0')
     last_updated = db.Column(db.DateTime, nullable=True)
-    error = db.Column(db.String(500), nullable=True)
+    error = db.Column(db.String(500), nullable=True, server_default='')
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
-    devices = db.Column(db.String(500), nullable=False, default="")
-    state = db.Column(db.String(50), nullable=False, default='created')
-    include_archive = db.Column(db.Boolean, nullable=False, default=False)
+    devices = db.Column(db.String(500), nullable=False, server_default='[]')
+    state = db.Column(db.String(50), nullable=False, server_default='created')
+    include_archive = db.Column(db.Boolean, nullable=False, server_default='0')
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
     def __repr__(self):
@@ -188,10 +179,10 @@ class Source(db.Model):
 class Plot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     source_id = db.Column(db.Integer, db.ForeignKey('source.id', ondelete='CASCADE'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    type = db.Column(db.String(50), nullable=False, default="timeline")
-    config = db.Column(db.String(500), nullable=False)  # JSON string
-    data = db.Column(db.Text, nullable=True)  # JSON string of processed plot data
+    name = db.Column(db.String(100), nullable=False, server_default='')
+    type = db.Column(db.String(50), nullable=False, server_default='timeline')
+    config = db.Column(db.String(500), nullable=False, server_default='{}')  # JSON string
+    data = db.Column(db.Text, nullable=True, server_default='')  # JSON string of processed plot data
     
     # Add relationship to Source
     source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
@@ -213,12 +204,12 @@ class Plot(db.Model):
 class Layout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    config = db.Column(db.Text, nullable=False)  # JSON string storing grid layout
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    is_default = db.Column(db.Boolean, nullable=False, default=False)
-    show_nav = db.Column(db.Boolean, nullable=False, default=False)
-    time_range = db.Column(db.String(20), nullable=False, default="all")  # all, week, month, 90days, year
+    name = db.Column(db.String(100), nullable=False, server_default='')
+    config = db.Column(db.Text, nullable=False, server_default='{}')  # JSON string storing grid layout
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    is_default = db.Column(db.Boolean, nullable=False, server_default='0')
+    show_nav = db.Column(db.Boolean, nullable=False, server_default='0')
+    time_range = db.Column(db.String(20), nullable=False, server_default='all')
     
     def __repr__(self):
         return f"<Layout {self.name} for Account {self.account_id}>"

@@ -94,16 +94,11 @@ def create_default_settings(account_id):
             aws_secret_access_key='',
             account_id=account_id,
             bucket_name='',
-            dt_rule='days',
-            max_file_size=5000000,
+            max_file_size=1073741824,
             use_cloud=False,
-            delete_scans=True,
-            delete_scans_days_old=90,
-            delete_scans_percent_remaining=10,
             device_name_includes='HUBLINK',
-            alert_file_starts_with='alert_',
             alert_email='',
-            node_payload=''
+            gateway_manages_memory=True
         )
         db.session.add(new_setting)
         db.session.commit()
@@ -232,24 +227,16 @@ def submit():
             db.session.add(new_account)
             db.session.flush()  # Get the new account ID
 
-            # Create settings with AWS credentials
-            new_settings = Setting(
-                account_id=new_account.id,
-                aws_access_key_id=credentials['aws_access_key_id'],
-                aws_secret_access_key=credentials['aws_secret_access_key'],
-                bucket_name=credentials['bucket_name'],
-                dt_rule='days',
-                max_file_size=5000000,
-                use_cloud=True,
-                delete_scans=True,
-                delete_scans_days_old=90,
-                delete_scans_percent_remaining=10,
-                device_name_includes='HUBLINK',
-                alert_file_starts_with='alert_',
-                alert_email='',
-                node_payload=''
-            )
-            db.session.add(new_settings)
+            # Create default settings first
+            create_default_settings(new_account.id)
+            
+            # Then update with AWS credentials
+            settings = Setting.query.filter_by(account_id=new_account.id).first()
+            settings.aws_access_key_id = credentials['aws_access_key_id']
+            settings.aws_secret_access_key = credentials['aws_secret_access_key']
+            settings.bucket_name = credentials['bucket_name']
+            settings.use_cloud = True
+            
             db.session.commit()
             
             logger.info(f"New account created with AWS resources: {new_account.name} (ID: {new_account.id})")
