@@ -545,13 +545,6 @@ def account_plots(account_url):
         sources = Source.query.filter_by(account_id=account.id).all()
         recent_files = get_latest_files(account.id, 100)
         
-        # Get plot data for all plots
-        plot_data = []
-        for source in sources:
-            for plot in source.plots:
-                plot_info = get_plot_info(plot)
-                plot_data.append(plot_info)
-        
         # Prepare layout plot names
         layout_plot_names = {}
         for layout in account.layouts:
@@ -587,7 +580,6 @@ def account_plots(account_url):
         return render_template('plots.html', 
                           account=account, 
                           sources=sources,
-                          plot_data=plot_data,
                           layout_plot_names=layout_plot_names,
                           dir_patterns=dir_patterns,
                           recent_files=recent_files)

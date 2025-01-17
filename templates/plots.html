@@ -81,13 +81,14 @@
                                     <div class="card h-100" 
                                          tabindex="0"
                                          style="cursor: pointer;">
-                                        <div class="card-body p-2"
+                                        <div class="card-body p-2">
+                                            {# Commented out plot preview functionality
                                              data-bs-toggle="popover"
                                              data-bs-trigger="manual"
                                              data-bs-html="true"
                                              data-plot-id="{{ plot.id }}"
                                              data-plotly-json="{{ plot.data }}"
-                                             style="height: 100%;">
+                                             style="height: 100%;" #}
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <h6 class="card-title mb-0 text-truncate">
                                                     {% if plot.type == 'timeline' %}
@@ -806,57 +807,57 @@
         }));
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize all plot previews
-        document.querySelectorAll('.plot-preview').forEach(function(plotElement) {
-            const plotData = JSON.parse(plotElement.dataset.plot);
-            if (plotData && plotData.plotly_json) {
-                const plotlyConfig = JSON.parse(plotData.plotly_json);
-                Plotly.newPlot(
-                    plotElement,
-                    plotlyConfig.data,
-                    Object.assign({
-                        height: 250,
-                        width: 350,
-                        margin: { l: 30, r: 10, t: 30, b: 30 }
-                    }, plotlyConfig.layout || {}),
-                    {
-                        responsive: true,
-                        displayModeBar: 'hover',
-                        displaylogo: false,
-                        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
-                    }
-                );
-            }
-        });
+    // document.addEventListener('DOMContentLoaded', function() {
+    //     // Initialize all plot previews
+    //     document.querySelectorAll('.plot-preview').forEach(function(plotElement) {
+    //         const plotData = JSON.parse(plotElement.dataset.plot);
+    //         if (plotData && plotData.plotly_json) {
+    //             const plotlyConfig = JSON.parse(plotData.plotly_json);
+    //             Plotly.newPlot(
+    //                 plotElement,
+    //                 plotlyConfig.data,
+    //                 Object.assign({
+    //                     height: 250,
+    //                     width: 350,
+    //                     margin: { l: 30, r: 10, t: 30, b: 30 }
+    //                 }, plotlyConfig.layout || {}),
+    //                 {
+    //                     responsive: true,
+    //                     displayModeBar: 'hover',
+    //                     displaylogo: false,
+    //                     modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
+    //                 }
+    //             );
+    //         }
+    //     });
 
-        // Add click handlers for showing/hiding plots
-        document.querySelectorAll('[data-plot-trigger]').forEach(function(trigger) {
-            trigger.addEventListener('click', function(e) {
-                if (e.target.closest('.btn-close')) return;
+    //     // Add click handlers for showing/hiding plots
+    //     document.querySelectorAll('[data-plot-trigger]').forEach(function(trigger) {
+    //         trigger.addEventListener('click', function(e) {
+    //             if (e.target.closest('.btn-close')) return;
                 
-                // Hide all other previews
-                document.querySelectorAll('.plot-preview-container').forEach(container => {
-                    if (container !== this.querySelector('.plot-preview-container')) {
-                        container.style.display = 'none';
-                    }
-                });
+    //             // Hide all other previews
+    //             document.querySelectorAll('.plot-preview-container').forEach(container => {
+    //                 if (container !== this.querySelector('.plot-preview-container')) {
+    //                     container.style.display = 'none';
+    //                 }
+    //             });
                 
-                // Toggle this preview
-                const container = this.querySelector('.plot-preview-container');
-                container.style.display = container.style.display === 'none' ? 'block' : 'none';
-            });
-        });
+    //             // Toggle this preview
+    //             const container = this.querySelector('.plot-preview-container');
+    //             container.style.display = container.style.display === 'none' ? 'block' : 'none';
+    //         });
+    //     });
 
-        // Close previews when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('[data-plot-trigger]')) {
-                document.querySelectorAll('.plot-preview-container').forEach(container => {
-                    container.style.display = 'none';
-                });
-            }
-        });
-    });
+    //     // Close previews when clicking outside
+    //     document.addEventListener('click', function(e) {
+    //         if (!e.target.closest('[data-plot-trigger]')) {
+    //             document.querySelectorAll('.plot-preview-container').forEach(container => {
+    //                 container.style.display = 'none';
+    //             });
+    //         }
+    //     });
+    // });
 </script>
 
 <!-- Add this in the head section or before closing body -->

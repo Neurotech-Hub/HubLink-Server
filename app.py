@@ -361,25 +361,11 @@ def create_source():
         
         source.file_id = file.id
         
-        # If source update was successful (no error), update all associated plots
-        if is_success:
-            print(f"Updating plots for source {source.id}")
-            for plot in source.plots:
-                try:
-                    plot_data = get_plot_data(plot, source, source.account)
-                    plot.data = json.dumps(plot_data)
-                    print(f"Successfully updated plot {plot.id}")
-                except Exception as e:
-                    print(f"Error updating plot {plot.id}: {str(e)}")
-                    logger.error(f"Error updating plot {plot.id}: {e}")
-                    # Continue processing other plots even if one fails
-                    continue
-        
         db.session.commit()
         print("Successfully committed all changes to database")
         
         return jsonify({
-            'message': 'Source and plots updated successfully',
+            'message': 'Source updated successfully',
             'status': 200
         })
         

@@ -38,20 +38,23 @@ def get_plot_info(plot):
     config = json.loads(plot.config) if plot.config else {}
     
     try:
-        # Load the stored plot data (which includes the plotly_json)
-        plot_data = json.loads(plot.data) if plot.data else {}
-        logger.debug(f"Plot {plot.id} data: {plot_data}")
+        # Generate plot data in real-time
+        plot_data = get_plot_data(plot, plot.source, plot.source.account)
         
-        # If we have valid plotly_json in the stored data, use it
-        if plot_data.get('plotly_json'):
-            plotly_json = plot_data['plotly_json']
-            logger.debug(f"Found plotly_json for plot {plot.id}")
-        else:
-            logger.warning(f"No plotly_json found for plot {plot.id}, using empty data")
+        if not plot_data:
+            logger.warning(f"No plot data generated for plot {plot.id}")
             plotly_json = json.dumps({
                 'data': [],
                 'layout': get_default_layout(plot.name)
             })
+        else:
+            plotly_json = plot_data.get('plotly_json')
+            if not plotly_json:
+                logger.warning(f"No plotly_json in plot data for plot {plot.id}")
+                plotly_json = json.dumps({
+                    'data': [],
+                    'layout': get_default_layout(plot.name)
+                })
 
         return {
             'plot_id': plot.id,
@@ -60,8 +63,7 @@ def get_plot_info(plot):
             'source_name': plot.source.name,
             'config': config,
             'plotly_json': plotly_json,
-            'source_data': plot_data.get('source_data'),
-            'error': plot_data.get('error')
+            'error': plot_data.get('error') if plot_data else None
         }
     except Exception as e:
         logger.error(f"Error getting plot info: {e}", exc_info=True)
@@ -105,12 +107,11 @@ def process_timeseries_plot(plot, csv_content):
         
         df = pd.read_csv(StringIO(csv_content))
         logger.debug(f"DataFrame shape: {df.shape}")
-        logger.debug(f"DataFrame columns: {df.columns.tolist()}")
+        logger.debug(f"Available columns: {df.columns.tolist()}")
         
-        # Try to parse datetime with pandas' flexible parser first
         try:
             df[x_data] = pd.to_datetime(df[x_data], errors='coerce')
-            logger.debug(f"Successfully parsed datetime column {x_data} using flexible parser")
+            logger.debug(f"Successfully parsed datetime column {x_data}")
         except Exception as e:
             logger.error(f"Failed to parse datetime column {x_data}: {str(e)}")
             return {'error': f'Could not parse datetime column {x_data}'}
@@ -121,40 +122,48 @@ def process_timeseries_plot(plot, csv_content):
         if len(df) == 0:
             return {'error': 'No valid data points after cleaning'}
 
-        df = df.sort_values(['hublink_device_id', x_data])
+        # Check if device column exists
+        device_col = 'hublink_device_id'
+        if device_col not in df.columns:
+            logger.warning(f"Column {device_col} not found in DataFrame")
+            device_col = df.columns[0]  # Use first column as fallback
+            logger.info(f"Using {device_col} as device column instead")
+
+        # Pre-process the data to avoid Plotly's internal grouping
+        df = df.sort_values([device_col, x_data])
+        df[device_col] = df[device_col].astype(str)  # Convert to string to avoid categorical warnings
         
-        fig = px.line(df, 
-                     x=x_data,
-                     y=y_data,
-                     color='hublink_device_id',
-                     labels={
-                         x_data: config['x_data'],
-                         y_data: config['y_data'],
-                         'hublink_device_id': 'Device'
-                     })
+        # Create figure using go.Figure for more control
+        fig = go.Figure()
         
-        # Add markers and customize appearance for timeline
-        fig.update_traces(
-            mode='lines+markers',
-            marker=dict(
-                size=6,
-                opacity=0.7
-            ),
-            line=dict(
-                color='rgb(75, 192, 192)',  # Match dashboard.html color
-                width=2,
-                shape='spline'
-            ),
-            fill='tozeroy',
-            fillcolor='rgba(75, 192, 192, 0.2)'  # Match dashboard.html fill color
-        )
+        # Define a color sequence using Plotly's default colors
+        colors = px.colors.qualitative.Plotly
         
-        fig.update_layout(get_default_layout(plot.name))
+        for idx, device in enumerate(sorted(df[device_col].unique())):
+            device_data = df[df[device_col] == device]
+            color = colors[idx % len(colors)]
+            
+            fig.add_trace(go.Scatter(
+                x=device_data[x_data],
+                y=device_data[y_data],
+                name=device,
+                mode='lines+markers',
+                marker=dict(size=6, opacity=0.7, color=color),
+                line=dict(width=2, shape='linear', color=color),
+                fill='tozeroy',
+                fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}'
+            ))
         
-        # Wrap the plotly JSON in the expected format
-        plotly_json = fig.to_json()
+        # Update layout
+        layout = get_default_layout(plot.name)
+        layout.update({
+            'xaxis_title': config['x_data'],
+            'yaxis_title': config['y_data']
+        })
+        fig.update_layout(layout)
+        
         return {
-            'plotly_json': plotly_json,
+            'plotly_json': fig.to_json(),
             'error': None
         }
 
@@ -172,31 +181,36 @@ def process_box_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        fig = px.box(df, 
-                    x='hublink_device_id',
-                    y=y_data,
-                    color='hublink_device_id',
-                    labels={
-                        'hublink_device_id': 'Device',
-                        y_data: config['y_data']
-                    })
+        device_col = 'hublink_device_id'
+        df[device_col] = df[device_col].astype(str)  # Convert to string to avoid categorical warnings
         
-        # Update box appearance with blue color scheme
-        fig.update_traces(
-            marker=dict(
-                color='rgba(54, 162, 235, 0.6)',  # Light blue at 0.6 opacity
-                line=dict(
-                    color='rgba(54, 162, 235, 1)',  # Solid border
-                    width=1
-                )
-            ),
-            line=dict(
-                color='rgba(54, 162, 235, 1)'  # Solid border for whiskers and median line
-            )
-        )
+        # Create figure using go.Figure
+        fig = go.Figure()
         
-        fig.update_layout(get_default_layout(plot.name))
-        fig.update_layout(boxmode='group')
+        # Define a color sequence using Plotly's default colors
+        colors = px.colors.qualitative.Plotly
+        
+        # Add box plots with different colors for each device
+        for idx, device in enumerate(sorted(df[device_col].unique())):
+            device_data = df[df[device_col] == device]
+            color = colors[idx % len(colors)]
+            
+            fig.add_trace(go.Box(
+                y=device_data[y_data],
+                name=device,
+                marker_color=color,
+                line=dict(color=color),
+                boxmean=True  # adds mean marker
+            ))
+        
+        # Update layout
+        layout = get_default_layout(plot.name)
+        layout.update({
+            'xaxis_title': 'Device',
+            'yaxis_title': config['y_data'],
+            'boxmode': 'group'
+        })
+        fig.update_layout(layout)
         
         return {
             'plotly_json': fig.to_json(),
@@ -214,34 +228,54 @@ def process_bar_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
+        logger.debug(f"Available columns: {df.columns.tolist()}")
+        
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        stats = df.groupby('hublink_device_id')[y_data].agg(['mean', 'std']).reset_index()
+        # Check if device column exists
+        device_col = 'hublink_device_id'
+        if device_col not in df.columns:
+            logger.warning(f"Column {device_col} not found in DataFrame")
+            device_col = df.columns[0]  # Use first column as fallback
+            logger.info(f"Using {device_col} as device column instead")
         
-        fig = px.bar(stats, 
-                     x='hublink_device_id', 
-                     y='mean', 
-                     error_y='std',
-                     color='hublink_device_id',
-                     labels={
-                         'hublink_device_id': 'Device',
-                         'mean': f'{y_data} (Mean)',
-                         'std': 'Standard Deviation'
-                     })
+        # Pre-process data to avoid Plotly's internal grouping
+        stats = (df.groupby(device_col, observed=True)[y_data]
+                .agg(['mean', 'std'])
+                .reset_index())
+        stats[device_col] = stats[device_col].astype(str)  # Convert to string to avoid categorical warnings
         
-        # Update bar appearance to exactly match dashboard style
-        fig.update_traces(
-            marker=dict(
-                color='rgba(153, 102, 255, 0.6)',  # Purple at 0.6 opacity
-                line=dict(
-                    color='rgba(153, 102, 255, 1)',  # Solid border
-                    width=1
-                )
-            )
-        )
+        # Create figure using go.Figure
+        fig = go.Figure()
         
-        fig.update_layout(get_default_layout(plot.name))
+        # Define a color sequence using Plotly's default colors
+        colors = px.colors.qualitative.Plotly
+        
+        # Add bars with different colors for each device
+        for idx, device in enumerate(sorted(stats[device_col])):
+            color = colors[idx % len(colors)]
+            fig.add_trace(go.Bar(
+                x=[device],
+                y=[stats.loc[stats[device_col] == device, 'mean'].iloc[0]],
+                error_y=dict(
+                    type='data',
+                    array=[stats.loc[stats[device_col] == device, 'std'].iloc[0]],
+                    visible=True
+                ),
+                name=device,
+                marker_color=color,
+                showlegend=True
+            ))
+        
+        # Update layout
+        layout = get_default_layout(plot.name)
+        layout.update({
+            'xaxis_title': 'Device',
+            'yaxis_title': f'{y_data} (Mean)',
+            'barmode': 'group'
+        })
+        fig.update_layout(layout)
         
         return {
             'plotly_json': fig.to_json(),
@@ -262,13 +296,17 @@ def process_table_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        stats = df.groupby('hublink_device_id')[y_data].agg([
-            'count',
-            'mean',
-            'std',
-            'min',
-            'max'
-        ]).reset_index()
+        # Convert to categorical and use proper groupby parameters
+        df['hublink_device_id'] = pd.Categorical(df['hublink_device_id'])
+        stats = (df.groupby('hublink_device_id', observed=True, group_keys=True)[y_data]
+                .agg([
+                    'count',
+                    'mean',
+                    'std',
+                    'min',
+                    'max'
+                ])
+                .reset_index())
         
         # Round numeric columns to 3 decimal places
         numeric_cols = stats.select_dtypes(include=['float64']).columns
@@ -281,12 +319,14 @@ def process_table_plot(plot, csv_content):
             header=dict(
                 values=list(stats.columns),
                 fill_color='#f0f0f0',  # Light gray for header
-                align='left'
+                align='left',
+                font=dict(size=14)  # Increased header font size
             ),
             cells=dict(
                 values=[stats[col] for col in stats.columns],
                 fill_color='#ffffff',  # White for cells
-                align='left'
+                align='left',
+                font=dict(size=13)  # Increased cell font size
             )
         )])
         
