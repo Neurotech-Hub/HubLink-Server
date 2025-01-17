@@ -102,8 +102,12 @@ def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
         config = json.loads(plot.config)
-        x_data = config['x_data']
+        # For timeline plots, use the source's datetime_column instead of x_data from config
+        x_data = plot.source.datetime_column
         y_data = config['y_data']
+        
+        if not x_data:
+            return {'error': 'No datetime column configured for this source'}
         
         df = pd.read_csv(StringIO(csv_content))
         logger.debug(f"DataFrame shape: {df.shape}")

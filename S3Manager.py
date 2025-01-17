@@ -290,21 +290,24 @@ def download_source_file(account_settings, source):
         logging.error(f"Error downloading source file for {source.name}: {e}")
         return None
 
-def get_source_file_header(account_settings, source, num_lines=1):
+def get_source_file_header(account_settings, source, num_lines=2):
     """
-    Download only the header (first n lines) of a source's CSV file from S3.
+    Download only the header and first data row of a source's CSV file from S3.
     
     Args:
         account_settings: Account settings containing AWS credentials
         source: Source object containing file information
-        num_lines: Number of lines to read from the start (default=1)
+        num_lines: Number of lines to read from the start (default=2 for header + first data row)
     
     Returns: 
-        String containing the first n lines of the CSV, or None if error
+        dict containing:
+            header: String containing the header line
+            first_row: String containing the first data row
+            error: Error message if any
     """
     if not source.file_id:
         logging.error(f"Source {source.name} has no associated file")
-        return None
+        return {'header': None, 'first_row': None, 'error': 'No file associated with source'}
 
     try:
         # Create S3 client
@@ -319,7 +322,7 @@ def get_source_file_header(account_settings, source, num_lines=1):
         file = db.session.get(File, source.file_id)
         if not file:
             logging.error(f"File {source.file_id} not found for source {source.name}")
-            return None
+            return {'header': None, 'first_row': None, 'error': 'File not found'}
 
         # Download only the first part of the file using range request
         response = s3_client.get_object(
@@ -331,11 +334,27 @@ def get_source_file_header(account_settings, source, num_lines=1):
         # Read content and get first n lines
         content = response['Body'].read().decode('utf-8')
         lines = content.split('\n')[:num_lines]
-        return '\n'.join(lines)
+        
+        if len(lines) < 2:
+            return {
+                'header': lines[0] if lines else None,
+                'first_row': None,
+                'error': 'File does not contain enough lines'
+            }
+        
+        # Add debug logging
+        logging.info(f"Header line: {lines[0]}")
+        logging.info(f"First data row: {lines[1]}")
+            
+        return {
+            'header': lines[0].strip(),
+            'first_row': lines[1].strip(),
+            'error': None
+        }
 
     except Exception as e:
         logging.error(f"Error downloading header for source {source.name}: {e}")
-        return None
+        return {'header': None, 'first_row': None, 'error': str(e)}
 
 def setup_aws_resources(admin_settings, new_bucket_name, new_user_name):
     """

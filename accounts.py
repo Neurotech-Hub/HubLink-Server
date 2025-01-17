@@ -16,6 +16,7 @@ from werkzeug.utils import secure_filename
 import io
 import shutil
 from utils import admin_required, get_analytics  # Import get_analytics
+import dateutil.parser as parser
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -425,10 +426,6 @@ def account_dashboard(account_url):
             } for d in dir_names
         }
         
-        # Debug logging
-        logging.info(f"Directory Names: {dir_names}")
-        logging.info(f"Directory Counts: {dir_counts}")
-        
         # Get recent gateway activity
         gateways = Gateway.query.filter_by(account_id=account.id)\
             .order_by(Gateway.created_at.desc())\
@@ -811,20 +808,30 @@ def create_plot(account_url, source_id):
         plot_type = request.form.get('type')
         print(f"[DEBUG] Plot details - name: {plot_name}, type: {plot_type}")
         
+        # Validate plot name
+        if not plot_name:
+            flash('Plot name is required.', 'error')
+            return redirect(url_for('accounts.account_plots', account_url=account_url))
+        
         # Build config based on plot type
         config = {}
         if plot_type == 'timeline':
-            x_data = request.form.get('x_data')
             y_data = request.form.get('y_data')
-            print(f"[DEBUG] Timeline plot data - x_data: {x_data}, y_data: {y_data}")
+            print(f"[DEBUG] Timeline plot data - y_data: {y_data}")
             
-            if not x_data or not y_data:
-                print("[DEBUG] Error: Missing x_data or y_data for timeline plot")
-                flash('X Data and Y Data are required for timeline plots.', 'error')
+            # Validate datetime column
+            if not source.datetime_column:
+                print("[DEBUG] Error: Source has no datetime column")
+                flash('Timeline plots require a datetime column in the source.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+            
+            if not y_data:
+                print("[DEBUG] Error: Missing y_data for timeline plot")
+                flash('Data Column is required for timeline plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
                 
             config = {
-                'x_data': x_data,
+                'x_data': source.datetime_column,  # Use source's datetime column directly
                 'y_data': y_data
             }
         elif plot_type in ['box', 'bar', 'table']:
@@ -839,7 +846,7 @@ def create_plot(account_url, source_id):
             config = {
                 'y_data': y_data
             }
-        
+            
         print(f"[DEBUG] Final config: {config}")
         
         # Create new plot with JSON config
@@ -854,6 +861,11 @@ def create_plot(account_url, source_id):
         # Process plot data and save it to plot.data
         plot_data = get_plot_data(plot, source, account)
         print(f"[DEBUG] Plot data processed, length: {len(str(plot_data))} chars")
+        
+        if not plot_data:
+            print("[DEBUG] Error: No plot data generated")
+            flash('Error: No data available for the selected columns.', 'error')
+            return redirect(url_for('accounts.account_plots', account_url=account_url))
         
         plot.data = json.dumps(plot_data)
         db.session.add(plot)
@@ -1076,44 +1088,53 @@ def update_layout_settings(account_url, layout_id):
 
 @accounts_bp.route('/<account_url>/file/<int:file_id>/header', methods=['GET'])
 def get_file_header(account_url, file_id):
-    """
-    Get the header (first line) of a file.
-    Returns JSON with header content or error message.
-    """
     try:
-        # Verify account and file ownership
+        # Get account by URL
         account = Account.query.filter_by(url=account_url).first_or_404()
         file = File.query.filter_by(id=file_id, account_id=account.id).first_or_404()
+
+        # Create temporary source object to use existing function
+        temp_source = Source(file_id=file.id)
+        
+        # Get account settings
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
-        # Create temporary source object to use with get_source_file_header
-        temp_source = Source(
-            account_id=account.id,
-            name=f"temp_{file.key}",
-            file_id=file.id
-        )
+        # Get header and first row
+        result = get_source_file_header(settings, temp_source)
+        if result['error']:
+            return jsonify({'error': result['error']}), 400
 
-        # Get the header content
-        header_content = get_source_file_header(settings, temp_source, num_lines=1)
+        # Parse header into columns
+        columns = [col.strip() for col in result['header'].split(',')]
         
-        if header_content is None:
-            return jsonify({
-                'success': False,
-                'error': 'Failed to read file header'
-            }), 500
+        # Check first row for datetime values
+        datetime_columns = []
+        if result['first_row']:
+            row_values = result['first_row'].split(',')
+            for i, value in enumerate(row_values):
+                if i < len(columns):  # Ensure we don't go out of bounds
+                    try:
+                        value = value.strip()
+                        if value:  # Skip empty values
+                            # Try to parse as datetime with more strict validation
+                            parsed_date = parser.parse(value)
+                            # Only consider it a datetime if it has both date and time components
+                            if (parsed_date.hour != 0 or parsed_date.minute != 0 or 
+                                parsed_date.second != 0 or parsed_date.microsecond != 0):
+                                datetime_columns.append(columns[i])
+                    except (ValueError, TypeError):
+                        continue
 
         return jsonify({
             'success': True,
-            'header': header_content,
-            'file_key': file.key
+            'header': result['header'],
+            'columns': columns,
+            'datetime_columns': datetime_columns
         })
 
     except Exception as e:
-        logging.error(f"Error getting header for file {file_id}: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        logging.error(f"Error getting file header: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @accounts_bp.route('/<account_url>/download_files', methods=['POST'])
 def download_files(account_url):

@@ -39,7 +39,12 @@
                 {% for source in sources|sort(attribute='name') %}
                 <div class="card mb-3">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">{{ source.name }}</h5>
+                        <h5 class="mb-0">
+                            {{ source.name }}
+                            {% if source.file %}
+                                <small class="text-muted">({{ (source.file.size / 1024)|round|int }} KB)</small>
+                            {% endif %}
+                        </h5>
                         <div>
                             <span id="copyFeedback-{{ source.id }}" class="text-muted ms-2 me-2" style="display: none;">Copied!</span>
                             <button type="button" class="btn btn-outline-primary btn-sm me-2"
@@ -285,6 +290,7 @@
                                     required
                                     pattern="^[^,*]+(,[^,*]+)*$"
                                     rows="3"
+                                    readonly
                                     style="white-space: pre-wrap; word-wrap: break-word; resize: vertical;"
                             ></textarea>
                             <button class="btn btn-outline-secondary" 
@@ -302,13 +308,24 @@
                                             data-file-id="{{ file.id }}"
                                             data-file-key="{{ file.key }}">
                                         {{ file.key }}
+                                        <small class="text-muted">
+                                            ({{ (file.size / 1024)|round|int }} KB)
+                                        </small>
                                     </button>
                                 </li>
                                 {% endfor %}
                             </ul>
                         </div>
-                        <div class="form-text">List column names (press enter or comma after each), or select a recent file to use its columns.</div>
+                        <div class="form-text">Select a recent file to use its columns.</div>
                         <div class="invalid-feedback">Please provide a comma-separated list of column names without wildcards.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="datetime_column" class="form-label">DateTime Column</label>
+                        <select class="form-control" id="datetime_column" name="datetime_column" style="display: none;">
+                        </select>
+                        <div id="datetime_feedback" class="form-text">
+                            No datetime fields were found in the selected file.
+                        </div>
                     </div>
                     <div class="row mb-3">
                         <div class="col-6">
@@ -368,8 +385,16 @@
                     <!-- Plot Type -->
                     <div class="mb-3">
                         <label for="plotType" class="form-label">Plot Type</label>
-                        <select class="form-select" id="plotType" name="type" onchange="handlePlotTypeChange()">
-                            <option value="timeline">Timeline</option>
+                        <div id="plotTypeFeedback" class="alert alert-secondary mt-2 small">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            Timelines are disabled for sources without a datetime column
+                        </div>
+                        <div id="plotTypeSuccess" class="alert alert-success mt-2">
+                            <i class="bi bi-check-circle"></i>
+                            Using <span id="datetimeColumnName"></span> column for datetime
+                        </div>
+                        <select class="form-select" id="plotType" name="type">
+                            <option value="timeline" id="timelineOption">Timeline</option>
                             <option value="box">Box Plot</option>
                             <option value="bar">Bar Chart</option>
                             <option value="table">Table</option>
@@ -378,24 +403,13 @@
 
                     <!-- Plot Fields -->
                     <div id="plotFields">
-                        <!-- Common Data Field -->
+                        <!-- Data Column -->
                         <div class="mb-3">
                             <label for="yData" class="form-label">Data Column <span class="text-danger">*</span></label>
                             <select class="form-select" id="yData" name="y_data" required>
                                 <option value="">Select column...</option>
                             </select>
                             <div class="invalid-feedback">Please select a data column.</div>
-                        </div>
-
-                        <!-- Timeline Fields -->
-                        <div class="mb-3" id="xDataContainer">
-                            <label for="xData" class="form-label">Time Column <span class="text-danger" id="xDataRequired" style="display: none;">*</span></label>
-                            <select class="form-select" id="xData" name="x_data">
-                                <option value="">Select column...</option>
-                            </select>
-                            <div class="form-text" id="xDataHelp" style="display: none;">
-                                Optional to enable time filtering.
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -536,10 +550,32 @@
                     const data = await response.json();
                     
                     if (data.success) {
-                        // Split the header into individual columns and add as tags
-                        const columns = data.header.split(',').map(col => col.trim());
+                        // Update columns input with Tagify
+                        const columns = data.columns;
                         tagify.removeAllTags();
                         tagify.addTags(columns);
+
+                        // Update datetime column select
+                        const datetimeSelect = document.getElementById('datetime_column');
+                        const datetimeFeedback = document.getElementById('datetime_feedback');
+                        datetimeSelect.innerHTML = '';
+                        
+                        if (data.datetime_columns && data.datetime_columns.length > 0) {
+                            data.datetime_columns.forEach(col => {
+                                const option = document.createElement('option');
+                                option.value = col;
+                                option.textContent = col;
+                                datetimeSelect.appendChild(option);
+                            });
+
+                            // Select the first datetime column by default
+                            datetimeSelect.value = data.datetime_columns[0];
+                            datetimeFeedback.textContent = 'Column containing datetime values';
+                            datetimeSelect.style.display = 'block';
+                        } else {
+                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                            datetimeSelect.style.display = 'none';
+                        }
                     } else {
                         // Show error alert
                         const alertDiv = document.createElement('div');
@@ -584,26 +620,6 @@
             };
         }
     });
-
-    function handlePlotTypeChange() {
-        const plotType = document.getElementById('plotType').value;
-        const xDataContainer = document.getElementById('xDataContainer');
-        const xDataSelect = document.getElementById('xData');
-        const xDataHelp = document.getElementById('xDataHelp');
-        const xDataRequired = document.getElementById('xDataRequired');
-        
-        if (plotType === 'timeline') {
-            xDataContainer.style.display = 'block';
-            xDataSelect.required = true;
-            xDataHelp.style.display = 'none';
-            xDataRequired.style.display = 'inline';
-        } else {
-            xDataContainer.style.display = 'block';
-            xDataSelect.required = false;
-            xDataHelp.style.display = 'block';
-            xDataRequired.style.display = 'none';
-        }
-    }
 
     function editLayout(id, name) {
         const modal = document.getElementById('layoutModal');
@@ -729,35 +745,49 @@
 
     function createPlot(source) {
         // Reset form
-        const form = document.getElementById('plotForm');
-        form.reset();
-        
-        // Set form action and source ID
-        form.action = `/{{ account.url }}/source/${source.id}/plot`;
+        document.getElementById('plotForm').reset();
         document.getElementById('plotSourceId').value = source.id;
-        
-        // Populate column dropdowns
-        const columns = source.include_columns.split(',');
-        const xDataSelect = document.getElementById('xData');
+        document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot`;
+
+        // Clear existing options
         const yDataSelect = document.getElementById('yData');
-        
-        // Clear existing options (keeping the first "Select column" option)
-        xDataSelect.innerHTML = '<option value="">Select column...</option>';
         yDataSelect.innerHTML = '<option value="">Select column...</option>';
-        
-        // Add options for each column
+
+        // Add column options from source
+        const columns = source.include_columns.split(',').map(col => col.trim());
         columns.forEach(column => {
-            const trimmedColumn = column.trim();
-            xDataSelect.add(new Option(trimmedColumn, trimmedColumn));
-            yDataSelect.add(new Option(trimmedColumn, trimmedColumn));
+            // Only add to y-axis if it's not exactly matching the datetime column
+            if (source.datetime_column !== column) {
+                const option = new Option(column, column);
+                yDataSelect.add(option);
+            }
         });
+
+        // Check if source has datetime column
+        const hasDatetime = source.datetime_column && source.datetime_column !== '';
+        const timelineOption = document.getElementById('timelineOption');
+        const plotTypeFeedback = document.getElementById('plotTypeFeedback');
+        const plotTypeSuccess = document.getElementById('plotTypeSuccess');
+        const datetimeColumnName = document.getElementById('datetimeColumnName');
         
+        if (hasDatetime) {
+            // Enable timeline option
+            timelineOption.disabled = false;
+            // Show success message with datetime column name
+            plotTypeFeedback.style.display = 'none';
+            plotTypeSuccess.style.display = 'block';
+            datetimeColumnName.textContent = source.datetime_column;
+        } else {
+            // Disable timeline option and select box plot as default
+            timelineOption.disabled = true;
+            document.getElementById('plotType').value = 'box';
+            // Show warning message
+            plotTypeFeedback.style.display = 'block';
+            plotTypeSuccess.style.display = 'none';
+        }
         // Show modal
-        const modal = new bootstrap.Modal(document.getElementById('plotModal'));
-        modal.show();
-        
-        // Initialize field visibility
-        handlePlotTypeChange();
+        const plotModal = new bootstrap.Modal(document.getElementById('plotModal'));
+        plotModal.show();
     }
 
     // Add pattern selection handler
@@ -858,6 +888,65 @@
     //         }
     //     });
     // });
+
+    function detectColumns() {
+        const sourceId = document.getElementById('source_id').value;
+        if (!sourceId) {
+            alert('Please select a source first');
+            return;
+        }
+
+        // Show loading state
+        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
+        const originalText = detectButton.innerHTML;
+        detectButton.innerHTML = 'Detecting...';
+        detectButton.disabled = true;
+
+        const formData = new FormData();
+        formData.append('source_id', sourceId);
+
+        fetch('/detect_columns', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // Update columns input
+            const columnsInput = document.getElementById('include_columns');
+            columnsInput.value = data.columns.join(',');
+
+            // Update datetime column select
+            const datetimeSelect = document.getElementById('datetime_column');
+            datetimeSelect.innerHTML = '<option value="">No datetime column selected</option>';
+            
+            data.datetime_columns.forEach(col => {
+                const option = document.createElement('option');
+                option.value = col;
+                option.textContent = col;
+                datetimeSelect.appendChild(option);
+            });
+
+            // If only one datetime column, select it
+            if (data.datetime_columns.length === 1) {
+                datetimeSelect.value = data.datetime_columns[0];
+            }
+
+            // Show success message
+            alert('Columns detected successfully!');
+        })
+        .catch(error => {
+            alert('Error detecting columns: ' + error.message);
+        })
+        .finally(() => {
+            // Restore button state
+            detectButton.innerHTML = originalText;
+            detectButton.disabled = false;
+        });
+    }
 </script>
 
 <!-- Add this in the head section or before closing body -->

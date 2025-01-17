@@ -132,12 +132,13 @@ class Gateway(db.Model):
 # Define the source model
 class Source(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False, server_default='')
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     file_filter = db.Column(db.String(200), nullable=False, server_default='*')
     include_columns = db.Column(db.String(500), nullable=False, server_default='')
     data_points = db.Column(db.Integer, nullable=False, server_default='0')
     tail_only = db.Column(db.Boolean, nullable=False, server_default='0')
+    datetime_column = db.Column(db.String(100), nullable=False, server_default='')  # New field for datetime column selection
     last_updated = db.Column(db.DateTime, nullable=True)
     error = db.Column(db.String(500), nullable=True, server_default='')
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
@@ -158,12 +159,14 @@ class Source(db.Model):
             'include_columns': self.include_columns,
             'data_points': self.data_points,
             'tail_only': self.tail_only,
+            'datetime_column': self.datetime_column,
             'last_updated': self.last_updated.isoformat() if self.last_updated else None,
             'state': self.state,
             'error': self.error,
             'file_id': self.file_id,  # Just include the file_id
             'devices': json.loads(self.devices) if self.devices else [],  # Decode JSON string to list
-            'include_archive': self.include_archive
+            'include_archive': self.include_archive,
+            'file_size': self.file.size if self.file else 0  # Add file size
         }
 
         return data
