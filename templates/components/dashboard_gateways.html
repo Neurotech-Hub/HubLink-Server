@@ -1,0 +1,27 @@
+<div class="col-md-6 mb-4" hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" hx-trigger="every 30s">
+    <div class="card h-100">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-router"></i> Gateway Activity</h5>
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>IP Address</th>
+                            <th>Gateway Name</th>
+                            <th>Last Ping</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gateway in gateways %}
+                        <tr>
+                            <td>{{ gateway.ip_address }}</td>
+                            <td>{{ gateway.name }}</td>
+                            <td>{{ moment(gateway.created_at).fromNow() }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div> 

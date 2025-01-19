@@ -1,0 +1,94 @@
+<div class="col-md-6 mb-4" hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" hx-trigger="every 30s">
+    <div class="card h-100">
+        <div class="card-body">
+            <h5 class="card-title">
+                <i class="bi bi-folder"></i> 
+                {% if common_prefix %}
+                    Directory Distribution under /{{ common_prefix }}/
+                {% else %}
+                    Directory Distribution
+                {% endif %}
+            </h5>
+            <div id="directoryBarChart"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to create/update the chart
+    function createDirectoryChart() {
+        var dirNames = {{ dir_names | tojson | safe }};
+        var dirCounts = {{ dir_counts | tojson | safe }};
+        var dirDetails = {{ dir_details | tojson | safe }};
+
+        console.log('Directory Data:', { dirNames, dirCounts, dirDetails });
+
+        var barTrace = {
+            x: dirNames,
+            y: dirCounts,
+            type: 'bar',
+            marker: {
+                color: 'rgba(153, 102, 255, 0.6)',
+                line: {
+                    color: 'rgba(153, 102, 255, 1)',
+                    width: 1
+                }
+            },
+            hovertemplate: 
+                '<b>Full Path: /%{x}</b><br>' +
+                'Files: %{y}<br>' +
+                'Size: %{customdata[0]}<br>' +
+                'Latest: %{customdata[1]}<br>' +
+                'Subdirs: %{customdata[2]}<br>' +
+                '<extra></extra>',
+            customdata: dirNames.map(name => [
+                formatFileSize(dirDetails[name].size),
+                dirDetails[name].latest_date ? moment(dirDetails[name].latest_date).format('MMM D, YYYY') : 'Never',
+                dirDetails[name].subdir_count
+            ])
+        };
+
+        var barLayout = {
+            height: 400,
+            margin: { t: 10, r: 10, b: 100, l: 40 },
+            xaxis: {
+                showgrid: false,
+                tickangle: -45,
+                title: {
+                    text: 'Directory',
+                    standoff: 40
+                },
+                type: 'category',
+                tickmode: 'array',
+                ticktext: dirNames,
+                tickvals: dirNames
+            },
+            yaxis: {
+                showgrid: true,
+                gridcolor: 'rgba(0,0,0,0.1)',
+                zeroline: false,
+                title: 'Number of Files'
+            },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        console.log('Creating directory chart with:', barTrace);
+        Plotly.newPlot('directoryBarChart', [barTrace], barLayout, config);
+    }
+
+    // Create chart on initial page load
+    createDirectoryChart();
+
+    // Update chart after HTMX content swap
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.querySelector('#directoryBarChart')) {
+            createDirectoryChart();
+        }
+    });
+</script> 

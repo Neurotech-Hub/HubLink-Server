@@ -935,18 +935,30 @@ def layout_view(account_url, layout_id):
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name
         
-        layout_config = json.loads(layout.config)
-        required_plot_ids = [int(item['plotId']) for item in layout_config if 'plotId' in item]
+        # Parse layout config
+        config = json.loads(layout.config)
+        required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
 
+        # Get plot information for all required plots
         plot_info_arr = []
         for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
             plot_info = get_plot_info(plot)
             plot_info_arr.append(plot_info)
         
+        # Create a new layout object with parsed config
+        layout_data = {
+            'id': layout.id,
+            'name': layout.name,
+            'config': config,  # This is now a parsed JSON object
+            'is_default': layout.is_default,
+            'show_nav': layout.show_nav,
+            'time_range': layout.time_range
+        }
+        
         return render_template('layout.html',
-                               account=account,
-                               layout=layout,
-                               plot_info_arr=plot_info_arr)
+                           account=account,
+                           layout=layout_data,
+                           plot_info_arr=plot_info_arr)
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
         traceback.print_exc()
@@ -1337,3 +1349,119 @@ def account_data_table(account_url):
     except Exception as e:
         logging.error(f"Error loading data table for {account_url}: {e}")
         return "Error loading data", 500
+
+@accounts_bp.route('/<account_url>/dashboard/stats', methods=['GET'])
+def dashboard_stats(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        analytics = get_analytics(account)
+        return render_template('components/dashboard_stats.html', 
+                             account=account, 
+                             analytics=analytics)
+    except Exception as e:
+        logging.error(f"Error loading dashboard stats for {account_url}: {e}")
+        return "Error loading dashboard stats", 500
+
+@accounts_bp.route('/<account_url>/dashboard/uploads', methods=['GET'])
+def dashboard_uploads(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        file_uploads = [f.last_modified.isoformat() for f in 
+                       File.query.filter_by(account_id=account.id)
+                       .filter(~File.key.like('.%'))
+                       .filter(~File.key.contains('/.'))
+                       .all()]
+        return render_template('components/dashboard_uploads.html',
+                             account=account,
+                             file_uploads=file_uploads)
+    except Exception as e:
+        logging.error(f"Error loading dashboard uploads for {account_url}: {e}")
+        return "Error loading uploads chart", 500
+
+@accounts_bp.route('/<account_url>/dashboard/dirs', methods=['GET'])
+def dashboard_dirs(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        directory_paths = get_directory_paths(account.id)
+        
+        dir_names = []
+        dir_counts = []
+        dir_details = {}
+        common_prefix = None
+
+        for dir_path in directory_paths:
+            files = File.query.filter_by(account_id=account.id)\
+                .filter(File.key.like(f"{dir_path}/%"))\
+                .all()
+                
+            if files:
+                dir_names.append(dir_path)
+                dir_counts.append(len(files))
+                dir_details[dir_path] = {
+                    'size': sum(f.size for f in files),
+                    'latest_date': max(f.last_modified for f in files).isoformat() if files else None,
+                    'subdir_count': len(set(f.key.split('/')[:-1]) for f in files)
+                }
+
+        return render_template('components/dashboard_dirs.html',
+                             account=account,
+                             dir_names=dir_names,
+                             dir_counts=dir_counts,
+                             dir_details=dir_details,
+                             common_prefix=common_prefix)
+    except Exception as e:
+        logging.error(f"Error loading dashboard directories for {account_url}: {e}")
+        return "Error loading directory chart", 500
+
+@accounts_bp.route('/<account_url>/dashboard/gateways', methods=['GET'])
+def dashboard_gateways(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        gateways = Gateway.query.filter_by(account_id=account.id)\
+            .order_by(Gateway.created_at.desc())\
+            .all()
+        return render_template('components/dashboard_gateways.html',
+                             account=account,
+                             gateways=gateways)
+    except Exception as e:
+        logging.error(f"Error loading dashboard gateways for {account_url}: {e}")
+        return "Error loading gateway activity", 500
+
+@accounts_bp.route('/<account_url>/layout/grid', methods=['GET'])
+def layout_grid(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get current layout
+        layout = Layout.query.filter_by(
+            account_id=account.id,
+            is_default=True
+        ).first_or_404()
+        
+        # Parse layout config
+        config = json.loads(layout.config)
+        required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
+
+        # Get plot information for all required plots
+        plot_info_arr = []
+        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
+            plot_info = get_plot_info(plot)
+            plot_info_arr.append(plot_info)
+        
+        # Create a new layout object with parsed config
+        layout_data = {
+            'id': layout.id,
+            'name': layout.name,
+            'config': config,  # This is now a parsed JSON object
+            'is_default': layout.is_default,
+            'show_nav': layout.show_nav,
+            'time_range': layout.time_range
+        }
+        
+        return render_template('components/layout_grid.html',
+                             account=account,
+                             layout=layout_data,
+                             plot_info_arr=plot_info_arr)
+    except Exception as e:
+        logging.error(f"Error loading layout grid for {account_url}: {e}")
+        return "Error loading layout grid", 500

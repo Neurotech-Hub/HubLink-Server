@@ -1,0 +1,93 @@
+<div class="row mb-4" hx-get="{{ url_for('accounts.dashboard_uploads', account_url=account.url) }}" hx-trigger="every 30s">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-graph-up"></i> File Uploads Over Time</h5>
+                <div id="uploadsLineChart"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to create/update the chart
+    function createUploadsChart() {
+        var fileUploads = {{ file_uploads | tojson | safe }};
+        console.log('File Uploads Data:', fileUploads);
+        
+        // Process timestamps into daily buckets using browser's local timezone
+        var dailyCounts = {};
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var startDate = new Date(today);
+        startDate.setDate(today.getDate() - 30);
+
+        // Initialize all dates with 0 counts
+        for (let i = 0; i < 31; i++) {
+            let date = new Date(startDate);
+            date.setDate(startDate.getDate() + i);
+            dailyCounts[date.toISOString().split('T')[0]] = 0;
+        }
+
+        // Count files per day in local timezone
+        fileUploads.forEach(timestamp => {
+            let date = new Date(timestamp);
+            let dateStr = date.toISOString().split('T')[0];
+            if (dateStr in dailyCounts) {
+                dailyCounts[dateStr]++;
+            }
+        });
+
+        console.log('Daily Counts:', dailyCounts);
+
+        var lineTrace = {
+            x: Object.keys(dailyCounts),
+            y: Object.values(dailyCounts),
+            type: 'scatter',
+            mode: 'lines',
+            fill: 'tozeroy',
+            line: {
+                color: 'rgb(75, 192, 192)',
+                width: 2,
+                shape: 'spline'
+            },
+            fillcolor: 'rgba(75, 192, 192, 0.2)'
+        };
+
+        var lineLayout = {
+            height: 400,
+            margin: { t: 10, r: 10, b: 40, l: 40 },
+            xaxis: {
+                showgrid: true,
+                gridcolor: 'rgba(0,0,0,0.1)',
+                title: 'Date'
+            },
+            yaxis: {
+                showgrid: true,
+                gridcolor: 'rgba(0,0,0,0.1)',
+                zeroline: false,
+                title: 'Number of Uploads'
+            },
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            plot_bgcolor: 'rgba(0,0,0,0)'
+        };
+
+        const config = {
+            responsive: true,
+            displayModeBar: false
+        };
+
+        console.log('Creating uploads chart with:', lineTrace);
+        Plotly.newPlot('uploadsLineChart', [lineTrace], lineLayout, config);
+    }
+
+    // Create chart on initial page load
+    createUploadsChart();
+
+    // Update chart after HTMX content swap
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.querySelector('#uploadsLineChart')) {
+            createUploadsChart();
+        }
+    });
+</script> 

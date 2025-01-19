@@ -5,23 +5,39 @@
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <!-- GridStack CSS -->
 <link href="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack.min.css" rel="stylesheet"/>
-{% endblock %}
+{% endblock head %}
 
 {% block content %}
 <div class="container-fluid py-4">
     {% with is_edit=false %}
-        {% include 'layout_select.html' %}
+        {% include "layout_select.html" %}
     {% endwith %}
 
     <!-- View Mode Container -->
-    <div class="grid-stack"></div>
+    <div id="gridContainer" 
+         hx-get="{{ url_for('accounts.layout_grid', account_url=account.url) }}" 
+         hx-trigger="every 30s">
+        {% include "components/layout_grid.html" %}
+    </div>
 </div>
 
 <!-- GridStack JS -->
 <script src="https://cdn.jsdelivr.net/npm/gridstack@8.2.1/dist/gridstack-all.js"></script>
 
 <script>
+let grid = null;
+
 document.addEventListener('DOMContentLoaded', function() {
+    initializeGrid();
+});
+
+document.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'gridContainer') {
+        initializeGrid();
+    }
+});
+
+function initializeGrid() {
     const gridConfig = {
         column: 12,
         cellHeight: 400,
@@ -35,77 +51,13 @@ document.addEventListener('DOMContentLoaded', function() {
         minWidth: 768
     };
 
-    const grid = GridStack.init(gridConfig);
-    grid.removeAll();
+    // Remove existing grid instance if it exists
+    if (grid) {
+        grid.destroy(false);
+    }
 
-    const layout = {{ layout.config | safe }};
-    const plotInfo = {{ plot_info_arr | tojson | safe }};
-    const plotInfoMap = {};
-    plotInfo.forEach(plot => plotInfoMap[plot.plot_id] = plot);
-    
-    layout.forEach((item, index) => {
-        const plotId = parseInt(item.plotId);
-        if (plotId && plotInfoMap[plotId]) {
-            const plot = plotInfoMap[plotId];
-            
-            // Create the widget content
-            const widgetContent = `<div class="plot-container" id="plot-${plotId}-${index}"></div>`;
-            
-            // Add widget to grid
-            const widget = {
-                x: item.x,
-                y: item.y,
-                w: item.w,
-                h: 1,
-                content: widgetContent,
-                noResize: true,
-                noMove: true
-            };
-            
-            grid.addWidget(widget);
-            
-            // Create the plot
-            if (plot.plotly_json) {
-                const plotlyData = JSON.parse(plot.plotly_json);
-                const plotDiv = document.getElementById(`plot-${plotId}-${index}`);
-                
-                Plotly.newPlot(
-                    plotDiv,
-                    plotlyData.data,
-                    plotlyData.layout,
-                    {
-                        responsive: true,
-                        displayModeBar: 'hover',
-                        displaylogo: false,
-                        modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
-                    }
-                ).then(() => {
-                    // Only set up the ResizeObserver after the plot is successfully created
-                    if (plotDiv && plotDiv.parentElement) {
-                        let resizeTimeout;
-                        const observer = new ResizeObserver(() => {
-                            clearTimeout(resizeTimeout);
-                            resizeTimeout = setTimeout(() => {
-                                try {
-                                    if (plotDiv && plotDiv._fullLayout) {
-                                        Plotly.relayout(plotDiv, {
-                                            autosize: true
-                                        });
-                                    }
-                                } catch (error) {
-                                    console.warn('Error during plot resize:', error);
-                                }
-                            }, 100);
-                        });
-                        
-                        observer.observe(plotDiv.parentElement);
-                    }
-                }).catch(error => {
-                    console.error('Error creating plot:', error);
-                });
-            }
-        }
-    });
-});
+    // Initialize new grid
+    grid = GridStack.init(gridConfig);
+}
 </script>
-{% endblock %} 
+{% endblock content %} 
