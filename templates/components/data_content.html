@@ -2,7 +2,7 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-3">
     <!-- Directory Filter -->
     <div class="dropdown">
-        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             {% if directory %}
                 {{ directory }}
             {% else %}
@@ -19,15 +19,11 @@
 
     <!-- Download and Clear Selection Buttons -->
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-primary" id="downloadSelectedBtn" disabled>
-            <i class="bi bi-download me-1"></i>Download Selected
-        </button>
-        <button type="button" class="btn btn-outline-secondary" id="clearSelectionBtn" disabled>
-            <i class="bi bi-x-circle me-1"></i>Clear Selection
-        </button>
-        <button type="button" class="btn btn-outline-danger" id="deleteSelectedBtn" disabled>
-            <i class="bi bi-trash me-1"></i>Delete Selected
-        </button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSelectionBtn" disabled>Clear</button>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="downloadSelectedBtn" disabled>Download</button>
+        {% if g.user and g.user.is_admin %}
+        <button type="button" class="btn btn-sm btn-outline-danger" id="deleteSelectedBtn" disabled>Delete</button>
+        {% endif %}
     </div>
 </div>
 
