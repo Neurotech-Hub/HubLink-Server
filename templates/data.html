@@ -79,44 +79,12 @@
                         <th style="width: 15%;">Last Modified</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% if recent_files and recent_files|length > 0 %}
-                    {% for file in recent_files %}
-                    <tr data-key="{{ file.key }}">
-                        <td>
-                            <div class="form-check">
-                                <input class="form-check-input file-select" type="checkbox" 
-                                       data-id="{{ file.id }}"
-                                       data-size="{{ file.size }}"
-                                       data-key="{{ file.key }}">
-                            </div>
-                        </td>
-                        <td>
-                            <div class="d-flex justify-content-between align-items-start gap-2">
-                                <span class="file-name text-break">{{ file.key }}</span>
-                                <span class="badge border border-secondary text-secondary small fw-normal flex-shrink-0" role="button"
-                                    onclick="showFileDetails(
-                                        '{{ file.id }}',
-                                        '{{ file.key | replace("'", "\\'") }}',
-                                        '{{ file.size | filesizeformat }}',
-                                        '{{ file.last_modified.isoformat() if file.last_modified else "" }}',
-                                        '{{ file.version }}',
-                                        '{{ file.last_checked.isoformat() if file.last_checked else " Never" }}')"
-                                    style="cursor: pointer;">
-                                    v{{ file.version }}
-                                </span>
-                            </div>
-                        </td>
-                        <td><small>{{ file.size | filesizeformat }}</small></td>
-                        <td><small>{{ moment(file.last_modified | default('', true)).fromNow() | default('Never', true)
-                                }}</small></td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center">No recent data available.</td>
-                    </tr>
-                    {% endif %}
+                <tbody
+                    hx-get="{{ url_for('accounts.account_data_table', account_url=account.url, directory=current_directory) }}"
+                    hx-trigger="every 30s"
+                    hx-swap="innerHTML"
+                    hx-preserve="true">
+                    {% include '_data_table_body.html' %}
                 </tbody>
             </table>
 
@@ -436,27 +404,6 @@
         }
     });
     {% endif %}
-
-    function updateActiveFiles() {
-        fetch('{{ url_for("accounts.get_recent_checks", account_url=account.url) }}')
-            .then(response => response.json())
-            .then(data => {
-                document.querySelectorAll('tr.fileActive').forEach(el => {
-                    el.classList.remove('fileActive');
-                });
-
-                data.recent_files.forEach(fileKey => {
-                    const fileRow = document.querySelector(`tr[data-key="${fileKey}"]`);
-                    if (fileRow) {
-                        fileRow.classList.add('fileActive');
-                    }
-                });
-            })
-            .catch(error => console.error('Error:', error));
-    }
-
-    updateActiveFiles();
-    setInterval(updateActiveFiles, 60000);
 
     function showFileDetails(fileId, fileName, fileSize, lastModified, version, lastChecked) {
         document.getElementById('modalFileName').textContent = fileName;

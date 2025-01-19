@@ -82,7 +82,7 @@ def rebuild_S3_files(account_settings):
                                 url=generate_s3_url(account_settings.bucket_name, file_key),
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
-                                last_checked=datetime.now(timezone.utc),
+                                last_checked=obj['LastModified'],
                                 version=version_count  # Store version count
                             )
                             db.session.add(new_file)

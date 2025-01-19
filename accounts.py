@@ -184,13 +184,18 @@ def account_data(account_url, directory=None):
         # Get unique directory paths for the dropdown
         directories = get_directory_paths(account.id)
         
+        # Add current time for fileActive calculation
+        now = datetime.now(timezone.utc)
+        
         return render_template(
             'data.html',
             account=account,
             recent_files=recent_files,
             directories=directories,
             current_directory=directory,
-            pagination=pagination
+            pagination=pagination,
+            now=now,
+            timezone=timezone  # Add timezone to the template context
         )
     except Exception as e:
         logging.error(f"Error loading data for {account_url} and directory {directory}: {e}")
@@ -505,27 +510,6 @@ def delete_device_files(account_url):
         logging.error(f"Error deleting files for device {device_id} in account {account_url}: {e}")
         flash("There was an error deleting the files.", "error")
         return redirect(url_for('accounts.account_data', account_url=account_url))
-
-@accounts_bp.route('/<account_url>/recent-checks', methods=['GET'])
-def get_recent_checks(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        
-        # Get files checked in last 30 minutes, excluding null last_checked values
-        threshold = datetime.now(timezone.utc) - timedelta(minutes=30)
-        recent_files = File.query.filter(
-            File.account_id == account.id,
-            File.last_checked.isnot(None),
-            File.last_checked >= threshold
-        ).all()
-        
-        # Return list of file keys that were recently checked
-        return jsonify({
-            "recent_files": [file.key for file in recent_files]
-        })
-    except Exception as e:
-        logging.error(f"Error getting recent checks for {account_url}: {e}")
-        return jsonify({"error": "There was an issue processing your request."}), 500
 
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
@@ -1316,3 +1300,40 @@ def delete_account(account_url):
         logging.error(f"Error deleting account {account_url}: {e}")
         
     return redirect(url_for('admin'))
+
+@accounts_bp.route('/<account_url>/data/table', methods=['GET'])
+def account_data_table(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = 30
+        directory = request.args.get('directory')
+        
+        # Build query
+        query = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.'))\
+            .order_by(File.last_modified.desc())
+        
+        if directory:
+            escaped_directory = directory.replace('%', '\\%').replace('_', '\\_')
+            query = query.filter(File.key.like(f"{escaped_directory}/%"))
+        
+        # Get paginated results
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        recent_files = pagination.items
+        
+        # Pass current time for fileActive calculation
+        now = datetime.now(timezone.utc)
+        
+        return render_template('_data_table_body.html',
+                           account=account,
+                           recent_files=recent_files,
+                           now=now,
+                           timezone=timezone  # Add timezone to the template context
+                           )
+    except Exception as e:
+        logging.error(f"Error loading data table for {account_url}: {e}")
+        return "Error loading data", 500
