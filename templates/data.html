@@ -144,13 +144,18 @@
         selectedSize.textContent = formatFileSize(totalSize);
         
         // Update button states
-        clearBtn.disabled = selectedFiles.size === 0;
-        downloadBtn.disabled = selectedFiles.size === 0 || totalSize > ONE_GB;
+        const hasSelections = selectedFiles.size > 0;
+        clearBtn.disabled = !hasSelections;
+        downloadBtn.disabled = !hasSelections || totalSize > ONE_GB;
         {% if g.user and g.user.is_admin %}
         if (deleteBtn) {
-            deleteBtn.disabled = selectedFiles.size === 0;
+            deleteBtn.disabled = !hasSelections;
         }
         {% endif %}
+        
+        // Control HTMX processing based on selections
+        htmx.config.processingEvents = !hasSelections;
+        console.log('HTMX processing:', htmx.config.processingEvents ? 'enabled' : 'disabled');
         
         console.log('Button states updated:', {
             clearDisabled: clearBtn.disabled,

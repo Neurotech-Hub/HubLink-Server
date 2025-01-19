@@ -1198,3 +1198,172 @@ def account_data_content(account_url):
         current_app.logger.error(f"Error loading data content for {account_url}: {str(e)}")
         traceback.print_exc()  # Add full traceback
         return "Error loading data", 500
+    
+@accounts_bp.route('/<account_url>/dashboard/gateways', methods=['GET'])
+def dashboard_gateways(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        analytics = get_analytics(account.id)  # Get analytics for gateway counts
+        if not analytics:
+            return "Error loading analytics", 500
+            
+        # Get recent gateway activity
+        gateways = Gateway.query.filter_by(account_id=account.id)\
+            .order_by(Gateway.created_at.desc())\
+            .limit(100)\
+            .all()
+            
+        return render_template('components/dashboard_gateways.html',
+                             account=account,
+                             gateways=gateways,
+                             analytics=analytics)
+    except Exception as e:
+        logging.error(f"Error loading dashboard gateways for {account_url}: {e}")
+        return "Error loading gateway activity", 500
+    
+@accounts_bp.route('/<account_url>/layout/grid', methods=['GET'])
+def layout_grid(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get current layout
+        layout = Layout.query.filter_by(
+            account_id=account.id,
+            is_default=True
+        ).first_or_404()
+        
+        # Parse layout config
+        config = json.loads(layout.config)
+        required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
+
+        # Get plot information for all required plots
+        plot_info_arr = []
+        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
+            plot_info = get_plot_info(plot)
+            plot_info_arr.append(plot_info)
+        
+        # Create a new layout object with parsed config
+        layout_data = {
+            'id': layout.id,
+            'name': layout.name,
+            'config': config,  # This is now a parsed JSON object
+            'is_default': layout.is_default,
+            'show_nav': layout.show_nav,
+            'time_range': layout.time_range
+        }
+        
+        return render_template('components/layout_grid.html',
+                             account=account,
+                             layout=layout_data,
+                             plot_info_arr=plot_info_arr)
+    except Exception as e:
+        logging.error(f"Error loading layout grid for {account_url}: {e}")
+        return "Error loading layout grid", 500
+    
+@accounts_bp.route('/<account_url>/dashboard/stats', methods=['GET'])
+def dashboard_stats(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        analytics = get_analytics(account.id)  # Pass account.id to get_analytics
+        if not analytics:
+            return "Error loading analytics", 500
+        return render_template('components/dashboard_stats.html', 
+                             account=account, 
+                             analytics=analytics)
+    except Exception as e:
+        logging.error(f"Error loading dashboard stats for {account_url}: {e}")
+        return "Error loading dashboard stats", 500
+    
+@accounts_bp.route('/<account_url>/dashboard/uploads', methods=['GET'])
+def dashboard_uploads(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        file_uploads = [f.last_modified.isoformat() for f in 
+                       File.query.filter_by(account_id=account.id)
+                       .filter(~File.key.like('.%'))
+                       .filter(~File.key.contains('/.'))
+                       .order_by(File.last_modified.desc())
+                       .all()]
+        return render_template('components/dashboard_uploads.html',
+                             account=account,
+                             file_uploads=file_uploads)
+    except Exception as e:
+        logging.error(f"Error loading dashboard uploads for {account_url}: {e}")
+        return "Error loading uploads chart", 500
+    
+@accounts_bp.route('/<account_url>/dashboard/dirs', methods=['GET'])
+def dashboard_dirs(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get all files for this account, excluding hidden files
+        files = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.')) \
+            .all()
+            
+        dir_data = {}
+        
+        # Process each file
+        for file in files:
+            path_parts = file.key.split('/')
+            if len(path_parts) == 1:  # Root level file
+                dir_name = 'Root'
+            else:
+                dir_name = path_parts[0]  # First directory level
+                
+            if dir_name not in dir_data:
+                dir_data[dir_name] = {
+                    'count': 0,
+                    'size': 0,
+                    'latest_date': None,
+                    'subdirs': set()
+                }
+            
+            dir_data[dir_name]['count'] += 1
+            dir_data[dir_name]['size'] += file.size
+            
+            # Update latest modification date
+            if file.last_modified:
+                if not dir_data[dir_name]['latest_date'] or \
+                   file.last_modified > dir_data[dir_name]['latest_date']:
+                    dir_data[dir_name]['latest_date'] = file.last_modified
+            
+            # Count subdirectories
+            if len(path_parts) > 2:  # Has subdirectories
+                dir_data[dir_name]['subdirs'].update(path_parts[1:-1])
+        
+        # Convert directory data for the template
+        dir_names = sorted(dir_data.keys())
+        dir_counts = [dir_data[d]['count'] for d in dir_names]
+        dir_details = {
+            d: {
+                'size': dir_data[d]['size'],
+                'latest_date': dir_data[d]['latest_date'].isoformat() if dir_data[d]['latest_date'] else None,
+                'subdir_count': len(dir_data[d]['subdirs'])
+            } for d in dir_names
+        }
+
+        return render_template('components/dashboard_dirs.html',
+                             account=account,
+                             dir_names=dir_names,
+                             dir_counts=dir_counts,
+                             dir_details=dir_details,
+                             common_prefix=None)
+    except Exception as e:
+        logging.error(f"Error loading dashboard directories for {account_url}: {e}")
+        return "Error loading directory chart", 500
+
+# Route to get source list for HTMX updates
+@accounts_bp.route('/<account_url>/source/list', methods=['GET'])
+def source_list(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        sources = Source.query.filter_by(account_id=account.id).all()
+        
+        return render_template('components/source_list.html',
+                           account=account,
+                           sources=sources)
+    except Exception as e:
+        logging.error(f"Error loading source list for {account_url}: {e}")
+        return "Error loading source list", 500
