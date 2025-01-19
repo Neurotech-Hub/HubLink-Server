@@ -40,7 +40,7 @@ document.addEventListener('htmx:afterSwap', function(evt) {
 function initializeGrid() {
     const gridConfig = {
         column: 12,
-        cellHeight: 400,
+        cellHeight: '400',
         margin: 10,
         float: false,
         animate: false,
@@ -58,6 +58,11 @@ function initializeGrid() {
 
     // Initialize new grid
     grid = GridStack.init(gridConfig);
+
+    // Initialize plots after grid is ready
+    if (typeof initializePlots === 'function') {
+        initializePlots();
+    }
 }
 </script>
 {% endblock content %} 

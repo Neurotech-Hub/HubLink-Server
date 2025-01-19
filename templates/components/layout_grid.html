@@ -12,43 +12,47 @@
                  gs-no-resize="true" 
                  gs-no-move="true">
                 <div class="grid-stack-item-content">
-                    <div class="plot-container" id="plot-{{ plot_id }}-{{ loop.index0 }}"></div>
+                    <div class="plot-container" id="plot-{{ plot_id }}-{{ loop.index0 }}"
+                         data-plot='{{ plot.plotly_json | safe }}'></div>
                 </div>
             </div>
-            <script>
-                (function() {
-                    const plotDiv = document.getElementById('plot-{{ plot_id }}-{{ loop.index0 }}');
-                    const plotData = {{ plot.plotly_json | safe }};
-                    
-                    if (!plotDiv) {
-                        console.error('Plot container not found for plot {{ plot_id }}');
-                        return;
-                    }
-                    
-                    if (!plotData) {
-                        console.error('No plot data for plot {{ plot_id }}');
-                        return;
-                    }
-                    
-                    try {
-                        Plotly.newPlot(
-                            plotDiv,
-                            plotData.data,
-                            plotData.layout,
-                            {
-                                responsive: true,
-                                displayModeBar: 'hover',
-                                displaylogo: false,
-                                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
-                            }
-                        ).catch(err => {
-                            console.error('Error plotting:', err);
-                        });
-                    } catch (err) {
-                        console.error('Error initializing plot:', err);
-                    }
-                })();
-            </script>
         {% endif %}
     {% endfor %}
-</div> 
+</div>
+
+<script>
+// Function to initialize all plots after grid is ready
+function initializePlots() {
+    document.querySelectorAll('.plot-container[data-plot]').forEach(plotDiv => {
+        const plotData = JSON.parse(plotDiv.dataset.plot);
+        
+        if (!plotData) {
+            console.error('No plot data for plot');
+            return;
+        }
+        
+        try {
+            Plotly.newPlot(
+                plotDiv,
+                plotData.data,
+                plotData.layout,
+                {
+                    responsive: true,
+                    displayModeBar: 'hover',
+                    displaylogo: false,
+                    modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
+                }
+            ).catch(err => {
+                console.error('Error plotting:', err);
+            });
+        } catch (err) {
+            console.error('Error initializing plot:', err);
+        }
+    });
+}
+
+// Call after grid initialization
+if (typeof grid !== 'undefined') {
+    initializePlots();
+}
+</script> 
