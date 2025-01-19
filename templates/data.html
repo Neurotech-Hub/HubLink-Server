@@ -2,8 +2,22 @@
 
 {% block title %}Data{% endblock title %}
 
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Data</h2>
+
+    <div id="dataContent" 
+         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML transition:true">
+        {% include "components/data_content.html" %}
+    </div>
+</div>
+{% endblock content %}
+
+{% block modals %}
 <!-- File Details Modal -->
-<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true">
+<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -72,19 +86,7 @@
         </div>
     </div>
 </div>
-
-{% block content %}
-<div class="container-fluid py-4">
-    <h2 class="mb-4">Data</h2>
-
-    <div id="dataContent" 
-         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}"
-         hx-trigger="load, every 30s"
-         hx-swap="innerHTML transition:true">
-        {% include "components/data_content.html" %}
-    </div>
-</div>
-{% endblock content %}
+{% endblock modals %}
 
 {% block scripts %}
 <script>
