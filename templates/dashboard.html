@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Dashboard{% endblock title %}
 
 {% block content %}
 <!-- Ensure Plotly and utilities are loaded first -->
@@ -25,28 +25,64 @@
     <h2 class="mb-4">Dashboard</h2>
 
     <!-- Stats Row -->
-    <div class="row mb-4" id="dashboardStats" hx-get="{{ url_for('accounts.dashboard_stats', account_url=account.url) }}" hx-trigger="every 30s">
-        {% include 'components/dashboard_stats.html' %}
+    <div class="row mb-4" id="dashboardStats" 
+         hx-get="{{ url_for('accounts.dashboard_stats', account_url=account.url) }}" 
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML transition:true">
+        <div class="fade-me">
+            <div class="text-center py-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading stats...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- File Uploads -->
     <div class="row mb-4">
-        <div class="col-12" id="dashboardUploads" hx-get="{{ url_for('accounts.dashboard_uploads', account_url=account.url) }}" hx-trigger="every 30s">
-            {% include 'components/dashboard_uploads.html' %}
+        <div class="col-12" id="dashboardUploads" 
+             hx-get="{{ url_for('accounts.dashboard_uploads', account_url=account.url) }}" 
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML transition:true">
+            <div class="fade-me">
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading uploads chart...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Directory and Gateway Row -->
     <div class="row">
         <!-- Directory Distribution -->
-        <div class="col-md-6 mb-4" id="dashboardDirs" hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" hx-trigger="every 30s">
-            {% include 'components/dashboard_dirs.html' %}
+        <div class="col-md-6 mb-4" id="dashboardDirs" 
+             hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" 
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML transition:true">
+            <div class="fade-me">
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading directory chart...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Gateway Activity -->
-        <div class="col-md-6 mb-4" id="dashboardGateways" hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" hx-trigger="every 30s">
-            {% include 'components/dashboard_gateways.html' %}
+        <div class="col-md-6 mb-4" id="dashboardGateways" 
+             hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" 
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML transition:true">
+            <div class="fade-me">
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading gateway activity...</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}
+{% endblock content %}

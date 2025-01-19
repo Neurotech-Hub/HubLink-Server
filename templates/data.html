@@ -1,144 +1,28 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}Data{% endblock title %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <h2 class="mb-4">Data</h2>
-    
-    <!-- Flash Messages -->
-    <div id="alertContainer" class="mb-4">
-    </div>
-    
-    <!-- Device Filter Pills and Download Bar -->
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-3">
-        <!-- Directory Filter and Download All -->
-        <div class="d-flex align-items-center gap-2 w-100 w-md-auto">
-            <div class="directory-filter flex-grow-1 flex-md-grow-0">
-                <select class="form-select" id="directorySelect" onchange="window.location.href=this.value">
-                    <option value="{{ url_for('accounts.account_data', account_url=account.url) }}" 
-                            {{ 'selected' if not current_directory }}>
-                        Recent
-                    </option>
-                    {% for directory in directories %}
-                    <option value="{{ url_for('accounts.account_data', account_url=account.url, directory=directory) }}"
-                            {{ 'selected' if current_directory == directory }}>
-                        {{ directory }}/
-                    </option>
-                    {% endfor %}
-                </select>
+
+    <div id="dataContent" 
+         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML transition:true">
+        <div class="fade-me">
+            <div class="text-center py-5">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading data...</span>
+                </div>
             </div>
-            {% if current_directory %}
-            <button class="btn btn-outline-primary btn-sm" onclick="downloadAllFiles('{{ current_directory }}')">
-                Download All
-            </button>
-            {% endif %}
-        </div>
-
-        <!-- Download Selection Info -->
-        <div class="download-selection d-flex flex-column flex-md-row align-items-end gap-2">
-            <div class="d-flex gap-2 w-100">
-                <span class="text-muted text-nowrap">
-                    <span id="selectedCount">0</span> files selected
-                    (<span id="selectedSize">0 B</span>)
-                </span>
-            </div>
-            <div class="d-flex gap-1">
-                <button class="btn btn-outline-secondary btn-sm text-nowrap" id="clearSelectionBtn" disabled>
-                    Clear
-                </button>
-                <button class="btn btn-primary btn-sm text-nowrap" id="downloadSelectedBtn" disabled>
-                    Download
-                </button>
-                {% if session.get('admin_id') %}
-                <button class="btn btn-danger btn-sm text-nowrap" id="deleteSelectedBtn" disabled>
-                    Delete
-                </button>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Limit Notice and Legend -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="small">
-            <span class="fileActive text-muted rounded px-2 py-1">checked &lt;30 min ago</span>
-        </div>
-        <p class="small text-muted mb-0">Page {{ pagination.page }} of {{ pagination.pages }}</p>
-    </div>
-
-    <!-- File Table -->
-    <div class="row">
-        <div class="col-12">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th style="width: 5%;"></th>
-                        <th style="width: 65%;">Filename</th>
-                        <th style="width: 15%;">Size</th>
-                        <th style="width: 15%;">Last Modified</th>
-                    </tr>
-                </thead>
-                <tbody
-                    hx-get="{{ url_for('accounts.account_data_table', account_url=account.url, directory=current_directory) }}"
-                    hx-trigger="every 30s"
-                    hx-swap="innerHTML"
-                    hx-preserve="true">
-                    {% include '_data_table_body.html' %}
-                </tbody>
-            </table>
-
-            <!-- Pagination -->
-            {% if pagination.pages > 1 %}
-            <nav aria-label="Page navigation" class="mt-4">
-                <ul class="pagination justify-content-center">
-                    <!-- Previous button -->
-                    <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
-                        <a class="page-link" href="{{ url_for('accounts.account_data', 
-                            account_url=account.url, 
-                            directory=current_directory, 
-                            page=pagination.prev_num) if pagination.has_prev else '#' }}">
-                            Previous
-                        </a>
-                    </li>
-                    
-                    <!-- Page numbers -->
-                    {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
-                        {% if page_num %}
-                            <li class="page-item {{ 'active' if page_num == pagination.page }}">
-                                <a class="page-link" href="{{ url_for('accounts.account_data', 
-                                    account_url=account.url, 
-                                    directory=current_directory, 
-                                    page=page_num) }}">
-                                    {{ page_num }}
-                                </a>
-                            </li>
-                        {% else %}
-                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {% endif %}
-                    {% endfor %}
-                    
-                    <!-- Next button -->
-                    <li class="page-item {{ 'disabled' if not pagination.has_next }}">
-                        <a class="page-link" href="{{ url_for('accounts.account_data', 
-                            account_url=account.url, 
-                            directory=current_directory, 
-                            page=pagination.next_num) if pagination.has_next else '#' }}">
-                            Next
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            {% endif %}
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block modals %}
 <!-- File Details Modal -->
-<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-centered">
+<div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="fileDetailsModalLabel">File Details</h5>
@@ -148,24 +32,24 @@
                 <table class="table table-sm">
                     <tbody>
                         <tr>
-                            <th scope="row">Filename</th>
-                            <td id="modalFileName" class="text-break"></td>
+                            <th>Filename:</th>
+                            <td id="modalFilename"></td>
                         </tr>
                         <tr>
-                            <th scope="row">Size</th>
-                            <td id="modalFileSize"></td>
+                            <th>Size:</th>
+                            <td id="modalSize"></td>
                         </tr>
                         <tr>
-                            <th scope="row">Version</th>
+                            <th>Last Modified:</th>
+                            <td id="modalLastModified"></td>
+                        </tr>
+                        <tr>
+                            <th>Version:</th>
                             <td id="modalVersion"></td>
                         </tr>
                         <tr>
-                            <th scope="row">Last Checked</th>
+                            <th>Last Checked:</th>
                             <td id="modalLastChecked"></td>
-                        </tr>
-                        <tr>
-                            <th scope="row">Last Modified</th>
-                            <td id="modalLastModified"></td>
                         </tr>
                     </tbody>
                 </table>
@@ -177,305 +61,167 @@
     </div>
 </div>
 
-<!-- Download Progress Modal -->
-<div class="modal fade" id="downloadProgressModal" tabindex="-1" aria-labelledby="downloadProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center p-4">
-                <div class="spinner-border text-primary mb-3" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <h5 class="mb-3">Preparing Download</h5>
-                <p class="text-muted mb-0" id="downloadStatus">Compiling selected files...</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Progress Modal -->
-<div class="modal fade" id="deleteProgressModal" tabindex="-1" aria-labelledby="deleteProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-body text-center p-4">
-                <div class="spinner-border text-primary mb-3" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <h5 class="mb-3">Deleting Files</h5>
-                <p class="text-muted mb-0" id="deleteStatus">Processing selected files...</p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
+<!-- JavaScript for file operations -->
 <script>
-    let selectedFiles = new Map();
-    const ONE_GB = 1024 * 1024 * 1024;
+function showFileDetails(fileId, key, size, lastModified, version, lastChecked) {
+    document.getElementById('modalFilename').textContent = key;
+    document.getElementById('modalSize').textContent = size;
+    document.getElementById('modalLastModified').textContent = lastModified ? new Date(lastModified).toLocaleString() : 'Never';
+    document.getElementById('modalVersion').textContent = version || 'N/A';
+    document.getElementById('modalLastChecked').textContent = lastChecked ? new Date(lastChecked).toLocaleString() : 'Never';
     
-    function updateSelectedFilesUI() {
-        const selectedCount = document.getElementById('selectedCount');
-        const selectedSize = document.getElementById('selectedSize');
-        const downloadBtn = document.getElementById('downloadSelectedBtn');
-        const clearBtn = document.getElementById('clearSelectionBtn');
-        {% if session.get('admin_id') %}
-        const deleteBtn = document.getElementById('deleteSelectedBtn');
-        {% endif %}
-        
-        selectedCount.textContent = selectedFiles.size;
-        
-        // Calculate total size
-        const totalSize = Array.from(selectedFiles.values())
-            .reduce((sum, file) => sum + parseInt(file.size), 0);
-        
-        selectedSize.textContent = formatFileSize(totalSize);
-        
-        // Update button states
-        clearBtn.disabled = selectedFiles.size === 0;
-        downloadBtn.disabled = selectedFiles.size === 0 || totalSize > ONE_GB;
-        {% if session.get('admin_id') %}
-        deleteBtn.disabled = selectedFiles.size === 0;
-        {% endif %}
-        
-        if (totalSize > ONE_GB) {
-            downloadBtn.title = "File download exceeds 1GB. Please connect to your S3 bucket using API methods.";
-        } else {
-            downloadBtn.title = "";
-        }
+    new bootstrap.Modal(document.getElementById('fileDetailsModal')).show();
+}
+
+function downloadAllFiles(directory) {
+    window.location.href = `/download?directory=${encodeURIComponent(directory)}`;
+}
+
+// Initialize event listeners after HTMX content swap
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'dataContent') {
+        initializeEventListeners();
     }
+});
+
+function initializeEventListeners() {
+    let selectedFiles = new Set();
+    let totalSize = 0;
     
-    function formatFileSize(bytes) {
-        const units = ['B', 'KB', 'MB', 'GB'];
-        let size = bytes;
-        let unitIndex = 0;
+    // Update selection counters
+    function updateSelectionCounters() {
+        document.getElementById('selectedCount').textContent = selectedFiles.size;
+        document.getElementById('selectedSize').textContent = formatBytes(totalSize);
         
-        while (size >= 1024 && unitIndex < units.length - 1) {
-            size /= 1024;
-            unitIndex++;
+        // Enable/disable buttons based on selection
+        const hasSelection = selectedFiles.size > 0;
+        document.getElementById('clearSelectionBtn').disabled = !hasSelection;
+        document.getElementById('downloadSelectedBtn').disabled = !hasSelection;
+        if (document.getElementById('deleteSelectedBtn')) {
+            document.getElementById('deleteSelectedBtn').disabled = !hasSelection;
         }
-        
-        return `${Math.round(size * 100) / 100} ${units[unitIndex]}`;
     }
     
     // Handle checkbox changes
     document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('file-select')) {
-            const fileId = e.target.dataset.id;
+        if (e.target.matches('.file-select')) {
+            const fileId = parseInt(e.target.dataset.id);
+            const fileSize = parseInt(e.target.dataset.size);
             
             if (e.target.checked) {
-                selectedFiles.set(fileId, {
-                    id: fileId,
-                    key: e.target.dataset.key,
-                    size: parseInt(e.target.dataset.size)
-                });
+                selectedFiles.add(fileId);
+                totalSize += fileSize;
             } else {
                 selectedFiles.delete(fileId);
+                totalSize -= fileSize;
             }
             
-            updateSelectedFilesUI();
+            updateSelectionCounters();
         }
     });
     
     // Clear selection button
-    document.getElementById('clearSelectionBtn').addEventListener('click', function() {
-        selectedFiles.clear();
-        document.querySelectorAll('.file-select').forEach(checkbox => {
-            checkbox.checked = false;
+    const clearBtn = document.getElementById('clearSelectionBtn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            document.querySelectorAll('.file-select:checked').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            selectedFiles.clear();
+            totalSize = 0;
+            updateSelectionCounters();
         });
-        updateSelectedFilesUI();
-    });
+    }
     
     // Download selected files
-    document.getElementById('downloadSelectedBtn').addEventListener('click', async function() {
-        if (selectedFiles.size === 0) return;
-        
-        const fileIds = Array.from(selectedFiles.keys());
-        
-        // Only show progress modal for multiple files
-        const progressModal = new bootstrap.Modal(document.getElementById('downloadProgressModal'));
-        if (fileIds.length > 1) {
-            progressModal.show();
-        }
-        
-        try {
-            const response = await fetch('{{ url_for("accounts.download_files", account_url=account.url) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ file_ids: fileIds })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Download failed');
-            }
-            
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            
-            // Set filename based on number of files
-            if (fileIds.length === 1) {
-                const file = selectedFiles.get(fileIds[0]);
-                a.download = file.key.split('/').pop();
-            } else {
-                const now = new Date();
-                const timestamp = now.getFullYear().toString() +
-                    (now.getMonth() + 1).toString().padStart(2, '0') +
-                    now.getDate().toString().padStart(2, '0') +
-                    now.getHours().toString().padStart(2, '0') +
-                    now.getMinutes().toString().padStart(2, '0') +
-                    now.getSeconds().toString().padStart(2, '0');
-                a.download = `hublink_${timestamp}.zip`;
-            }
-            
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            // Ensure modal is hidden after successful download
-            progressModal.hide();
-            document.querySelector('.modal-backdrop')?.remove();
-            document.body.classList.remove('modal-open');
-        } catch (error) {
-            document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
-            setTimeout(() => {
-                progressModal.hide();
-            }, 2000);
-        }
-    });
-
-    {% if session.get('admin_id') %}
-    // Delete selected files
-    document.getElementById('deleteSelectedBtn').addEventListener('click', async function() {
-        if (selectedFiles.size === 0) return;
-        
-        if (!confirm('Are you sure you want to delete these files? This action cannot be undone.')) {
-            return;
-        }
-        
-        const fileIds = Array.from(selectedFiles.keys());
-        const deleteModal = new bootstrap.Modal(document.getElementById('deleteProgressModal'));
-        deleteModal.show();
-        
-        try {
-            const response = await fetch('{{ url_for("accounts.delete_files", account_url=account.url) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ 
-                    file_ids: fileIds,
-                    directory: '{{ current_directory }}'
+    const downloadBtn = document.getElementById('downloadSelectedBtn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function() {
+            if (selectedFiles.size > 0) {
+                const fileIds = Array.from(selectedFiles);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                const downloadData = { file_ids: fileIds };
+                
+                fetch('/{{ account.url }}/download_files', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(downloadData)
                 })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Delete failed');
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    }
+                    throw new Error('Network response was not ok.');
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `hublink_${timestamp}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error downloading files');
+                });
             }
-            
-            const data = await response.json();
-            
-            // Immediately redirect or refresh
-            if (data.redirect) {
-                window.location.href = data.redirect;
-            } else {
-                window.location.reload();
-            }
-            
-        } catch (error) {
-            // Hide the modal
-            deleteModal.hide();
-            document.querySelector('.modal-backdrop')?.remove();
-            document.body.classList.remove('modal-open');
-            
-            // Show error in alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
-            alertDiv.innerHTML = `
-                ${error.message || 'Delete failed. Please try again.'}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            document.getElementById('alertContainer').appendChild(alertDiv);
-        }
-    });
-    {% endif %}
-
-    function showFileDetails(fileId, fileName, fileSize, lastModified, version, lastChecked) {
-        document.getElementById('modalFileName').textContent = fileName;
-        document.getElementById('modalFileSize').textContent = fileSize;
-        document.getElementById('modalLastModified').textContent = lastModified ?
-            moment.utc(lastModified).local().format('LLL') : 'Never';
-        document.getElementById('modalVersion').textContent = 'v' + version;
-        document.getElementById('modalLastChecked').textContent = lastChecked === ' Never' ?
-            'Never' : moment.utc(lastChecked).local().format('LLL');
-
-        const modal = new bootstrap.Modal(document.getElementById('fileDetailsModal'));
-        modal.show();
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            modal.classList.remove('show');
-            modal.removeAttribute('style');
-            modal.removeAttribute('aria-modal');
-            modal.setAttribute('aria-hidden', 'true');
         });
-    });
-
-    async function downloadAllFiles(directory) {
-        const progressModal = new bootstrap.Modal(document.getElementById('downloadProgressModal'));
-        progressModal.show();
-        
-        try {
-            const response = await fetch('{{ url_for("accounts.download_files", account_url=account.url) }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ directory: directory })
-            });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Download failed');
-            }
-            
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            
-            // Generate timestamp for zip filename
-            const now = new Date();
-            const timestamp = now.getFullYear().toString() +
-                (now.getMonth() + 1).toString().padStart(2, '0') +
-                now.getDate().toString().padStart(2, '0') +
-                now.getHours().toString().padStart(2, '0') +
-                now.getMinutes().toString().padStart(2, '0') +
-                now.getSeconds().toString().padStart(2, '0');
-            a.download = `hublink_${timestamp}.zip`;
-            
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            // Ensure modal is hidden after successful download
-            progressModal.hide();
-            document.querySelector('.modal-backdrop')?.remove();
-            document.body.classList.remove('modal-open');
-        } catch (error) {
-            document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
-            setTimeout(() => {
-                progressModal.hide();
-            }, 2000);
-        }
     }
+    
+    // Delete selected files (admin only)
+    const deleteBtn = document.getElementById('deleteSelectedBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', function() {
+            if (selectedFiles.size > 0 && confirm('Are you sure you want to delete the selected files?')) {
+                const fileIds = Array.from(selectedFiles);
+                const currentDirectory = document.getElementById('directorySelect')?.value;
+                const deleteData = {
+                    file_ids: fileIds,
+                    directory: currentDirectory
+                };
+                
+                fetch('/{{ account.url }}/files/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(deleteData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        // Refresh the content
+                        document.getElementById('dataContent').dispatchEvent(
+                            new Event('htmx:afterSettle', { bubbles: true })
+                        );
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting files');
+                });
+            }
+        });
+    }
+}
+
+// Helper function to format bytes
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Initialize event listeners on page load
+document.addEventListener('DOMContentLoaded', initializeEventListeners);
 </script>
-{% endblock %}
+{% endblock content %}

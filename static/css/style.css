@@ -1474,3 +1474,13 @@ table td code {
 .password-field input {
     padding-right: 40px;
 }
+
+/* HTMX Fade Transitions */
+.fade-me {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+}
+
+.fade-me.htmx-settling {
+    opacity: 1;
+}

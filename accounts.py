@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app
 from models import db, Account, Setting, File, Gateway, Source, Plot, Layout
 from datetime import datetime, timedelta, timezone
 import logging
@@ -153,52 +153,9 @@ def account_data(account_url, directory=None):
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         db.session.commit()
-        
-        # Pagination parameters
-        page = request.args.get('page', 1, type=int)
-        per_page = 30
-        
-        # Get recent files for the account, optionally filtered by directory
-        query = File.query.filter_by(account_id=account.id)\
-            .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.'))\
-            .order_by(File.last_modified.desc())
-        
-        if directory:
-            # Escape special characters in the directory path for the LIKE query
-            escaped_directory = directory.replace('%', '\\%').replace('_', '\\_')
-            directory_query = query.filter(File.key.like(f"{escaped_directory}/%"))
-            
-            # Check if the directory has any files
-            if directory_query.count() == 0:
-                # If no files found in this directory, redirect to base data page
-                flash(f'No files found in directory "{directory}"', 'info')
-                return redirect(url_for('accounts.account_data', account_url=account_url))
-            
-            query = directory_query
-        
-        # Get paginated results
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-        recent_files = pagination.items
-        
-        # Get unique directory paths for the dropdown
-        directories = get_directory_paths(account.id)
-        
-        # Add current time for fileActive calculation
-        now = datetime.now(timezone.utc)
-        
-        return render_template(
-            'data.html',
-            account=account,
-            recent_files=recent_files,
-            directories=directories,
-            current_directory=directory,
-            pagination=pagination,
-            now=now,
-            timezone=timezone  # Add timezone to the template context
-        )
+        return render_template('data.html', account=account)
     except Exception as e:
-        logging.error(f"Error loading data for {account_url} and directory {directory}: {e}")
+        logging.error(f"Error loading data for {account_url}: {e}")
         return "There was an issue loading the data page.", 500
 
 @accounts_bp.route('/<account_url>/files', methods=['POST'])
@@ -315,141 +272,9 @@ def account_dashboard(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
-        
-        # Get analytics for this account
-        analytics = get_analytics(account.id)
-        if not analytics:
-            flash('Error loading analytics', 'error')
-            analytics = {}
-        
-        # Get all files for this account
-        files = File.query.filter_by(account_id=account.id).all()
-        
-        # Prepare data for charts
-        file_uploads = [file.last_modified.isoformat() for file in files if file.last_modified]
-        
-        # Analyze directory structure
-        dir_data = {}
-        common_prefix = None
-        
-        # First, collect all unique paths at each level
-        paths_by_level = {}
-        has_root_files = False
-        
-        for file in files:
-            path_parts = file.key.split('/')
-            # Skip hidden files and files in hidden directories
-            if any(part.startswith('.') for part in path_parts):
-                continue
-            
-            # Check if this is a root-level file
-            if len(path_parts) == 1:  # Just a filename
-                has_root_files = True
-                continue
-            
-            # Store unique directory names at each level
-            for i, part in enumerate(path_parts[:-1]):  # Exclude filename
-                if i not in paths_by_level:
-                    paths_by_level[i] = set()
-                paths_by_level[i].add(part)
-        
-        # If we have root files, we need to show distribution at root level
-        if has_root_files:
-            display_level = 0
-            paths_by_level[0] = paths_by_level.get(0, set())
-            paths_by_level[0].add('Root')
-        else:
-            # Find the first level where paths diverge (more than one unique directory)
-            display_level = 0
-            for level in sorted(paths_by_level.keys()):
-                if len(paths_by_level[level]) > 1:
-                    display_level = level
-                    break
-                elif len(paths_by_level[level]) == 1:
-                    display_level = level
-        
-        if paths_by_level or has_root_files:  # If we found any valid paths or root files
-            # Group files by the display level directory
-            for file in files:
-                path_parts = file.key.split('/')
-                
-                # Skip hidden files and files in hidden directories
-                if any(part.startswith('.') for part in path_parts):
-                    continue
-                
-                # Handle root-level files
-                if len(path_parts) == 1:
-                    dir_name = 'Root'
-                # Get the directory at the display level
-                elif len(path_parts) > display_level:
-                    dir_name = path_parts[display_level]
-                else:
-                    continue  # Skip files that don't have enough path depth
-                
-                if dir_name not in dir_data:
-                    dir_data[dir_name] = {
-                        'count': 0,
-                        'size': 0,
-                        'latest_date': None,
-                        'subdirs': set()
-                    }
-                
-                dir_data[dir_name]['count'] += 1
-                dir_data[dir_name]['size'] += file.size
-                
-                # Track latest modification date
-                if file.last_modified:
-                    if not dir_data[dir_name]['latest_date'] or \
-                       file.last_modified > dir_data[dir_name]['latest_date']:
-                        dir_data[dir_name]['latest_date'] = file.last_modified
-                
-                # Track subdirectories
-                if len(path_parts) > display_level + 1:
-                    # Only track non-hidden subdirectories
-                    subdirs = [d for d in path_parts[display_level + 1:-1] if not d.startswith('.')]
-                    dir_data[dir_name]['subdirs'].update(subdirs)
-            
-            # Set the common prefix for display (excluding hidden directories)
-            if display_level > 0:
-                # Get the first file's path as a reference for the common prefix
-                for file in files:
-                    path_parts = file.key.split('/')
-                    if any(part.startswith('.') for part in path_parts):
-                        continue
-                    if len(path_parts) > display_level:
-                        common_prefix = '/'.join(path_parts[:display_level])
-                        break
-        
-        # Convert directory data for the chart
-        dir_names = sorted(dir_data.keys())  # Sort directory names alphabetically
-        dir_counts = [dir_data[d]['count'] for d in dir_names]
-        dir_details = {
-            d: {
-                'size': dir_data[d]['size'],
-                'latest_date': dir_data[d]['latest_date'].isoformat() if dir_data[d]['latest_date'] else None,
-                'subdir_count': len(dir_data[d]['subdirs'])
-            } for d in dir_names
-        }
-        
-        # Get recent gateway activity
-        gateways = Gateway.query.filter_by(account_id=account.id)\
-            .order_by(Gateway.created_at.desc())\
-            .limit(100)\
-            .all()
-        
         db.session.commit()
         
-        return render_template(
-            'dashboard.html',
-            account=account,
-            file_uploads=file_uploads,
-            dir_names=dir_names,
-            dir_counts=dir_counts,
-            dir_details=dir_details,
-            common_prefix=common_prefix,
-            gateways=gateways,
-            analytics=analytics
-        )
+        return render_template('dashboard.html', account=account)
     except Exception as e:
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard page.", 500
@@ -1102,7 +927,6 @@ def get_file_header(account_url, file_id):
 
         # Parse header into columns
         columns = [col.strip() for col in result['header'].split(',')]
-        
         # Check first row for datetime values
         datetime_columns = []
         if result['first_row']:
@@ -1313,208 +1137,64 @@ def delete_account(account_url):
         
     return redirect(url_for('admin'))
 
-@accounts_bp.route('/<account_url>/data/table', methods=['GET'])
-def account_data_table(account_url):
+@accounts_bp.route('/<account_url>/data/content', methods=['GET'])
+def account_data_content(account_url):
     try:
+        current_app.logger.debug(f"Loading data content for {account_url}")
         account = Account.query.filter_by(url=account_url).first_or_404()
-        
-        # Get pagination parameters
         page = request.args.get('page', 1, type=int)
-        per_page = 30
-        directory = request.args.get('directory')
-        
-        # Build query
-        query = File.query.filter_by(account_id=account.id)\
+        per_page = 50
+        directory = request.args.get('directory', None)
+
+        # Query recent files
+        files_query = File.query.filter_by(account_id=account.id)\
             .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.'))\
-            .order_by(File.last_modified.desc())
-        
+            .filter(~File.key.contains('/.'))
+
         if directory:
-            escaped_directory = directory.replace('%', '\\%').replace('_', '\\_')
-            query = query.filter(File.key.like(f"{escaped_directory}/%"))
-        
-        # Get paginated results
-        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+            files_query = files_query.filter(File.key.startswith(directory + '/'))
+
+        # Order by last_modified
+        files_query = files_query.order_by(File.last_modified.desc())
+
+        # Log query count before pagination
+        total_files = files_query.count()
+        current_app.logger.debug(f"Found {total_files} total files")
+
+        # Paginate results
+        pagination = files_query.paginate(page=page, per_page=per_page)
         recent_files = pagination.items
-        
-        # Pass current time for fileActive calculation
+
+        # Ensure all last_modified timestamps have timezone info
+        for file in recent_files:
+            if file.last_modified and file.last_modified.tzinfo is None:
+                file.last_modified = file.last_modified.replace(tzinfo=timezone.utc)
+
+        current_app.logger.debug(f"Returning {len(recent_files)} files for page {page}")
+
+        # Get unique directories
+        directories = sorted(list(set(
+            os.path.dirname(f.key)
+            for f in File.query.filter_by(account_id=account.id)
+            .filter(~File.key.like('.%'))
+            .filter(~File.key.contains('/.'))
+            .filter(File.key.like('%/%'))
+            .all()
+        )))
+        current_app.logger.debug(f"Found {len(directories)} directories")
+
+        # Use UTC for now to match database timestamps
         now = datetime.now(timezone.utc)
-        
-        return render_template('_data_table_body.html',
+
+        return render_template('components/data_content.html',
                            account=account,
                            recent_files=recent_files,
-                           now=now,
-                           timezone=timezone  # Add timezone to the template context
-                           )
+                           directories=directories,
+                           current_directory=directory,
+                           pagination=pagination,
+                           now=now)
+
     except Exception as e:
-        logging.error(f"Error loading data table for {account_url}: {e}")
+        current_app.logger.error(f"Error loading data content for {account_url}: {str(e)}")
+        traceback.print_exc()  # Add full traceback
         return "Error loading data", 500
-
-@accounts_bp.route('/<account_url>/dashboard/stats', methods=['GET'])
-def dashboard_stats(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        analytics = get_analytics(account.id)  # Pass account.id to get_analytics
-        if not analytics:
-            return "Error loading analytics", 500
-        return render_template('components/dashboard_stats.html', 
-                             account=account, 
-                             analytics=analytics)
-    except Exception as e:
-        logging.error(f"Error loading dashboard stats for {account_url}: {e}")
-        return "Error loading dashboard stats", 500
-
-@accounts_bp.route('/<account_url>/dashboard/uploads', methods=['GET'])
-def dashboard_uploads(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        file_uploads = [f.last_modified.isoformat() for f in 
-                       File.query.filter_by(account_id=account.id)
-                       .filter(~File.key.like('.%'))
-                       .filter(~File.key.contains('/.'))
-                       .order_by(File.last_modified.desc())
-                       .all()]
-        return render_template('components/dashboard_uploads.html',
-                             account=account,
-                             file_uploads=file_uploads)
-    except Exception as e:
-        logging.error(f"Error loading dashboard uploads for {account_url}: {e}")
-        return "Error loading uploads chart", 500
-
-@accounts_bp.route('/<account_url>/dashboard/dirs', methods=['GET'])
-def dashboard_dirs(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        
-        # Get all files for this account, excluding hidden files
-        files = File.query.filter_by(account_id=account.id)\
-            .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.')) \
-            .all()
-            
-        dir_data = {}
-        
-        # Process each file
-        for file in files:
-            path_parts = file.key.split('/')
-            if len(path_parts) == 1:  # Root level file
-                dir_name = 'Root'
-            else:
-                dir_name = path_parts[0]  # First directory level
-                
-            if dir_name not in dir_data:
-                dir_data[dir_name] = {
-                    'count': 0,
-                    'size': 0,
-                    'latest_date': None,
-                    'subdirs': set()
-                }
-            
-            dir_data[dir_name]['count'] += 1
-            dir_data[dir_name]['size'] += file.size
-            
-            # Update latest modification date
-            if file.last_modified:
-                if not dir_data[dir_name]['latest_date'] or \
-                   file.last_modified > dir_data[dir_name]['latest_date']:
-                    dir_data[dir_name]['latest_date'] = file.last_modified
-            
-            # Count subdirectories
-            if len(path_parts) > 2:  # Has subdirectories
-                dir_data[dir_name]['subdirs'].update(path_parts[1:-1])
-        
-        # Convert directory data for the template
-        dir_names = sorted(dir_data.keys())
-        dir_counts = [dir_data[d]['count'] for d in dir_names]
-        dir_details = {
-            d: {
-                'size': dir_data[d]['size'],
-                'latest_date': dir_data[d]['latest_date'].isoformat() if dir_data[d]['latest_date'] else None,
-                'subdir_count': len(dir_data[d]['subdirs'])
-            } for d in dir_names
-        }
-
-        return render_template('components/dashboard_dirs.html',
-                             account=account,
-                             dir_names=dir_names,
-                             dir_counts=dir_counts,
-                             dir_details=dir_details,
-                             common_prefix=None)
-    except Exception as e:
-        logging.error(f"Error loading dashboard directories for {account_url}: {e}")
-        return "Error loading directory chart", 500
-
-@accounts_bp.route('/<account_url>/dashboard/gateways', methods=['GET'])
-def dashboard_gateways(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        analytics = get_analytics(account.id)  # Get analytics for gateway counts
-        if not analytics:
-            return "Error loading analytics", 500
-            
-        # Get recent gateway activity
-        gateways = Gateway.query.filter_by(account_id=account.id)\
-            .order_by(Gateway.created_at.desc())\
-            .limit(100)\
-            .all()
-            
-        return render_template('components/dashboard_gateways.html',
-                             account=account,
-                             gateways=gateways,
-                             analytics=analytics)
-    except Exception as e:
-        logging.error(f"Error loading dashboard gateways for {account_url}: {e}")
-        return "Error loading gateway activity", 500
-
-@accounts_bp.route('/<account_url>/layout/grid', methods=['GET'])
-def layout_grid(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        
-        # Get current layout
-        layout = Layout.query.filter_by(
-            account_id=account.id,
-            is_default=True
-        ).first_or_404()
-        
-        # Parse layout config
-        config = json.loads(layout.config)
-        required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
-
-        # Get plot information for all required plots
-        plot_info_arr = []
-        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
-            plot_info = get_plot_info(plot)
-            plot_info_arr.append(plot_info)
-        
-        # Create a new layout object with parsed config
-        layout_data = {
-            'id': layout.id,
-            'name': layout.name,
-            'config': config,  # This is now a parsed JSON object
-            'is_default': layout.is_default,
-            'show_nav': layout.show_nav,
-            'time_range': layout.time_range
-        }
-        
-        return render_template('components/layout_grid.html',
-                             account=account,
-                             layout=layout_data,
-                             plot_info_arr=plot_info_arr)
-    except Exception as e:
-        logging.error(f"Error loading layout grid for {account_url}: {e}")
-        return "Error loading layout grid", 500
-
-# Route to get source list for HTMX updates
-@accounts_bp.route('/<account_url>/source/list', methods=['GET'])
-def source_list(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        sources = Source.query.filter_by(account_id=account.id).all()
-        
-        return render_template('components/source_list.html',
-                           account=account,
-                           sources=sources)
-    except Exception as e:
-        logging.error(f"Error loading source list for {account_url}: {e}")
-        return "Error loading source list", 500
