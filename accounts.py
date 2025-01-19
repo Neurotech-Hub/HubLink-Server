@@ -424,6 +424,7 @@ def validate_source_data(form_data):
         'data_points': int(form_data.get('data_points', 0)),
         'tail_only': form_data.get('tail_only') == 'on',
         'include_archive': form_data.get('include_archive') == 'on',
+        'datetime_column': form_data.get('datetime_column', '').strip(),
         'state': 'created'
     }
     

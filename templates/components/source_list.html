@@ -23,12 +23,14 @@
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li><button class="dropdown-item"
                                 onclick='editSource({{ source.to_dict() | tojson }})'>Edit</button></li>
+                        {% if source.file %}
                         <li><a class="dropdown-item" 
                                href="{{ url_for('accounts.download_file', account_url=account.url, file_id=source.file.id) }}" 
                                target="_blank">Download</a></li>
                         <li><button class="dropdown-item copy-link" 
                                data-url="{{ url_for('accounts.download_file', account_url=account.url, file_id=source.file.id) }}" 
                                data-source-id="{{ source.id }}">Copy Link</button></li>
+                        {% endif %}
                         <li>
                             <form action="{{ url_for('accounts.delete_source', account_url=account.url, source_id=source.id) }}" method="post"
                                 class="d-inline">
@@ -87,10 +89,16 @@
                         {{ source.error }}
                     {% else %}
                         <script>
-                            document.currentScript.parentElement.textContent = "updated " + 
-                                ({{ source.last_updated.isoformat() | tojson if source.last_updated else 'null' }} 
-                                    ? moment({{ source.last_updated.isoformat() | tojson }}).fromNow() 
-                                    : "never updated");
+                            (function() {
+                                const lastUpdated_{{ source.id }} = {{ source.last_updated.isoformat() | tojson if source.last_updated else 'null' }};
+                                if (lastUpdated_{{ source.id }}) {
+                                    const m = moment.utc(lastUpdated_{{ source.id }}).local();
+                                    document.currentScript.parentElement.textContent = 
+                                        "updated " + m.fromNow();
+                                } else {
+                                    document.currentScript.parentElement.textContent = "never updated";
+                                }
+                            })();
                         </script>
                     {% endif %}
                 </small>
