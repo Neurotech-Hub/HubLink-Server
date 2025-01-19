@@ -2,18 +2,6 @@
 
 {% block title %}Data{% endblock title %}
 
-{% block content %}
-<div class="container-fluid py-4">
-    <h2 class="mb-4">Data</h2>
-
-    <div id="dataContent" 
-         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}"
-         hx-trigger="load, every 30s"
-         hx-swap="innerHTML transition:true">
-        {% include 'components/data_content.html' %}
-    </div>
-</div>
-
 <!-- File Details Modal -->
 <div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -84,12 +72,45 @@
         </div>
     </div>
 </div>
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Data</h2>
+
+    <div id="dataContent" 
+         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML transition:true">
+        {% include "components/data_content.html" %}
+    </div>
+</div>
 {% endblock content %}
 
 {% block scripts %}
 <script>
     let selectedFiles = new Map();
     const ONE_GB = 1024 * 1024 * 1024;
+    let downloadModal, deleteModal, fileDetailsModal;
+    
+    // Initialize event listeners on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, initializing event listeners...');
+        initializeEventListeners();
+    });
+    
+    function getModalElements() {
+        downloadModal = document.getElementById('downloadProgressModal');
+        deleteModal = document.getElementById('deleteProgressModal');
+        fileDetailsModal = document.getElementById('fileDetailsModal');
+        
+        if (!downloadModal || !deleteModal || !fileDetailsModal) {
+            console.warn('Some modal elements not found:', {
+                downloadModal: !!downloadModal,
+                deleteModal: !!deleteModal,
+                fileDetailsModal: !!fileDetailsModal
+            });
+        }
+    }
     
     function updateSelectedFilesUI() {
         console.log('Updating UI with selected files:', selectedFiles);
@@ -182,19 +203,9 @@
         }
     });
 
-    // Initialize event listeners after HTMX content swap
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'dataContent') {
-            console.log('HTMX content swapped, reinitializing...');
-            // Clear selection when content is updated
-            selectedFiles.clear();
-            updateSelectedFilesUI();
-            initializeEventListeners();
-        }
-    });
-
     function initializeEventListeners() {
         console.log('Initializing event listeners...');
+        getModalElements();
         
         // Clear selection button
         const clearBtn = document.getElementById('clearSelectionBtn');
@@ -217,10 +228,14 @@
                 console.log('Download button clicked, files:', selectedFiles);
                 
                 const fileIds = Array.from(selectedFiles.keys());
-                const progressModal = new bootstrap.Modal(document.getElementById('downloadProgressModal'));
                 
                 if (fileIds.length > 1) {
-                    progressModal.show();
+                    if (!downloadModal) {
+                        console.error('Download modal element not found');
+                        return;
+                    }
+                    const modal = bootstrap.Modal.getOrCreateInstance(downloadModal);
+                    modal.show();
                 }
                 
                 try {
@@ -256,13 +271,17 @@
                     window.URL.revokeObjectURL(url);
                     a.remove();
                     
-                    progressModal.hide();
+                    if (fileIds.length > 1 && downloadModal) {
+                        bootstrap.Modal.getInstance(downloadModal)?.hide();
+                    }
                 } catch (error) {
                     console.error('Download error:', error);
                     document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
-                    setTimeout(() => {
-                        progressModal.hide();
-                    }, 2000);
+                    if (fileIds.length > 1 && downloadModal) {
+                        setTimeout(() => {
+                            bootstrap.Modal.getInstance(downloadModal)?.hide();
+                        }, 2000);
+                    }
                 }
             };
         }
@@ -275,8 +294,12 @@
                 console.log('Delete button clicked, files:', selectedFiles);
                 
                 const fileIds = Array.from(selectedFiles.keys());
-                const deleteModal = new bootstrap.Modal(document.getElementById('deleteProgressModal'));
-                deleteModal.show();
+                if (!deleteModal) {
+                    console.error('Delete modal element not found');
+                    return;
+                }
+                const modal = bootstrap.Modal.getOrCreateInstance(deleteModal);
+                modal.show();
                 
                 try {
                     const response = await fetch('{{ url_for("accounts.delete_files", account_url=account.url) }}', {
@@ -300,15 +323,27 @@
                             new Event('htmx:afterSettle', { bubbles: true })
                         );
                     }
+                    
+                    if (deleteModal) {
+                        modal.hide();
+                    }
                 } catch (error) {
                     console.error('Delete error:', error);
                     alert('Error deleting files');
+                    if (deleteModal) {
+                        modal.hide();
+                    }
                 }
             };
         }
     }
 
     function showFileDetails(fileId, key, size, lastModified, version, lastChecked) {
+        if (!fileDetailsModal) {
+            console.error('File details modal element not found');
+            return;
+        }
+        
         console.log('Showing file details:', {
             fileId,
             key,
@@ -324,13 +359,20 @@
         document.getElementById('modalVersion').textContent = version || 'N/A';
         document.getElementById('modalLastChecked').textContent = lastChecked ? new Date(lastChecked).toLocaleString() : 'Never';
         
-        new bootstrap.Modal(document.getElementById('fileDetailsModal')).show();
+        const modal = bootstrap.Modal.getOrCreateInstance(fileDetailsModal);
+        modal.show();
     }
 
-    // Initialize event listeners on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded, initializing event listeners...');
-        initializeEventListeners();
+    // Initialize event listeners after HTMX content swap
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'dataContent') {
+            console.log('HTMX content swapped, reinitializing...');
+            // Clear selection when content is updated
+            selectedFiles.clear();
+            updateSelectedFilesUI();
+            getModalElements(); // Refresh modal references
+            initializeEventListeners();
+        }
     });
 </script>
 {% endblock scripts %}
