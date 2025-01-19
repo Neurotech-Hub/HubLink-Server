@@ -557,6 +557,7 @@ def edit_source(account_url, source_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         
         # Validate input data
         validated_data = validate_source_data(request.form)
@@ -566,7 +567,12 @@ def edit_source(account_url, source_id):
             setattr(source, key, value)
         
         db.session.commit()
-        flash('Source updated successfully.', 'success')
+        success, error = initiate_source_refresh(source, settings)
+        
+        if success:
+            flash('Source refresh initiated.', 'success')
+        else:
+            flash(f'Error refreshing source: {error}', 'error')
     except BadRequest as e:
         flash(str(e), 'error')
     except Exception as e:

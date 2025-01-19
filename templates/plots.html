@@ -366,6 +366,20 @@
         document.getElementById('includeColumns').value = source.include_columns;
         document.getElementById('dataPoints').value = source.data_points;
         document.getElementById('tailOnly').checked = source.tail_only;
+        
+        // Set datetime column if it exists
+        const datetimeSelect = document.getElementById('datetime_column');
+        if (source.datetime_column) {
+            // First ensure the select is visible
+            datetimeSelect.style.display = 'block';
+            // Clear existing options
+            datetimeSelect.innerHTML = '';
+            // Add the current datetime column as an option
+            const option = new Option(source.datetime_column, source.datetime_column);
+            datetimeSelect.add(option);
+            // Set it as selected
+            datetimeSelect.value = source.datetime_column;
+        }
 
         // Show modal using Bootstrap's API
         const sourceModal = new bootstrap.Modal(document.getElementById('sourceModal'));
