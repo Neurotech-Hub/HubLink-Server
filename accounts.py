@@ -21,6 +21,20 @@ import dateutil.parser as parser
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
 
+# Route to view the account dashboard by its unique URL (page load)
+@accounts_bp.route('/<account_url>', methods=['GET'])
+def account_dashboard(account_url):
+    g.title = "Dashboard"
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_page_loads += 1
+        db.session.commit()
+        
+        return render_template('dashboard.html', account=account)
+    except Exception as e:
+        logging.error(f"Error loading dashboard for {account_url}: {e}")
+        return "There was an issue loading the dashboard page.", 500
+
 # Route to output account settings as JSON (gateway ping)
 @accounts_bp.route('/<account_url>.json', methods=['GET'])
 @accounts_bp.route('/<account_url>.json/<gateway_name>', methods=['GET'])
@@ -265,20 +279,6 @@ def rebuild(account_url):
         logging.error(f"Error during '/rebuild' endpoint: {e}")
         return jsonify({"error": "There was an issue processing the rebuild request."}), 500
 
-# Route to view the account dashboard by its unique URL (page load)
-@accounts_bp.route('/<account_url>', methods=['GET'])
-def account_dashboard(account_url):
-    g.title = "Dashboard"
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
-        
-        return render_template('dashboard.html', account=account)
-    except Exception as e:
-        logging.error(f"Error loading dashboard for {account_url}: {e}")
-        return "There was an issue loading the dashboard page.", 500
-
 @accounts_bp.route('/<account_url>/download/<int:file_id>', methods=['GET'])
 def download_file(account_url, file_id):
     try:
@@ -307,34 +307,6 @@ def download_file(account_url, file_id):
 def page_not_found(e):
     logging.error(f"404 error: {e}")
     return render_template('404.html'), 404
-
-@accounts_bp.route('/<account_url>/data', methods=['POST'])
-def delete_device_files(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        device_id = request.form.get('device_id')
-        
-        if not device_id:
-            flash("No device specified for deletion.", "error")
-            return redirect(url_for('accounts.account_data', account_url=account_url))
-        
-        # Delete files from S3 and database
-        success, error_message = delete_device_files_from_s3(settings, device_id)
-        
-        if success:
-            flash(f"Successfully deleted all files for device {device_id}.", "success")
-        else:
-            flash(f"Error deleting files: {error_message}", "error")
-
-        rebuild_S3_files(settings)
-            
-        return redirect(url_for('accounts.account_data', account_url=account_url))
-        
-    except Exception as e:
-        logging.error(f"Error deleting files for device {device_id} in account {account_url}: {e}")
-        flash("There was an error deleting the files.", "error")
-        return redirect(url_for('accounts.account_data', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
