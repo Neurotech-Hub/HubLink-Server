@@ -24,16 +24,29 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4">Dashboard</h2>
 
-    <!-- Analytics Cards -->
-    {% include 'components/dashboard_stats.html' %}
+    <!-- Stats Row -->
+    <div class="row mb-4" id="dashboardStats" hx-get="{{ url_for('accounts.dashboard_stats', account_url=account.url) }}" hx-trigger="every 30s">
+        {% include 'components/dashboard_stats.html' %}
+    </div>
 
-    <!-- Line Chart Section: File Uploads Over Time -->
-    {% include 'components/dashboard_uploads.html' %}
+    <!-- File Uploads -->
+    <div class="row mb-4">
+        <div class="col-12" id="dashboardUploads" hx-get="{{ url_for('accounts.dashboard_uploads', account_url=account.url) }}" hx-trigger="every 30s">
+            {% include 'components/dashboard_uploads.html' %}
+        </div>
+    </div>
 
-    <!-- Side by Side Section: Directory Distribution & Gateways Table -->
+    <!-- Directory and Gateway Row -->
     <div class="row">
-        {% include 'components/dashboard_dirs.html' %}
-        {% include 'components/dashboard_gateways.html' %}
+        <!-- Directory Distribution -->
+        <div class="col-md-6 mb-4" id="dashboardDirs" hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" hx-trigger="every 30s">
+            {% include 'components/dashboard_dirs.html' %}
+        </div>
+
+        <!-- Gateway Activity -->
+        <div class="col-md-6 mb-4" id="dashboardGateways" hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" hx-trigger="every 30s">
+            {% include 'components/dashboard_gateways.html' %}
+        </div>
     </div>
 </div>
 {% endblock %}

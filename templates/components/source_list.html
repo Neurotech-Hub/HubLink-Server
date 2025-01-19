@@ -1,0 +1,107 @@
+<!-- Sources List -->
+<div class="source-list">
+    {% for source in sources|sort(attribute='name') %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                {{ source.name }}
+                {% if source.file %}
+                    <small class="text-muted">({{ (source.file.size / 1024)|round|int }} KB)</small>
+                {% endif %}
+            </h5>
+            <div>
+                <span id="copyFeedback-{{ source.id }}" class="text-muted ms-2 me-2 d-none">Copied!</span>
+                <button type="button" class="btn btn-outline-primary btn-sm me-2"
+                    onclick='createPlot({{ source.to_dict() | tojson | safe }})'>
+                    New Plot
+                </button>
+                <div class="dropdown d-inline">
+                    <button class="btn btn-outline-secondary btn-sm" type="button"
+                        data-bs-toggle="dropdown">
+                        ⋮
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><button class="dropdown-item"
+                                onclick='editSource({{ source.to_dict() | tojson }})'>Edit</button></li>
+                        <li><a class="dropdown-item" 
+                               href="{{ url_for('accounts.download_file', account_url=account.url, file_id=source.file.id) }}" 
+                               target="_blank">Download</a></li>
+                        <li><button class="dropdown-item copy-link" 
+                               data-url="{{ url_for('accounts.download_file', account_url=account.url, file_id=source.file.id) }}" 
+                               data-source-id="{{ source.id }}">Copy Link</button></li>
+                        <li>
+                            <form action="{{ url_for('accounts.delete_source', account_url=account.url, source_id=source.id) }}" method="post"
+                                class="d-inline">
+                                <button type="submit" class="dropdown-item text-danger">Delete</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plot Grid -->
+        <div class="card-body p-2">
+            {% if source.plots %}
+            <div class="row row-cols-1 row-cols-md-4 g-3">
+                {% for plot in source.plots|sort(attribute='name') %}
+                <div class="col">
+                    <div class="mini-plot-card">
+                        <div class="card h-100" tabindex="0">
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <h6 class="card-title mb-0 text-truncate">
+                                        {% if plot.type == 'timeline' %}
+                                            <i class="bi bi-graph-up"></i>
+                                        {% elif plot.type == 'box' %}
+                                            <i class="bi bi-box"></i>
+                                        {% elif plot.type == 'bar' %}
+                                            <i class="bi bi-bar-chart"></i>
+                                        {% elif plot.type == 'table' %}
+                                            <i class="bi bi-table"></i>
+                                        {% endif %}
+                                        {{ plot.name }}
+                                    </h6>
+                                    <form action="{{ url_for('accounts.delete_plot', account_url=account.url, plot_id=plot.id) }}" method="post">
+                                        <button type="submit" class="btn-close btn-sm" aria-label="Close"></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-3">
+                No plots created.
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer py-1 px-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">{{ source.to_dict().state }}</small>
+                <small class="text-muted">
+                    {% if source.error %}
+                        {{ source.error }}
+                    {% else %}
+                        {{ "updated " + moment(source.last_updated).fromNow() if source.last_updated else "never updated" }}
+                    {% endif %}
+                </small>
+                <form action="{{ url_for('accounts.refresh_source', account_url=account.url, source_id=source.id) }}" method="post"
+                    class="d-inline m-0 p-0">
+                    <button type="submit"
+                        class="btn btn-link btn-sm text-muted p-0 border-0">refresh</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not sources %}
+    <div class="list-group-item text-center text-muted">
+        <p class="mb-0">No sources created yet.</p>
+    </div>
+    {% endif %}
+</div> 

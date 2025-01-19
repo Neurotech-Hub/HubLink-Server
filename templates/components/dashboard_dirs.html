@@ -1,16 +1,14 @@
-<div class="col-md-6 mb-4" hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" hx-trigger="every 30s">
-    <div class="card h-100">
-        <div class="card-body">
-            <h5 class="card-title">
-                <i class="bi bi-folder"></i> 
-                {% if common_prefix %}
-                    Directory Distribution under /{{ common_prefix }}/
-                {% else %}
-                    Directory Distribution
-                {% endif %}
-            </h5>
-            <div id="directoryBarChart"></div>
-        </div>
+<div class="card h-100">
+    <div class="card-body">
+        <h5 class="card-title">
+            <i class="bi bi-folder"></i> 
+            {% if common_prefix %}
+                Directory Distribution ({{ common_prefix }})
+            {% else %}
+                Directory Distribution
+            {% endif %}
+        </h5>
+        <div id="directoryBarChart"></div>
     </div>
 </div>
 
@@ -78,7 +76,6 @@
             displayModeBar: false
         };
 
-        console.log('Creating directory chart with:', barTrace);
         Plotly.newPlot('directoryBarChart', [barTrace], barLayout, config);
     }
 
