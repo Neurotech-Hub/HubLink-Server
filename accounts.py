@@ -425,7 +425,7 @@ def validate_source_data(form_data):
         'tail_only': form_data.get('tail_only') == 'on',
         'include_archive': form_data.get('include_archive') == 'on',
         'datetime_column': form_data.get('datetime_column', '').strip(),
-        'state': 'created'
+        'state': 'running'
     }
     
     # Validate data points range if specified

@@ -215,6 +215,19 @@
         console.log('Initializing event listeners...');
         getModalElements();
         
+        // Select all checkbox
+        const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.onchange = function() {
+                const checkboxes = document.querySelectorAll('.file-select');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                    // Trigger the change event to update the selectedFiles Map
+                    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            };
+        }
+        
         // Clear selection button
         const clearBtn = document.getElementById('clearSelectionBtn');
         if (clearBtn) {
@@ -224,6 +237,11 @@
                 document.querySelectorAll('.file-select').forEach(checkbox => {
                     checkbox.checked = false;
                 });
+                // Also uncheck the select all checkbox
+                const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                }
                 updateSelectedFilesUI();
             };
         }
