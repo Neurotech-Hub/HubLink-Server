@@ -1112,7 +1112,6 @@ def delete_account(account_url):
 @accounts_bp.route('/<account_url>/data/content', methods=['GET'])
 def account_data_content(account_url):
     try:
-        current_app.logger.debug(f"Loading data content for {account_url}")
         account = Account.query.filter_by(url=account_url).first_or_404()
         page = request.args.get('page', 1, type=int)
         per_page = 50
@@ -1131,7 +1130,6 @@ def account_data_content(account_url):
 
         # Log query count before pagination
         total_files = files_query.count()
-        current_app.logger.debug(f"Found {total_files} total files")
 
         # Paginate results
         pagination = files_query.paginate(page=page, per_page=per_page)
@@ -1142,8 +1140,6 @@ def account_data_content(account_url):
             if file.last_modified and file.last_modified.tzinfo is None:
                 file.last_modified = file.last_modified.replace(tzinfo=timezone.utc)
 
-        current_app.logger.debug(f"Returning {len(recent_files)} files for page {page}")
-
         # Get unique directories
         directories = sorted(list(set(
             os.path.dirname(f.key)
@@ -1153,7 +1149,6 @@ def account_data_content(account_url):
             .filter(File.key.like('%/%'))
             .all()
         )))
-        current_app.logger.debug(f"Found {len(directories)} directories")
 
         # Use UTC for now to match database timestamps
         now = datetime.now(timezone.utc)
@@ -1167,7 +1162,6 @@ def account_data_content(account_url):
                            now=now)
 
     except Exception as e:
-        current_app.logger.error(f"Error loading data content for {account_url}: {str(e)}")
         traceback.print_exc()  # Add full traceback
         return "Error loading data", 500
     

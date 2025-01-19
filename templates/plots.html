@@ -37,7 +37,8 @@
             <!-- Sources List Container -->
             <div id="sourceListContainer" 
                  hx-get="{{ url_for('accounts.source_list', account_url=account.url) }}" 
-                 hx-trigger="load, every 10s">
+                 hx-trigger="load, every 10s"
+                 hx-preserve>
                 {% include 'components/source_list.html' %}
             </div>
         </div>

@@ -686,7 +686,6 @@ def download_s3_file(account_settings, file):
         file: File object containing the key to download
     """
     try:
-        print("DEBUG: Step 1 - Creating S3 client...")
         # Test S3 client creation independently
         s3_client = boto3.client(
             's3',
@@ -694,25 +693,18 @@ def download_s3_file(account_settings, file):
             aws_secret_access_key=account_settings.aws_secret_access_key,
             region_name=os.getenv('AWS_REGION', 'us-east-1')
         )
-        print("DEBUG: Step 1 - S3 client created successfully")
 
-        print(f"DEBUG: Step 2 - Testing S3 connection for bucket {account_settings.bucket_name}...")
         # Test bucket access
         s3_client.head_bucket(Bucket=account_settings.bucket_name)
-        print("DEBUG: Step 2 - Bucket access confirmed")
 
-        print(f"DEBUG: Step 3 - Attempting to get object {file.key}...")
         # Download file from S3 (always latest version)
         response = s3_client.get_object(
             Bucket=account_settings.bucket_name,
             Key=file.key
         )
-        print("DEBUG: Step 3 - Got S3 response successfully")
-        
-        print("DEBUG: Step 4 - Reading file content...")
+
         # Read the content as bytes
         content = response['Body'].read()
-        print(f"DEBUG: Step 4 - Successfully read {len(content)} bytes")
         
         return content
 

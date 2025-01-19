@@ -10,9 +10,15 @@
             {% endif %}
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{{ url_for('accounts.account_data_content', account_url=account.url) }}" hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}" hx-target="#dataContent">All Files</a></li>
+            <li><a class="dropdown-item" href="{{ url_for('accounts.account_data_content', account_url=account.url) }}" 
+                   hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}" 
+                   hx-target="#dataContent"
+                   hx-preserve>All Files</a></li>
             {% for dir in directories %}
-                <li><a class="dropdown-item" href="{{ url_for('accounts.account_data_content', account_url=account.url, directory=dir) }}" hx-get="{{ url_for('accounts.account_data_content', account_url=account.url, directory=dir) }}" hx-target="#dataContent">{{ dir }}</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('accounts.account_data_content', account_url=account.url, directory=dir) }}" 
+                       hx-get="{{ url_for('accounts.account_data_content', account_url=account.url, directory=dir) }}" 
+                       hx-target="#dataContent"
+                       hx-preserve>{{ dir }}</a></li>
             {% endfor %}
         </ul>
     </div>
@@ -123,7 +129,8 @@
                     directory=current_directory, 
                     page=pagination.prev_num) if pagination.has_prev else '#' }}"
                 hx-target="#dataContent"
-                hx-swap="innerHTML transition:true">
+                hx-swap="innerHTML transition:true"
+                hx-preserve>
                 Previous
             </a>
         </li>
@@ -138,7 +145,8 @@
                            directory=current_directory, 
                            page=page_num) }}"
                        hx-target="#dataContent"
-                       hx-swap="innerHTML transition:true">
+                       hx-swap="innerHTML transition:true"
+                       hx-preserve>
                         {{ page_num }}
                     </a>
                 </li>
@@ -155,7 +163,8 @@
                     directory=current_directory, 
                     page=pagination.next_num) if pagination.has_next else '#' }}"
                 hx-target="#dataContent"
-                hx-swap="innerHTML transition:true">
+                hx-swap="innerHTML transition:true"
+                hx-preserve>
                 Next
             </a>
         </li>
