@@ -17,13 +17,21 @@
         </ul>
     </div>
 
-    <!-- Download and Clear Selection Buttons -->
-    <div class="d-flex gap-2">
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSelectionBtn" disabled>Clear</button>
-        <button type="button" class="btn btn-sm btn-outline-primary" id="downloadSelectedBtn" disabled>Download</button>
-        {% if g.user and g.user.is_admin %}
-        <button type="button" class="btn btn-sm btn-outline-danger" id="deleteSelectedBtn" disabled>Delete</button>
-        {% endif %}
+    <!-- Selection Info and Buttons -->
+    <div class="d-flex flex-column flex-md-row align-items-end gap-2">
+        <div class="d-flex gap-2 w-100">
+            <span class="text-muted text-nowrap">
+                <span id="selectedCount">0</span> files selected
+                (<span id="selectedSize">0 B</span>)
+            </span>
+        </div>
+        <div class="d-flex gap-1">
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="clearSelectionBtn" disabled>Clear</button>
+            <button type="button" class="btn btn-sm btn-outline-primary" id="downloadSelectedBtn" disabled>Download</button>
+            {% if g.user and g.user.is_admin %}
+            <button type="button" class="btn btn-sm btn-outline-danger" id="deleteSelectedBtn" disabled>Delete</button>
+            {% endif %}
+        </div>
     </div>
 </div>
 
@@ -51,10 +59,13 @@
         </thead>
         <tbody>
             {% for file in recent_files %}
-            <tr data-file-key="{{ file.key }}" data-file-size="{{ file.size }}" data-file-modified="{{ file.last_modified }}">
+            <tr>
                 <td>
                     <div class="form-check">
-                        <input class="form-check-input file-checkbox" type="checkbox" value="{{ file.key }}">
+                        <input class="form-check-input file-select" type="checkbox" 
+                               data-id="{{ file.id }}"
+                               data-key="{{ file.key }}"
+                               data-size="{{ file.size }}">
                     </div>
                 </td>
                 <td class="text-break">
