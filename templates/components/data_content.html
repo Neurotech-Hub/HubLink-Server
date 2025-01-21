@@ -75,7 +75,7 @@
         </thead>
         <tbody>
             {% for file in recent_files %}
-            <tr>
+            <tr class="{% if (now - file.last_modified).total_seconds() < 1800 %}fileActive{% endif %}">
                 <td>
                     <div class="form-check">
                         <input class="form-check-input file-select" type="checkbox" 
@@ -101,9 +101,6 @@
                             v{{ file.version }}
                         </span>
                     </div>
-                    {% if (now - file.last_modified).total_seconds() < 1800 %}
-                        <span class="badge bg-success ms-2 fileActive">Active</span>
-                    {% endif %}
                 </td>
                 <td>{{ file.size|filesizeformat }}</td>
                 <td>

@@ -25,12 +25,16 @@
             x: dates,
             y: counts,
             type: 'scatter',
-            mode: 'lines',
+            mode: 'lines+markers',
             fill: 'tozeroy',
             line: {
                 color: 'rgb(75, 192, 192)',
                 width: 2,
-                shape: 'spline'
+                shape: dates.length > 1 ? 'spline' : 'linear'
+            },
+            marker: {
+                size: 6,
+                color: 'rgb(75, 192, 192)'
             },
             fillcolor: 'rgba(75, 192, 192, 0.2)',
             hovertemplate: 
@@ -54,7 +58,8 @@
                 showgrid: true,
                 gridcolor: 'rgba(0,0,0,0.1)',
                 zeroline: false,
-                title: 'Number of Uploads'
+                title: 'Number of Uploads',
+                rangemode: 'tozero'
             },
             paper_bgcolor: 'rgba(0,0,0,0)',
             plot_bgcolor: 'rgba(0,0,0,0)'

@@ -19,8 +19,6 @@
         var dirCounts = {{ dir_counts | tojson | safe }};
         var dirDetails = {{ dir_details | tojson | safe }};
 
-        console.log('Directory Data:', { dirNames, dirCounts, dirDetails });
-
         var barTrace = {
             x: dirNames,
             y: dirCounts,
