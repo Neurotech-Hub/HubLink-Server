@@ -144,7 +144,6 @@ class Source(db.Model):
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
     devices = db.Column(db.String(500), nullable=False, server_default='[]')
     state = db.Column(db.String(50), nullable=False, server_default='created')
-    include_archive = db.Column(db.Boolean, nullable=False, server_default='0')
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
 
     def __repr__(self):
@@ -165,7 +164,6 @@ class Source(db.Model):
             'error': self.error,
             'file_id': self.file_id,  # Just include the file_id
             'devices': json.loads(self.devices) if self.devices else [],  # Decode JSON string to list
-            'include_archive': self.include_archive,
             'file_size': self.file.size if self.file else 0  # Add file size
         }
 

@@ -143,33 +143,25 @@
                         <div class="invalid-feedback">Please provide a valid name using only letters, numbers, hyphens, and underscores.</div>
                     </div>
                     <div class="mb-3">
-                        <label for="fileFilter" class="form-label">File Filter <span
+                        <label for="fileFilter" class="form-label">Directory Filter <span
                                 class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="fileFilter" name="file_filter" required>
-                            <button class="btn btn-outline-secondary" type="button" 
-                                    data-bs-toggle="dropdown" 
-                                    aria-expanded="false">
-                                <i class="bi bi-list"></i>
-                            </button>
-                            <ul class="dropdown-menu dropdown-menu-end" style="max-height: 200px; overflow-y: auto;">
-                                {% for pattern in dir_patterns %}
-                                <li>
-                                    <button type="button" 
-                                            class="dropdown-item pattern-item" 
-                                            data-pattern="{{ pattern }}">
-                                        {{ pattern }}
-                                    </button>
-                                </li>
-                                {% endfor %}
-                            </ul>
+                        <select class="form-select form-control" id="fileFilter" name="file_filter" required>
+                            <option value="">Select a directory...</option>
+                            {% for pattern in dir_patterns %}
+                            {% set dir_path = pattern | replace('/[^/]+/', '/') | replace('/*', '') %}
+                            <option value="{{ pattern }}">{{ dir_path if dir_path else '/' }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-check mt-2">
+                            <input class="form-check-input" type="checkbox" id="includeSubdirs" checked>
+                            <label class="form-check-label" for="includeSubdirs">
+                                Include subdirectories
+                            </label>
                         </div>
                         <div class="form-text">
-                            Enter a pattern for matching CSV files, or select from common patterns. "/*" matches all files in a directory, "/[^/]+/" matches all files in a directory and all subdirectories.
-                            <br>
                             <small class="text-muted">Note: Only CSV files will be processed for sources.</small>
                         </div>
-                        <div class="invalid-feedback">Please provide a file filter pattern.</div>
+                        <div class="invalid-feedback">Please select a directory to filter.</div>
                     </div>
                     <div class="mb-3">
                         <label for="includeColumns" class="form-label">Include Columns <span
@@ -181,7 +173,6 @@
                                     required
                                     pattern="^[^,*]+(,[^,*]+)*$"
                                     rows="3"
-                                    readonly
                                     style="white-space: pre-wrap; word-wrap: break-word; resize: vertical;"
                             ></textarea>
                             <button class="btn btn-outline-secondary" 
@@ -193,6 +184,7 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" style="max-height: 200px; overflow-y: auto;">
                                 {% for file in recent_files %}
+                                {% if file.size > 1024 %}
                                 <li>
                                     <button type="button" 
                                             class="dropdown-item recent-file-item" 
@@ -204,6 +196,7 @@
                                         </small>
                                     </button>
                                 </li>
+                                {% endif %}
                                 {% endfor %}
                             </ul>
                         </div>
@@ -219,18 +212,11 @@
                         </div>
                     </div>
                     <div class="row mb-3">
-                        <div class="col-6">
+                        <div class="col-12">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="tailOnly" name="tail_only" onchange="toggleDataPoints()">
                                 <label class="form-check-label" for="tailOnly">Tail Only</label>
                                 <div class="form-text">Only process the end of files: use if rows might exceed 1M.</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="form-check">
-                                <input type="checkbox" class="form-check-input" id="includeArchive" name="include_archive">
-                                <label class="form-check-label" for="includeArchive">Include Archival Data</label>
-                                <div class="form-text">Leave unchecked to only process the latest file version.</div>
                             </div>
                         </div>
                     </div>
@@ -351,6 +337,235 @@
 
 <!-- Page-specific scripts -->
 <script>
+    // Utility functions
+    function validateTags() {
+        const form = document.getElementById('sourceForm');
+        if (form.classList.contains('was-validated')) {
+            form.checkValidity();
+        }
+    }
+
+    function toggleDataPoints() {
+        const tailOnly = document.getElementById('tailOnly');
+        const dataPointsContainer = document.getElementById('dataPointsContainer');
+        dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
+    }
+
+    function detectColumns() {
+        const sourceId = document.getElementById('source_id').value;
+        if (!sourceId) {
+            alert('Please select a source first');
+            return;
+        }
+
+        // Show loading state
+        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
+        const originalText = detectButton.innerHTML;
+        detectButton.innerHTML = 'Detecting...';
+        detectButton.disabled = true;
+
+        const formData = new FormData();
+        formData.append('source_id', sourceId);
+
+        fetch('/detect_columns', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // Update columns input
+            const columnsInput = document.getElementById('include_columns');
+            columnsInput.value = data.columns.join(',');
+
+            // Update datetime column select
+            const datetimeSelect = document.getElementById('datetime_column');
+            datetimeSelect.innerHTML = '<option value="">No datetime column selected</option>';
+            
+            data.datetime_columns.forEach(col => {
+                const option = document.createElement('option');
+                option.value = col;
+                option.textContent = col;
+                datetimeSelect.appendChild(option);
+            });
+
+            // If only one datetime column, select it
+            if (data.datetime_columns.length === 1) {
+                datetimeSelect.value = data.datetime_columns[0];
+            }
+
+            // Show success message
+            alert('Columns detected successfully!');
+        })
+        .catch(error => {
+            alert('Error detecting columns: ' + error.message);
+        })
+        .finally(() => {
+            // Restore button state
+            detectButton.innerHTML = originalText;
+            detectButton.disabled = false;
+        });
+    }
+
+    // Initialize all functionality when DOM is ready
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle subdirectory toggle
+        const fileFilter = document.getElementById('fileFilter');
+        const includeSubdirs = document.getElementById('includeSubdirs');
+        
+        function updateFilterPattern() {
+            const selectedOption = fileFilter.options[fileFilter.selectedIndex];
+            if (selectedOption.value) {
+                const basePath = selectedOption.value.replace('/[^/]+/', '/').replace('/*', '');
+                fileFilter.value = basePath + (includeSubdirs.checked ? '/[^/]+/' : '/*');
+            }
+        }
+
+        if (fileFilter && includeSubdirs) {
+            includeSubdirs.addEventListener('change', updateFilterPattern);
+            fileFilter.addEventListener('change', function() {
+                if (this.value) {
+                    const isSubdirPattern = this.value.includes('[^/]+');
+                    includeSubdirs.checked = isSubdirPattern;
+                    updateFilterPattern();
+                }
+            });
+        }
+
+        // Initialize source modal
+        document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function() {
+            const form = document.getElementById('sourceForm');
+            form.reset();
+            form.action = `/{{ account.url }}/source`;
+            document.getElementById('sourceModalLabel').textContent = 'Add Source';
+            document.getElementById('sourceId').value = '';
+        });
+
+        // Remove any existing show classes or inline styles that might interfere with Bootstrap
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.removeAttribute('style');
+            modal.removeAttribute('aria-modal');
+            modal.setAttribute('aria-hidden', 'true');
+        });
+
+        // Enable Bootstrap form validation
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        });
+
+        // Initialize popovers
+        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+        const popoverList = [...popoverTriggerList].map(el => new bootstrap.Popover(el, {
+            html: true,
+            container: 'body'
+        }));
+
+        // Initialize Tagify
+        const includeColumnsInput = document.getElementById('includeColumns');
+        if (includeColumnsInput && !includeColumnsInput._tagify) {
+            const tagify = new Tagify(includeColumnsInput, {
+                delimiters: ",",
+                pattern: /^[^,*]+$/,
+                dropdown: { enabled: 0 },
+                callbacks: {
+                    add: validateTags,
+                    remove: function(e) {
+                        validateTags();
+                        // Check if removed tag was the datetime column
+                        const datetimeSelect = document.getElementById('datetime_column');
+                        const datetimeFeedback = document.getElementById('datetime_feedback');
+                        if (datetimeSelect.value === e.detail.data.value) {
+                            // Reset datetime column state
+                            datetimeSelect.value = '';
+                            datetimeSelect.style.display = 'none';
+                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                        }
+                    }
+                },
+                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
+            });
+
+            // Handle file selection with Tagify
+            const recentFileItems = document.querySelectorAll('.recent-file-item');
+            recentFileItems.forEach(item => {
+                item.addEventListener('click', async function() {
+                    const fileId = this.dataset.fileId;
+                    const fileKey = this.dataset.fileKey;
+                    
+                    try {
+                        const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            tagify.removeAllTags();
+                            tagify.addTags(data.columns);
+
+                            const datetimeSelect = document.getElementById('datetime_column');
+                            const datetimeFeedback = document.getElementById('datetime_feedback');
+                            datetimeSelect.innerHTML = '';
+                            
+                            if (data.datetime_columns?.length > 0) {
+                                data.datetime_columns.forEach(col => {
+                                    const option = document.createElement('option');
+                                    option.value = col;
+                                    option.textContent = col;
+                                    datetimeSelect.appendChild(option);
+                                });
+
+                                datetimeSelect.value = data.datetime_columns[0];
+                                datetimeFeedback.textContent = 'Column containing datetime values';
+                                datetimeSelect.style.display = 'block';
+                            } else {
+                                datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                                datetimeSelect.style.display = 'none';
+                            }
+                        } else {
+                            throw new Error(data.error);
+                        }
+                    } catch (e) {
+                        console.error('Error fetching header:', e);
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
+                        alertDiv.innerHTML = `
+                            Failed to fetch header: ${e.message}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        `;
+                        includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
+                    }
+                });
+            });
+        }
+    });
+
+    // Copy link functionality
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('copy-link')) {
+            const url = e.target.dataset.url;
+            const sourceId = e.target.dataset.sourceId;
+            navigator.clipboard.writeText(url).then(() => {
+                const feedbackElement = document.getElementById(`copyFeedback-${sourceId}`);
+                feedbackElement.style.display = 'inline';
+                setTimeout(() => {
+                    feedbackElement.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+    });
+
     function editSource(source) {
         // Update form action
         const form = document.getElementById('sourceForm');
@@ -386,146 +601,6 @@
         sourceModal.show();
     }
 
-    // Add reset function for "Add Source" button
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function () {
-            const form = document.getElementById('sourceForm');
-            form.reset();
-            form.action = `/{{ account.url }}/source`;
-            document.getElementById('sourceModalLabel').textContent = 'Add Source';
-            document.getElementById('sourceId').value = '';
-        });
-
-        // Remove any existing show classes or inline styles that might interfere with Bootstrap
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            modal.classList.remove('show');
-            modal.removeAttribute('style');
-            modal.removeAttribute('aria-modal');
-            modal.setAttribute('aria-hidden', 'true');
-        });
-
-        // Enable Bootstrap form validation
-        var forms = document.querySelectorAll('.needs-validation');
-        Array.prototype.slice.call(forms).forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            }, false);
-        });
-
-        document.querySelectorAll('.preview-text').forEach(element => {
-            try {
-                // Parse and re-stringify the JSON with formatting
-                const jsonData = JSON.parse(element.dataset.preview);
-                element.dataset.preview = JSON.stringify(jsonData, null, 2);
-            } catch (e) {
-                // If it's not valid JSON, leave it as is
-                console.log('Preview is not valid JSON');
-            }
-        });
-
-        // Initialize Tagify on the textarea
-        var includeColumnsInput = document.getElementById('includeColumns');
-        var tagify = new Tagify(includeColumnsInput, {
-            delimiters: ",",
-            pattern: /^[^,*]+$/,  // Prevent wildcards
-            dropdown: {
-                enabled: 0
-            },
-            callbacks: {
-                add: validateTags,
-                remove: validateTags
-            },
-            originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
-        });
-
-        // Handle file selection with Tagify
-        const recentFileItems = document.querySelectorAll('.recent-file-item');
-        recentFileItems.forEach(item => {
-            item.addEventListener('click', async function() {
-                const fileId = this.dataset.fileId;
-                const fileKey = this.dataset.fileKey;
-                
-                try {
-                    const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        // Update columns input with Tagify
-                        const columns = data.columns;
-                        tagify.removeAllTags();
-                        tagify.addTags(columns);
-
-                        // Update datetime column select
-                        const datetimeSelect = document.getElementById('datetime_column');
-                        const datetimeFeedback = document.getElementById('datetime_feedback');
-                        datetimeSelect.innerHTML = '';
-                        
-                        if (data.datetime_columns && data.datetime_columns.length > 0) {
-                            data.datetime_columns.forEach(col => {
-                                const option = document.createElement('option');
-                                option.value = col;
-                                option.textContent = col;
-                                datetimeSelect.appendChild(option);
-                            });
-
-                            // Select the first datetime column by default
-                            datetimeSelect.value = data.datetime_columns[0];
-                            datetimeFeedback.textContent = 'Column containing datetime values';
-                            datetimeSelect.style.display = 'block';
-                        } else {
-                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                            datetimeSelect.style.display = 'none';
-                        }
-                    } else {
-                        // Show error alert
-                        const alertDiv = document.createElement('div');
-                        alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
-                        alertDiv.innerHTML = `
-                            Error reading header from ${fileKey}: ${data.error}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        `;
-                        includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
-                    }
-                } catch (e) {
-                    console.error('Error fetching header:', e);
-                    // Show error alert
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
-                    alertDiv.innerHTML = `
-                        Failed to fetch header: ${e.message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    `;
-                    includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
-                }
-            });
-        });
-
-        function validateTags() {
-            const form = document.getElementById('sourceForm');
-            if (form.classList.contains('was-validated')) {
-                form.checkValidity();
-            }
-        }
-
-        // When editing a source, convert existing columns to tags
-        if (typeof editSource === 'function') {
-            const originalEditSource = editSource;
-            editSource = function(source) {
-                originalEditSource(source);
-                if (source.include_columns) {
-                    const columns = source.include_columns.split(',').map(col => col.trim());
-                    tagify.removeAllTags();
-                    tagify.addTags(columns);
-                }
-            };
-        }
-    });
-
     function editLayout(id, name) {
         const modal = document.getElementById('layoutModal');
         const form = document.getElementById('layoutForm');
@@ -560,8 +635,6 @@
         // Set form action for creation
         form.action = `/{{ account.url }}/layout`;
     });
-
-    
 
     // Initialize all popovers
     document.addEventListener('DOMContentLoaded', function() {
@@ -693,164 +766,6 @@
         // Show modal
         const plotModal = new bootstrap.Modal(document.getElementById('plotModal'));
         plotModal.show();
-    }
-
-    // Add pattern selection handler
-    document.addEventListener('DOMContentLoaded', function() {
-        const patternItems = document.querySelectorAll('.pattern-item');
-        const fileFilterInput = document.getElementById('fileFilter');
-
-        patternItems.forEach(item => {
-            item.addEventListener('click', function() {
-                fileFilterInput.value = this.dataset.pattern;
-            });
-        });
-    });
-
-    // Copy link functionality
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('copy-link')) {
-            const url = e.target.dataset.url;
-            const sourceId = e.target.dataset.sourceId;
-            navigator.clipboard.writeText(url).then(() => {
-                // Show feedback message
-                const feedbackElement = document.getElementById(`copyFeedback-${sourceId}`);
-                feedbackElement.style.display = 'inline';
-                
-                // Hide feedback after 2 seconds
-                setTimeout(() => {
-                    feedbackElement.style.display = 'none';
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
-        }
-    });
-
-    function toggleDataPoints() {
-        const tailOnly = document.getElementById('tailOnly');
-        const dataPointsContainer = document.getElementById('dataPointsContainer');
-        dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
-    }
-
-    // Initialize all popovers
-    document.addEventListener('DOMContentLoaded', function() {
-        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-        const popoverList = [...popoverTriggerList].map(el => new bootstrap.Popover(el, {
-            html: true,
-            container: 'body'
-        }));
-    });
-
-    // document.addEventListener('DOMContentLoaded', function() {
-    //     // Initialize all plot previews
-    //     document.querySelectorAll('.plot-preview').forEach(function(plotElement) {
-    //         const plotData = JSON.parse(plotElement.dataset.plot);
-    //         if (plotData && plotData.plotly_json) {
-    //             const plotlyConfig = JSON.parse(plotData.plotly_json);
-    //             Plotly.newPlot(
-    //                 plotElement,
-    //                 plotlyConfig.data,
-    //                 Object.assign({
-    //                     height: 250,
-    //                     width: 350,
-    //                     margin: { l: 30, r: 10, t: 30, b: 30 }
-    //                 }, plotlyConfig.layout || {}),
-    //                 {
-    //                     responsive: true,
-    //                     displayModeBar: 'hover',
-    //                     displaylogo: false,
-    //                     modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
-    //                 }
-    //             );
-    //         }
-    //     });
-
-    //     // Add click handlers for showing/hiding plots
-    //     document.querySelectorAll('[data-plot-trigger]').forEach(function(trigger) {
-    //         trigger.addEventListener('click', function(e) {
-    //             if (e.target.closest('.btn-close')) return;
-                
-    //             // Hide all other previews
-    //             document.querySelectorAll('.plot-preview-container').forEach(container => {
-    //                 if (container !== this.querySelector('.plot-preview-container')) {
-    //                     container.style.display = 'none';
-    //                 }
-    //             });
-                
-    //             // Toggle this preview
-    //             const container = this.querySelector('.plot-preview-container');
-    //             container.style.display = container.style.display === 'none' ? 'block' : 'none';
-    //         });
-    //     });
-
-    //     // Close previews when clicking outside
-    //     document.addEventListener('click', function(e) {
-    //         if (!e.target.closest('[data-plot-trigger]')) {
-    //             document.querySelectorAll('.plot-preview-container').forEach(container => {
-    //                 container.style.display = 'none';
-    //             });
-    //         }
-    //     });
-    // });
-
-    function detectColumns() {
-        const sourceId = document.getElementById('source_id').value;
-        if (!sourceId) {
-            alert('Please select a source first');
-            return;
-        }
-
-        // Show loading state
-        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
-        const originalText = detectButton.innerHTML;
-        detectButton.innerHTML = 'Detecting...';
-        detectButton.disabled = true;
-
-        const formData = new FormData();
-        formData.append('source_id', sourceId);
-
-        fetch('/detect_columns', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            // Update columns input
-            const columnsInput = document.getElementById('include_columns');
-            columnsInput.value = data.columns.join(',');
-
-            // Update datetime column select
-            const datetimeSelect = document.getElementById('datetime_column');
-            datetimeSelect.innerHTML = '<option value="">No datetime column selected</option>';
-            
-            data.datetime_columns.forEach(col => {
-                const option = document.createElement('option');
-                option.value = col;
-                option.textContent = col;
-                datetimeSelect.appendChild(option);
-            });
-
-            // If only one datetime column, select it
-            if (data.datetime_columns.length === 1) {
-                datetimeSelect.value = data.datetime_columns[0];
-            }
-
-            // Show success message
-            alert('Columns detected successfully!');
-        })
-        .catch(error => {
-            alert('Error detecting columns: ' + error.message);
-        })
-        .finally(() => {
-            // Restore button state
-            detectButton.innerHTML = originalText;
-            detectButton.disabled = false;
-        });
     }
 </script>
 

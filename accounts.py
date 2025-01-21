@@ -423,7 +423,6 @@ def validate_source_data(form_data):
         'include_columns': form_data.get('include_columns', '').strip(),
         'data_points': int(form_data.get('data_points', 0)),
         'tail_only': form_data.get('tail_only') == 'on',
-        'include_archive': form_data.get('include_archive') == 'on',
         'datetime_column': form_data.get('datetime_column', '').strip(),
         'state': 'running'
     }
@@ -454,7 +453,6 @@ def initiate_source_refresh(source, settings):
                 'include_columns': source.include_columns,
                 'data_points': source.data_points,
                 'tail_only': source.tail_only,
-                'include_archive': source.include_archive,
                 'bucket_name': settings.bucket_name
             }
         }

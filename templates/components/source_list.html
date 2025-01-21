@@ -10,7 +10,7 @@
                 {% endif %}
             </h5>
             <div>
-                <span id="copyFeedback-{{ source.id }}" class="text-muted ms-2 me-2 d-none">Copied!</span>
+                <span id="copyFeedback-{{ source.id }}" class="text-muted ms-2 me-2" style="display: none;">Copied!</span>
                 <button type="button" class="btn btn-outline-primary btn-sm me-2"
                     onclick='createPlot({{ source.to_dict() | tojson | safe }})'>
                     New Plot
@@ -81,7 +81,10 @@
             {% endif %}
         </div>
 
-        <div class="card-footer py-1 px-3">
+        <div class="card-footer py-1 px-3 
+                    {% if source.to_dict().state == 'error' %}bg-danger bg-opacity-10
+                    {% elif source.to_dict().state == 'running' %}bg-warning bg-opacity-10
+                    {% endif %}">
             <div class="d-flex justify-content-between align-items-center">
                 <small class="text-muted">{{ source.to_dict().state }}</small>
                 <small class="text-muted">
@@ -105,7 +108,7 @@
                 <form action="{{ url_for('accounts.refresh_source', account_url=account.url, source_id=source.id) }}" method="post"
                     class="d-inline m-0 p-0">
                     <button type="submit"
-                        class="btn btn-link btn-sm text-muted p-0 border-0">regenerate</button>
+                        class="btn btn-link btn-sm text-muted p-0 border-0">refresh</button>
                 </form>
             </div>
         </div>
