@@ -41,14 +41,12 @@ def get_analytics(account_id=None):
         if account_id:
             gateways_query = gateways_query.filter_by(account_id=account_id)
         
-        # Get unique gateway count using a subquery to count distinct combinations
+        # Get unique gateway count by name only
         total_gateways = db.session.query(
-            Gateway.name, Gateway.ip_address
+            func.count(distinct(Gateway.name))
         ).filter(
             Gateway.id.in_(gateways_query.with_entities(Gateway.id))
-        ).group_by(
-            Gateway.name, Gateway.ip_address
-        ).count()
+        ).scalar() or 0
         
         analytics = {
             'total_accounts': len(accounts),
