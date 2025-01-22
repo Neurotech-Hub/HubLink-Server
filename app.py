@@ -107,6 +107,15 @@ def create_default_settings(account_id):
         logger.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
         db.session.rollback()
 
+# Add this before the routes
+@app.before_request
+def load_user():
+    g.user = None
+    if 'admin_id' in session:
+        account = db.session.get(Account, session['admin_id'])
+        if account and account.is_admin:
+            g.user = account
+
 # Route to display the homepage
 @app.route('/')
 def index():
@@ -431,6 +440,36 @@ def edit_account(account_id):
         db.session.rollback()
         logger.error(f"Error updating account {account_id}: {e}")
         flash('Error updating account', 'error')
+        
+    return redirect(url_for('admin'))
+
+# Add this new route
+@app.route('/admin/account/<int:account_id>/reset-stats', methods=['POST'])
+@admin_required
+def reset_account_stats(account_id):
+    try:
+        account = db.session.get(Account, account_id)
+        if not account:
+            flash('Account not found', 'error')
+            return redirect(url_for('admin'))
+            
+        # Reset all statistics
+        account.count_gateway_pings = 0
+        account.count_uploaded_files = 0
+        account.count_page_loads = 0
+        account.count_file_downloads = 0
+        account.count_settings_updated = 0
+        
+        # Delete all gateway entries
+        Gateway.query.filter_by(account_id=account_id).delete()
+        
+        db.session.commit()
+        flash('Account statistics reset successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error resetting stats for account {account_id}: {e}")
+        flash('Error resetting account statistics', 'error')
         
     return redirect(url_for('admin'))
 

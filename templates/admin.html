@@ -236,6 +236,12 @@
                                                     onclick="editAccount({{ account.id }}, '{{ account.name }}', '{{ account.url }}', {{ account.is_admin|tojson }}, {{ account.use_password|tojson }})">
                                                 Edit
                                             </button>
+                                            <form action="{{ url_for('reset_account_stats', account_id=account.id) }}" 
+                                                  method="POST" 
+                                                  onsubmit="return confirm('Are you sure you want to reset statistics for this account? This will delete all gateway entries and reset all counters to zero.');"
+                                                  class="d-inline-block">
+                                                <button type="submit" class="btn btn-sm btn-outline-warning">Reset Stats</button>
+                                            </form>
                                             <form action="{{ url_for('accounts.delete_account', account_url=account.url) }}" 
                                                   method="POST" 
                                                   onsubmit="return confirm('Are you sure you want to delete this account? This action cannot be undone.');"

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app, session
 from models import db, Account, Setting, File, Gateway, Source, Plot, Layout
 from datetime import datetime, timedelta, timezone
 import logging
@@ -20,6 +20,14 @@ import dateutil.parser as parser
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
+
+@accounts_bp.before_request
+def load_blueprint_user():
+    g.user = None
+    if 'admin_id' in session:
+        account = db.session.get(Account, session['admin_id'])
+        if account and account.is_admin:
+            g.user = account
 
 # Route to view the account dashboard by its unique URL (page load)
 @accounts_bp.route('/<account_url>', methods=['GET'])
@@ -1118,56 +1126,51 @@ def delete_account(account_url):
 def account_data_content(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get directory filter
+        directory = request.args.get('directory')
+        
+        # Get page number
         page = request.args.get('page', 1, type=int)
         per_page = 50
-        directory = request.args.get('directory', None)
-
-        # Query recent files
+        
+        # Get files query with directory filter if provided
         files_query = File.query.filter_by(account_id=account.id)\
             .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.'))
-
+            .filter(~File.key.contains('/.'))\
+            .filter(~File.key.like('__MACOSX%'))  # Also exclude macOS metadata
+        
         if directory:
-            files_query = files_query.filter(File.key.startswith(directory + '/'))
-
-        # Order by last_modified
-        files_query = files_query.order_by(File.last_modified.desc())
-
-        # Log query count before pagination
-        total_files = files_query.count()
-
-        # Paginate results
-        pagination = files_query.paginate(page=page, per_page=per_page)
-        recent_files = pagination.items
-
-        # Ensure all last_modified timestamps have timezone info
-        for file in recent_files:
+            files_query = files_query.filter(File.key.like(f"{directory}/%"))
+        
+        # Order by last modified and paginate
+        pagination = files_query.order_by(File.last_modified.desc()).paginate(
+            page=page, 
+            per_page=per_page,
+            error_out=False
+        )
+        
+        # Get directories for dropdown
+        directories = get_directory_paths(account.id)
+        
+        # Ensure all timestamps have timezone info
+        now = datetime.now(timezone.utc)
+        files = pagination.items
+        for file in files:
             if file.last_modified and file.last_modified.tzinfo is None:
                 file.last_modified = file.last_modified.replace(tzinfo=timezone.utc)
-
-        # Get unique directories
-        directories = sorted(list(set(
-            os.path.dirname(f.key)
-            for f in File.query.filter_by(account_id=account.id)
-            .filter(~File.key.like('.%'))
-            .filter(~File.key.contains('/.'))
-            .filter(File.key.like('%/%'))
-            .all()
-        )))
-
-        # Use UTC for now to match database timestamps
-        now = datetime.now(timezone.utc)
-
+        
         return render_template('components/data_content.html',
-                           account=account,
-                           recent_files=recent_files,
-                           directories=directories,
-                           current_directory=directory,
-                           pagination=pagination,
-                           now=now)
-
+                             account=account,
+                             recent_files=files,
+                             pagination=pagination,
+                             now=now,
+                             directory=directory,
+                             current_directory=directory,
+                             directories=directories)
+                             
     except Exception as e:
-        traceback.print_exc()  # Add full traceback
+        logger.error(f"Error loading data content: {e}")
         return "Error loading data", 500
     
 @accounts_bp.route('/<account_url>/dashboard/gateways', methods=['GET'])
