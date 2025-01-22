@@ -60,17 +60,17 @@
 
 <!-- File Table -->
 <div class="table-responsive">
-    <table class="table table-hover align-middle">
+    <table class="table table-hover align-middle data-table">
         <thead>
             <tr>
-                <th style="width: 40px;">
+                <th>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="selectAllCheckbox">
                     </div>
                 </th>
                 <th>Filename</th>
-                <th style="width: 120px;">Size</th>
-                <th style="width: 180px;">Last Modified</th>
+                <th>Size</th>
+                <th>Last Modified</th>
             </tr>
         </thead>
         <tbody>
@@ -89,7 +89,7 @@
                         <a href="{{ url_for('accounts.download_file', account_url=account.url, file_id=file.id) }}" class="text-decoration-none">
                             {{ file.key }}
                         </a>
-                        <span class="badge border border-secondary text-secondary small fw-normal flex-shrink-0" role="button"
+                        <span class="badge border border-secondary text-secondary small fw-normal flex-shrink-0 version-tag" role="button"
                             onclick="showFileDetails(
                                 '{{ file.id }}',
                                 '{{ file.key | replace("'", "\\'") }}',
