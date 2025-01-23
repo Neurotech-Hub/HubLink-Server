@@ -6,9 +6,60 @@ import logging
 from S3Manager import download_source_file
 from models import db
 import plotly.graph_objects as go
+import os
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
+
+def get_group_name(file_path, group_by_level):
+    """
+    Get the group name for a file path based on the grouping level.
+    If the level points to a directory with only files, use the full file name.
+    
+    Args:
+        file_path (str): The full file path
+        group_by_level (int): The level to group by (0-based) or None for no grouping
+    
+    Returns:
+        str: The group name to use
+    """
+    if group_by_level is None:
+        return "All Data"
+        
+    parts = file_path.strip('/').split('/')
+    
+    # If requesting a level beyond what exists, use the deepest level
+    if group_by_level >= len(parts):
+        group_by_level = len(parts) - 1
+        
+    # Get the path up to the requested level
+    group_path = '/'.join(parts[:group_by_level + 1])
+    
+    return group_path
+
+def prepare_grouped_df(df, plot):
+    """
+    Prepare a DataFrame with proper grouping based on plot.group_by level.
+    
+    Args:
+        df (pd.DataFrame): The input DataFrame
+        plot: The plot object containing group_by and other settings
+    
+    Returns:
+        pd.DataFrame: DataFrame with a 'group' column for plotting
+    """
+    try:
+        if 'file_path' not in df.columns:
+            logger.error("file_path column not found in DataFrame")
+            return df
+            
+        # Add group column based on file paths
+        df['group'] = df['file_path'].apply(lambda x: get_group_name(x, plot.group_by))
+        
+        return df
+    except Exception as e:
+        logger.error(f"Error preparing grouped DataFrame: {str(e)}")
+        return df
 
 def get_plot_data(plot, source, account):
     try:
@@ -102,7 +153,6 @@ def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
         config = json.loads(plot.config)
-        # For timeline plots, use the source's datetime_column instead of x_data from config
         x_data = plot.source.datetime_column
         y_data = config['y_data']
         
@@ -126,16 +176,9 @@ def process_timeseries_plot(plot, csv_content):
         if len(df) == 0:
             return {'error': 'No valid data points after cleaning'}
 
-        # Check if device column exists
-        device_col = 'hublink_device_id'
-        if device_col not in df.columns:
-            logger.warning(f"Column {device_col} not found in DataFrame")
-            device_col = df.columns[0]  # Use first column as fallback
-            logger.info(f"Using {device_col} as device column instead")
-
-        # Pre-process the data to avoid Plotly's internal grouping
-        df = df.sort_values([device_col, x_data])
-        df[device_col] = df[device_col].astype(str)  # Convert to string to avoid categorical warnings
+        # Apply grouping
+        df = prepare_grouped_df(df, plot)
+        df = df.sort_values(['group', x_data])
         
         # Create figure using go.Figure for more control
         fig = go.Figure()
@@ -143,14 +186,14 @@ def process_timeseries_plot(plot, csv_content):
         # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
-        for idx, device in enumerate(sorted(df[device_col].unique())):
-            device_data = df[df[device_col] == device]
+        for idx, group in enumerate(sorted(df['group'].unique())):
+            group_data = df[df['group'] == group]
             color = colors[idx % len(colors)]
             
             fig.add_trace(go.Scatter(
-                x=device_data[x_data],
-                y=device_data[y_data],
-                name=device,
+                x=group_data[x_data],
+                y=group_data[y_data],
+                name=group,
                 mode='lines+markers',
                 marker=dict(size=6, opacity=0.7, color=color),
                 line=dict(width=2, shape='linear', color=color),
@@ -161,8 +204,8 @@ def process_timeseries_plot(plot, csv_content):
         # Update layout
         layout = get_default_layout(plot.name)
         layout.update({
-            'xaxis_title': config['x_data'],
-            'yaxis_title': config['y_data']
+            'xaxis_title': x_data,
+            'yaxis_title': y_data
         })
         fig.update_layout(layout)
         
@@ -185,8 +228,8 @@ def process_box_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        device_col = 'hublink_device_id'
-        df[device_col] = df[device_col].astype(str)  # Convert to string to avoid categorical warnings
+        # Apply grouping
+        df = prepare_grouped_df(df, plot)
         
         # Create figure using go.Figure
         fig = go.Figure()
@@ -194,14 +237,14 @@ def process_box_plot(plot, csv_content):
         # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
-        # Add box plots with different colors for each device
-        for idx, device in enumerate(sorted(df[device_col].unique())):
-            device_data = df[df[device_col] == device]
+        # Add box plots with different colors for each group
+        for idx, group in enumerate(sorted(df['group'].unique())):
+            group_data = df[df['group'] == group]
             color = colors[idx % len(colors)]
             
             fig.add_trace(go.Box(
-                y=device_data[y_data],
-                name=device,
+                y=group_data[y_data],
+                name=group,
                 marker_color=color,
                 line=dict(color=color),
                 boxmean=True  # adds mean marker
@@ -210,8 +253,8 @@ def process_box_plot(plot, csv_content):
         # Update layout
         layout = get_default_layout(plot.name)
         layout.update({
-            'xaxis_title': 'Device',
-            'yaxis_title': config['y_data'],
+            'xaxis_title': 'Group',
+            'yaxis_title': y_data,
             'boxmode': 'group'
         })
         fig.update_layout(layout)
@@ -237,18 +280,13 @@ def process_bar_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        # Check if device column exists
-        device_col = 'hublink_device_id'
-        if device_col not in df.columns:
-            logger.warning(f"Column {device_col} not found in DataFrame")
-            device_col = df.columns[0]  # Use first column as fallback
-            logger.info(f"Using {device_col} as device column instead")
+        # Apply grouping
+        df = prepare_grouped_df(df, plot)
         
-        # Pre-process data to avoid Plotly's internal grouping
-        stats = (df.groupby(device_col, observed=True)[y_data]
+        # Pre-process data to calculate statistics
+        stats = (df.groupby('group', observed=True)[y_data]
                 .agg(['mean', 'std'])
                 .reset_index())
-        stats[device_col] = stats[device_col].astype(str)  # Convert to string to avoid categorical warnings
         
         # Create figure using go.Figure
         fig = go.Figure()
@@ -256,18 +294,18 @@ def process_bar_plot(plot, csv_content):
         # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
-        # Add bars with different colors for each device
-        for idx, device in enumerate(sorted(stats[device_col])):
+        # Add bars with different colors for each group
+        for idx, group in enumerate(sorted(stats['group'])):
             color = colors[idx % len(colors)]
             fig.add_trace(go.Bar(
-                x=[device],
-                y=[stats.loc[stats[device_col] == device, 'mean'].iloc[0]],
+                x=[group],
+                y=[stats.loc[stats['group'] == group, 'mean'].iloc[0]],
                 error_y=dict(
                     type='data',
-                    array=[stats.loc[stats[device_col] == device, 'std'].iloc[0]],
+                    array=[stats.loc[stats['group'] == group, 'std'].iloc[0]],
                     visible=True
                 ),
-                name=device,
+                name=group,
                 marker_color=color,
                 showlegend=True
             ))
@@ -275,7 +313,7 @@ def process_bar_plot(plot, csv_content):
         # Update layout
         layout = get_default_layout(plot.name)
         layout.update({
-            'xaxis_title': 'Device',
+            'xaxis_title': 'Group',
             'yaxis_title': f'{y_data} (Mean)',
             'barmode': 'group'
         })
@@ -300,9 +338,11 @@ def process_table_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        # Convert to categorical and use proper groupby parameters
-        df['hublink_device_id'] = pd.Categorical(df['hublink_device_id'])
-        stats = (df.groupby('hublink_device_id', observed=True, group_keys=True)[y_data]
+        # Apply grouping
+        df = prepare_grouped_df(df, plot)
+        
+        # Calculate statistics by group
+        stats = (df.groupby('group', observed=True)[y_data]
                 .agg([
                     'count',
                     'mean',
@@ -317,20 +357,20 @@ def process_table_plot(plot, csv_content):
         stats[numeric_cols] = stats[numeric_cols].round(3)
         
         # Rename columns for display
-        stats.columns = ['Device', 'Count', 'Mean', 'Std Dev', 'Min', 'Max']
+        stats.columns = ['Group', 'Count', 'Mean', 'Std Dev', 'Min', 'Max']
         
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=list(stats.columns),
-                fill_color='#f0f0f0',  # Light gray for header
+                fill_color='#f0f0f0',
                 align='left',
-                font=dict(size=14)  # Increased header font size
+                font=dict(size=14)
             ),
             cells=dict(
                 values=[stats[col] for col in stats.columns],
-                fill_color='#ffffff',  # White for cells
+                fill_color='#ffffff',
                 align='left',
-                font=dict(size=13)  # Increased cell font size
+                font=dict(size=13)
             )
         )])
         

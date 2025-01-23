@@ -92,24 +92,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function loadEditMode() {
     const layout = {{ layout.config | safe }};
+    const template = document.getElementById('widget-template').innerHTML;
     
     layout.forEach(item => {
+        if (!item.plotId) return; // Skip items without plots
+        
         const widget = {
             x: item.x,
             y: item.y,
             w: item.w,
             h: 1,
-            content: document.getElementById('widget-template').innerHTML,
+            content: template,
             noResize: false,
             noMove: false
         };
         
         const el = grid.addWidget(widget);
-        if (item.plotId) {
-            const select = el.querySelector('.plot-selector');
-            if (select) {
-                select.value = item.plotId;
-            }
+        const select = el.querySelector('.plot-selector');
+        if (select && item.plotId) {
+            select.value = item.plotId;
         }
     });
 }
@@ -221,16 +222,12 @@ function saveLayout() {
         const gridItem = document.querySelector(`.grid-stack-item[gs-x="${item.x}"][gs-y="${item.y}"]`);
         const plotSelector = gridItem.querySelector('.plot-selector');
         return {
-            ...item,
-            plotId: plotSelector?.value
+            x: item.x,
+            y: item.y,
+            w: item.w,
+            plotId: plotSelector?.value || null
         };
-    });
-
-    const unassignedWidgets = widgets.filter(w => !w.plotId);
-    if (unassignedWidgets.length > 0) {
-        alert(`Please select plots for all widgets before saving (${unassignedWidgets.length} unassigned)`);
-        return;
-    }
+    }).filter(widget => widget.plotId); // Only save widgets that have plots assigned
 
     const timeRange = document.getElementById('timeRange').value;
     const layoutName = document.getElementById('layoutTitle').textContent.trim();

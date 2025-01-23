@@ -1,3 +1,8 @@
+{% if not layout.config %}
+    <div class="text-center py-5">
+        <h3 class="text-muted">No plots added to layout.</h3>
+    </div>
+{% else %}
 <div class="grid-stack">
     {% for item in layout.config %}
         {% set plot_id = item.plotId | int %}
@@ -19,6 +24,7 @@
         {% endif %}
     {% endfor %}
 </div>
+{% endif %}
 
 <script>
 // Function to initialize all plots after grid is ready

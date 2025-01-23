@@ -254,17 +254,10 @@
                 <div class="modal-body">
                     <input type="hidden" id="plotSourceId" name="source_id">
 
-                    <!-- Plot Name -->
-                    <div class="mb-3">
-                        <label for="plotName" class="form-label">Plot Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="plotName" name="name" required>
-                        <div class="invalid-feedback">Please provide a plot name.</div>
-                    </div>
-
                     <!-- Plot Type -->
                     <div class="mb-3">
                         <label for="plotType" class="form-label">Plot Type <span class="text-danger">*</span></label>
-                        <select class="form-select" id="plotType" name="type">
+                        <select class="form-select" id="plotType" name="type" onchange="updatePlotName()">
                             <option value="timeline" id="timelineOption">Timeline</option>
                             <option value="box">Box Plot</option>
                             <option value="bar">Bar Chart</option>
@@ -285,10 +278,22 @@
                         <!-- Data Column -->
                         <div class="mb-3">
                             <label for="yData" class="form-label">Data Column <span class="text-danger">*</span></label>
-                            <select class="form-select" id="yData" name="y_data" required>
+                            <select class="form-select" id="yData" name="y_data" required onchange="updatePlotName()">
                                 <option value="">Select column...</option>
                             </select>
                             <div class="invalid-feedback">Please select a data column.</div>
+                        </div>
+
+                        <!-- Plot Name -->
+                        <div class="mb-3">
+                            <label for="plotName" class="form-label">Plot Name <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="plotName" name="name" required>
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearPlotName()">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div class="invalid-feedback">Please provide a plot name.</div>
                         </div>
 
                         <!-- Group By Selection -->
@@ -298,7 +303,7 @@
                             <div id="groupPills">
                                 <div class="d-flex align-items-center gap-2">
                                     <button type="button" 
-                                            class="btn btn-outline-dark active" 
+                                            class="btn btn-outline-dark active px-4 py-2 fs-6" 
                                             data-value="" 
                                             onclick="selectGroup(this)">
                                         No grouping
@@ -851,6 +856,34 @@
         // Show modal
         const plotModal = new bootstrap.Modal(document.getElementById('plotModal'));
         plotModal.show();
+    }
+
+    let userEditedName = false;
+
+    function updatePlotName() {
+        if (userEditedName) return;  // Don't update if user has manually edited
+        
+        const dataColumn = document.getElementById('yData').value;
+        const plotName = document.getElementById('plotName');
+        
+        if (dataColumn) {
+            plotName.value = dataColumn;
+        }
+    }
+
+    // Add event listener for manual plot name edits
+    document.getElementById('plotName').addEventListener('input', function() {
+        userEditedName = true;
+    });
+
+    // Reset userEditedName when modal is hidden
+    document.getElementById('plotModal').addEventListener('hidden.bs.modal', function() {
+        userEditedName = false;
+    });
+
+    function clearPlotName() {
+        document.getElementById('plotName').value = '';
+        userEditedName = true;  // Prevent auto-population after clearing
     }
 </script>
 

@@ -647,31 +647,39 @@ def create_plot(account_url, source_id):
 
 @accounts_bp.route('/<account_url>/plot/<int:plot_id>/delete', methods=['POST'])
 def delete_plot(account_url, plot_id):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        plot = Plot.query.filter_by(id=plot_id, source_id=Source.query.filter_by(account_id=account.id).first().id).first_or_404()
-        
-        # Get all layouts for this account
-        layouts = Layout.query.filter_by(account_id=account.id).all()
-        
-        # Update each layout's config to remove the deleted plot
-        for layout in layouts:
+    account = Account.query.filter_by(url=account_url).first_or_404()
+    plot = Plot.query.get_or_404(plot_id)
+    
+    # Ensure plot belongs to account
+    if plot.source.account_id != account.id:
+        abort(403)
+    
+    # Clean up layout configurations
+    layouts = Layout.query.filter_by(account_id=account.id).all()
+    for layout in layouts:
+        if layout.config:
             try:
                 config = json.loads(layout.config)
-                # Remove any widgets that reference the deleted plot
-                config = [widget for widget in config if widget.get('plotId') != str(plot_id)]
+                if not isinstance(config, list):
+                    logging.error(f"Invalid layout config format for layout {layout.id}: expected list")
+                    continue
+                    
+                # Remove any widgets that reference this plot
+                config = [widget for widget in config if str(widget.get('plotId', '')) != str(plot_id)]
                 layout.config = json.dumps(config)
-            except json.JSONDecodeError:
-                logging.error(f"Failed to parse layout config for layout {layout.id}")
-                continue
-        
-        db.session.delete(plot)
+            except json.JSONDecodeError as e:
+                logging.error(f"Invalid JSON in layout {layout.id} config: {e}")
+                continue  # Skip this layout instead of resetting it
+    
+    # Delete the plot
+    db.session.delete(plot)
+    
+    try:
         db.session.commit()
-        flash('Plot deleted successfully.', 'success')
+        flash('Plot deleted successfully', 'success')
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error deleting plot {plot_id}: {e}")
-        flash('Error deleting plot.', 'error')
+        flash(f'Error deleting plot: {str(e)}', 'danger')
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
 
