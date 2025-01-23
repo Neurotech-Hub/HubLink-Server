@@ -142,7 +142,7 @@ def admin_required(f):
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    # Check if user is logged in and is admin
+    # Check if already logged in first
     if 'admin_id' in session:
         account = db.session.get(Account, session['admin_id'])
         if account and account.is_admin:
@@ -168,6 +168,13 @@ def admin():
             # Handle POST request - create new account
             else:
                 return submit()
+
+    # Auto-login for localhost only if not already logged in
+    if request.remote_addr in ['127.0.0.1', 'localhost'] and 'admin_id' not in session:
+        admin_account = Account.query.filter_by(is_admin=True).first()
+        if admin_account:
+            session['admin_id'] = admin_account.id
+            return redirect(url_for('admin'))
     
     # If not logged in or not admin, handle login
     if request.method == 'POST':
@@ -413,7 +420,6 @@ def from_json_filter(value):
         print(f"Error parsing JSON: {e}")
         return []
 
-# Add this new route
 @app.route('/admin/account/<int:account_id>/edit', methods=['POST'])
 @admin_required
 def edit_account(account_id):
@@ -443,7 +449,51 @@ def edit_account(account_id):
         
     return redirect(url_for('admin'))
 
-# Add this new route
+# Route to delete an account
+@app.route('/<account_url>/delete', methods=['POST'])
+@admin_required
+def delete_account(account_url):
+    try:
+        # Get target account and its settings
+        target_account = Account.query.filter_by(url=account_url).first_or_404()
+        target_settings = Setting.query.filter_by(account_id=target_account.id).first_or_404()
+        
+        # Get admin account settings for AWS cleanup
+        admin_account = Account.query.filter_by(is_admin=True).first()
+        if not admin_account:
+            flash('Admin account not found', 'error')
+            return redirect(url_for('admin'))
+            
+        admin_settings = Setting.query.filter_by(account_id=admin_account.id).first()
+        if not admin_settings:
+            flash('Admin settings not found', 'error')
+            return redirect(url_for('admin'))
+        
+        # Only attempt AWS cleanup if the target account has AWS resources configured
+        if target_settings.bucket_name and target_settings.aws_access_key_id:
+            try:
+                cleanup_aws_resources(
+                    admin_settings,  # Use admin credentials for cleanup
+                    target_settings.aws_access_key_id.split('/')[-1],  # Extract username from access key
+                    target_settings.bucket_name
+                )
+            except Exception as e:
+                logging.error(f"Error cleaning up AWS resources for account {account_url}: {e}")
+                flash('Error cleaning up AWS resources', 'error')
+                return redirect(url_for('admin'))
+        
+        # Delete the account from database (this will cascade delete settings and files)
+        db.session.delete(target_account)
+        db.session.commit()
+        flash('Account deleted successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('Error deleting account', 'error')
+        logging.error(f"Error deleting account {account_url}: {e}")
+        
+    return redirect(url_for('admin'))
+
 @app.route('/admin/account/<int:account_id>/reset-stats', methods=['POST'])
 @admin_required
 def reset_account_stats(account_id):

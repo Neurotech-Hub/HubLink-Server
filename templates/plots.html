@@ -125,7 +125,12 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="sourceModalLabel">Add Source</h5>
+                <div>
+                    <h5 class="modal-title" id="sourceModalLabel">Add Source</h5>
+                    <div class="form-text mt-1">
+                        <small class="text-muted">Note: Only CSV files will be processed for sources.</small>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="sourceForm" action="/{{ account.url }}/source" method="POST" class="needs-validation" novalidate>
@@ -147,19 +152,16 @@
                                 class="text-danger">*</span></label>
                         <select class="form-select form-control" id="fileFilter" name="file_filter" required>
                             <option value="">Select a directory...</option>
-                            {% for pattern in dir_patterns %}
-                            {% set dir_path = pattern | replace('/[^/]+/', '/') | replace('/*', '') %}
-                            <option value="{{ pattern }}">{{ dir_path if dir_path else '/' }}</option>
+                            <option value="*">All Files</option>
+                            {% for dir in directories %}
+                            <option value="{{ dir }}" {% if dir == current_directory %}selected{% endif %}>{{ dir }}</option>
                             {% endfor %}
                         </select>
                         <div class="form-check mt-2">
-                            <input class="form-check-input" type="checkbox" id="includeSubdirs" checked>
+                            <input class="form-check-input" type="checkbox" id="includeSubdirs" name="include_subdirs">
                             <label class="form-check-label" for="includeSubdirs">
                                 Include subdirectories
                             </label>
-                        </div>
-                        <div class="form-text">
-                            <small class="text-muted">Note: Only CSV files will be processed for sources.</small>
                         </div>
                         <div class="invalid-feedback">Please select a directory to filter.</div>
                     </div>

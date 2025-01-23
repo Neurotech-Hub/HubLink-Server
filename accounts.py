@@ -142,7 +142,7 @@ def update_settings(account_url):
         return "There was an issue updating the settings."
 
 def get_directory_paths(account_id):
-    """Get unique directory paths from files for an account, including all intermediate directories."""
+    """Get unique top-level directory paths from files for an account."""
     files = File.query.filter_by(account_id=account_id)\
         .filter(~File.key.like('.%'))\
         .filter(~File.key.contains('/.')) \
@@ -150,19 +150,13 @@ def get_directory_paths(account_id):
     directories = set()
     
     for file in files:
-        # Split the path into components
+        # Get the top-level directory
         path_parts = file.key.split('/')
-        # Build up the path one component at a time
-        current_path = ""
-        for part in path_parts[:-1]:  # Exclude the filename
-            if current_path:
-                current_path = f"{current_path}/{part}"
-            else:
-                current_path = part
-                
+        if len(path_parts) > 1:  # If there's at least one directory
+            top_dir = path_parts[0]
             # Only add if it doesn't start with a dot
-            if not any(p.startswith('.') for p in current_path.split('/')):
-                directories.add(current_path)
+            if not top_dir.startswith('.'):
+                directories.add(top_dir)
     
     # Convert to sorted list
     return sorted(list(directories))
@@ -326,7 +320,7 @@ def account_plots(account_url):
         # Get files sorted by last_modified in descending order
         files = File.query.filter_by(account_id=account.id).order_by(File.last_modified.desc()).all()
         file_keys = [file.key for file in files]
-        dir_patterns = generate_directory_patterns(file_keys)  # The order will now be preserved
+        directories = generate_directory_patterns(file_keys)  # Now returns top-level directories
         
         sources = Source.query.filter_by(account_id=account.id).all()
         recent_files = get_latest_files(account.id, 100)
@@ -367,7 +361,7 @@ def account_plots(account_url):
                           account=account, 
                           sources=sources,
                           layout_plot_names=layout_plot_names,
-                          dir_patterns=dir_patterns,
+                          directories=directories,  # Changed from dir_patterns to directories
                           recent_files=recent_files)
                        
     except Exception as e:
@@ -377,47 +371,20 @@ def account_plots(account_url):
         return "There was an issue loading the plots page.", 500
 
 def generate_directory_patterns(file_keys):
-    dir_patterns = []  # Change to list to maintain order
-    pattern_set = set()  # Use set to track what we've added
+    """Get unique top-level directories from file keys."""
+    directories = set()
     
-    # Add root level pattern first
-    dir_patterns.append('*')
-    pattern_set.add('*')
+    for key in file_keys:
+        # Split the path and get the top-level directory
+        parts = key.split('/')
+        if len(parts) > 1:  # If there's at least one directory
+            top_dir = parts[0]
+            # Only add if it doesn't start with a dot
+            if not top_dir.startswith('.'):
+                directories.add(top_dir)
     
-    for key in file_keys:  # file_keys are pre-sorted by most recent
-        # Skip hidden files and directories
-        if any(part.startswith('.') for part in key.split('/')):
-            continue
-            
-        # Split the key by '/' and remove the filename
-        parts = key.split('/')[:-1]
-        
-        # Generate patterns for each directory level
-        current_path = []
-        for part in parts:
-            current_path.append(part)
-            
-            # Add exact pattern for this level
-            exact_pattern = '/'.join(current_path) + '/*'
-            if exact_pattern not in pattern_set:
-                dir_patterns.append(exact_pattern)
-                pattern_set.add(exact_pattern)
-            
-            # Add wildcard pattern for this level (except root level)
-            if len(current_path) > 1:
-                wildcard_path = current_path[:-1]
-                wildcard_pattern = '/'.join(wildcard_path) + '/[^/]+/*'
-                if wildcard_pattern not in pattern_set:
-                    # Insert wildcard pattern right after its parent pattern
-                    parent_pattern = '/'.join(wildcard_path) + '/*'
-                    try:
-                        parent_idx = dir_patterns.index(parent_pattern)
-                        dir_patterns.insert(parent_idx + 1, wildcard_pattern)
-                    except ValueError:
-                        dir_patterns.append(wildcard_pattern)
-                    pattern_set.add(wildcard_pattern)
-    
-    return dir_patterns
+    # Convert to sorted list, with '*' as the first option
+    return ['*'] + sorted(list(directories))
 
 def validate_source_data(form_data):
     """Validate source form data and return cleaned data"""
@@ -512,34 +479,48 @@ def create_source(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         
-        # Validate input data
-        validated_data = validate_source_data(request.form)
+        # Get form data
+        name = request.form.get('name', '').strip()
+        file_filter = request.form.get('file_filter', '')
+        include_subdirs = request.form.get('include_subdirs') == 'on'
+        include_columns = request.form.get('include_columns', '')
+        datetime_column = request.form.get('datetime_column', '')
+        tail_only = request.form.get('tail_only') == 'on'
+        data_points = request.form.get('data_points', type=int)
         
-        source = Source(
-            account_id=account.id,
-            **validated_data
+        # Build the file pattern based on selection
+        if file_filter == '*':
+            pattern = '*'
+        else:
+            # If including subdirectories, match any depth
+            if include_subdirs:
+                pattern = f"{file_filter}/*"
+            else:
+                # If not including subdirectories, only match immediate files
+                pattern = f"{file_filter}/[^/]+$"
+        
+        # Create new source
+        new_source = Source(
+            name=name,
+            file_filter=pattern,  # Use the constructed pattern
+            include_columns=include_columns,
+            datetime_column=datetime_column,
+            tail_only=tail_only,
+            data_points=data_points,
+            account_id=account.id
         )
         
-        db.session.add(source)
+        db.session.add(new_source)
         db.session.commit()
         
-        # Trigger refresh for the newly created source
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        success, error = initiate_source_refresh(source, settings)
+        flash('Source created successfully', 'success')
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
         
-        if success:
-            flash('Source created and refresh initiated.', 'success')
-        else:
-            flash(f'Source created, but initial refresh failed: {error}', 'warning')
-            
-    except BadRequest as e:
-        flash(str(e), 'error')
     except Exception as e:
         db.session.rollback()
-        flash('Error creating source.', 'error')
+        flash('Error creating source', 'error')
         logging.error(f"Error creating source: {e}")
-    
-    return redirect(url_for('accounts.account_plots', account_url=account_url))
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/source/<int:source_id>/delete', methods=['POST'])
 def delete_source(account_url, source_id):
@@ -561,32 +542,45 @@ def delete_source(account_url, source_id):
 @accounts_bp.route('/<account_url>/source/<int:source_id>/edit', methods=['POST'])
 def edit_source(account_url, source_id):
     try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        source = Source.query.get_or_404(source_id)
         
-        # Validate input data
-        validated_data = validate_source_data(request.form)
+        # Get form data
+        name = request.form.get('name', '').strip()
+        file_filter = request.form.get('file_filter', '')
+        include_subdirs = request.form.get('include_subdirs') == 'on'
+        include_columns = request.form.get('include_columns', '')
+        datetime_column = request.form.get('datetime_column', '')
+        tail_only = request.form.get('tail_only') == 'on'
+        data_points = request.form.get('data_points', type=int)
         
-        # Update source fields
-        for key, value in validated_data.items():
-            setattr(source, key, value)
+        # Build the file pattern based on selection
+        if file_filter == '*':
+            pattern = '*'
+        else:
+            # If including subdirectories, match any depth
+            if include_subdirs:
+                pattern = f"{file_filter}/*"
+            else:
+                # If not including subdirectories, only match immediate files
+                pattern = f"{file_filter}/[^/]+$"
+        
+        # Update source
+        source.name = name
+        source.file_filter = pattern  # Use the constructed pattern
+        source.include_columns = include_columns
+        source.datetime_column = datetime_column
+        source.tail_only = tail_only
+        source.data_points = data_points
         
         db.session.commit()
-        success, error = initiate_source_refresh(source, settings)
+        flash('Source updated successfully', 'success')
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
         
-        if success:
-            flash('Source refresh initiated.', 'success')
-        else:
-            flash(f'Error refreshing source: {error}', 'error')
-    except BadRequest as e:
-        flash(str(e), 'error')
     except Exception as e:
         db.session.rollback()
-        flash('Error updating source.', 'error')
+        flash('Error updating source', 'error')
         logging.error(f"Error updating source: {e}")
-    
-    return redirect(url_for('accounts.account_plots', account_url=account_url))
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/source/<int:source_id>/plot', methods=['POST'])
 def create_plot(account_url, source_id):
@@ -1027,10 +1021,12 @@ def delete_files(account_url):
         # Get admin account settings for deletion
         admin_account = Account.query.filter_by(is_admin=True).first()
         if not admin_account:
+            flash('Admin account not found', 'error')
             return jsonify({'error': 'Admin account not found'}), 500
             
         admin_settings = Setting.query.filter_by(account_id=admin_account.id).first()
         if not admin_settings:
+            flash('Admin settings not found', 'error')
             return jsonify({'error': 'Admin settings not found'}), 500
         
         data = request.get_json()
@@ -1038,89 +1034,50 @@ def delete_files(account_url):
         current_directory = data.get('directory')
         
         if not file_ids:
+            flash('No files selected for deletion', 'error')
             return jsonify({'error': 'No files selected for deletion'}), 400
             
         # Get all selected files from target account
         files = File.query.filter(File.id.in_(file_ids), File.account_id == target_account.id).all()
         if not files:
+            flash('No files found', 'error')
             return jsonify({'error': 'No files found'}), 404
             
         # Delete files using admin settings
         success, error_message = delete_files_from_s3(admin_settings, files)
         
-        if success:
-            # Rebuild S3 files using target account settings
-            rebuild_S3_files(target_settings)
+        if not success:
+            flash(error_message or 'Failed to delete files', 'error')
+            return jsonify({'error': error_message or 'Failed to delete files'}), 500
             
-            # Add flash message before redirect
-            flash('Files deleted successfully', 'success')
+        # Rebuild S3 files using target account settings
+        rebuild_S3_files(target_settings)
+        
+        # Add success flash message
+        flash(f'Successfully deleted {len(files)} file(s)', 'success')
+        
+        # If we were in a directory view, check if it still has files
+        redirect_url = request.referrer
+        if current_directory:
+            # Check if directory still has files
+            has_files = File.query.filter_by(account_id=target_account.id)\
+                .filter(File.key.like(f"{current_directory}/%"))\
+                .first() is not None
             
-            # If we were in a directory view, check if it still has files
-            if current_directory:
-                # Check if directory still has files
-                has_files = File.query.filter_by(account_id=target_account.id)\
-                    .filter(File.key.like(f"{current_directory}/%"))\
-                    .first() is not None
-                
-                if not has_files:
-                    # Return flag to redirect to base data page
-                    return jsonify({
-                        'redirect': url_for('accounts.account_data', account_url=account_url)
-                    })
-            
-            return jsonify({'success': True})
-            
-        else:
-            return jsonify({'error': error_message}), 500
+            if not has_files:
+                # Set redirect to base data page if no files left in directory
+                redirect_url = url_for('accounts.account_data', account_url=account_url)
+        
+        # Return success with redirect URL
+        return jsonify({
+            'success': True,
+            'redirect': redirect_url or url_for('accounts.account_data', account_url=account_url)
+        })
             
     except Exception as e:
         logging.error(f"Error deleting files for account {account_url}: {e}")
-        return jsonify({'error': 'There was an error deleting the files'}), 500
-    
-# Route to delete an account
-@accounts_bp.route('/<account_url>/delete', methods=['POST'])
-@admin_required
-def delete_account(account_url):
-    try:
-        # Get target account and its settings
-        target_account = Account.query.filter_by(url=account_url).first_or_404()
-        target_settings = Setting.query.filter_by(account_id=target_account.id).first_or_404()
-        
-        # Get admin account settings for AWS cleanup
-        admin_account = Account.query.filter_by(is_admin=True).first()
-        if not admin_account:
-            flash('Admin account not found', 'error')
-            return redirect(url_for('admin'))
-            
-        admin_settings = Setting.query.filter_by(account_id=admin_account.id).first()
-        if not admin_settings:
-            flash('Admin settings not found', 'error')
-            return redirect(url_for('admin'))
-        
-        # Only attempt AWS cleanup if the target account has AWS resources configured
-        if target_settings.bucket_name and target_settings.aws_access_key_id:
-            try:
-                cleanup_aws_resources(
-                    admin_settings,  # Use admin credentials for cleanup
-                    target_settings.aws_access_key_id.split('/')[-1],  # Extract username from access key
-                    target_settings.bucket_name
-                )
-            except Exception as e:
-                logging.error(f"Error cleaning up AWS resources for account {account_url}: {e}")
-                flash('Error cleaning up AWS resources', 'error')
-                return redirect(url_for('admin'))
-        
-        # Delete the account from database (this will cascade delete settings and files)
-        db.session.delete(target_account)
-        db.session.commit()
-        flash('Account deleted successfully', 'success')
-        
-    except Exception as e:
-        db.session.rollback()
-        flash('Error deleting account', 'error')
-        logging.error(f"Error deleting account {account_url}: {e}")
-        
-    return redirect(url_for('admin'))
+        flash('An error occurred while deleting files', 'error')
+        return jsonify({'error': str(e)}), 500
 
 @accounts_bp.route('/<account_url>/data/content', methods=['GET'])
 def account_data_content(account_url):

@@ -4,6 +4,20 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="mb-4">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <h2 class="mb-4">Data</h2>
 
     <div id="dataContent" 
@@ -328,12 +342,19 @@
                 modal.show();
                 
                 try {
+                    // Get current directory from the URL if it exists
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const currentDirectory = urlParams.get('directory') || '';
+                    
                     const response = await fetch('{{ url_for("accounts.delete_files", account_url=account.url) }}', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ file_ids: fileIds })
+                        body: JSON.stringify({
+                            file_ids: fileIds,
+                            directory: currentDirectory
+                        })
                     });
                     
                     if (!response.ok) {
@@ -342,23 +363,21 @@
                     }
                     
                     const data = await response.json();
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    } else {
-                        document.getElementById('dataContent').dispatchEvent(
-                            new Event('htmx:afterSettle', { bubbles: true })
-                        );
+                    if (data.error) {
+                        throw new Error(data.error);
                     }
-                    
-                    if (deleteModal) {
-                        modal.hide();
-                    }
+                    // Redirect to the specified URL
+                    window.location.href = data.redirect;
                 } catch (error) {
                     console.error('Delete error:', error);
-                    alert('Error deleting files');
+                    // Close the modal and show error
                     if (deleteModal) {
-                        modal.hide();
+                        const modal = bootstrap.Modal.getInstance(deleteModal);
+                        if (modal) {
+                            modal.hide();
+                        }
                     }
+                    alert('Error deleting files: ' + error.message);
                 }
             };
         }
