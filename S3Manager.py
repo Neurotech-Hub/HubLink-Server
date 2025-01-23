@@ -170,22 +170,6 @@ def get_latest_files(account_id, total=1000, days=None, device_id=None):
         logging.error(f"Failed to retrieve latest files for account {account_id}: {e}")
         return []
 
-def get_unique_devices(account_id):
-    # Query to get distinct device IDs based on the prefix structure in `File.key`
-    device_ids = (
-        File.query
-        .filter_by(account_id=account_id)
-        .filter(~File.key.like('.%'))  # Exclude keys starting with '.'
-        .with_entities(File.key)
-        .distinct()
-    )
-
-    # Extract and return only the part of the key before the first '/'
-    unique_devices = {key.key.split('/')[0] for key in device_ids}
-    # Remove any remaining hidden entries (just in case)
-    unique_devices = {device for device in unique_devices if not device.startswith('.')}
-    return sorted(unique_devices)
-
 def do_files_exist(account_id, files):
     try:
         # Extract filenames from the provided list of dictionaries

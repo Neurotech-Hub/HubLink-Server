@@ -148,11 +148,10 @@
                         <div class="invalid-feedback">Please provide a valid name using only letters, numbers, hyphens, and underscores.</div>
                     </div>
                     <div class="mb-3">
-                        <label for="fileFilter" class="form-label">Directory Filter <span
+                        <label for="directory_filter" class="form-label">Directory Filter <span
                                 class="text-danger">*</span></label>
-                        <select class="form-select form-control" id="fileFilter" name="file_filter" required>
+                        <select class="form-select form-control" id="directory_filter" name="directory_filter" required>
                             <option value="">Select a directory...</option>
-                            <option value="*">All Files</option>
                             {% for dir in directories %}
                             <option value="{{ dir }}" {% if dir == current_directory %}selected{% endif %}>{{ dir }}</option>
                             {% endfor %}
@@ -191,7 +190,8 @@
                                     <button type="button" 
                                             class="dropdown-item recent-file-item" 
                                             data-file-id="{{ file.id }}"
-                                            data-file-key="{{ file.key }}">
+                                            data-file-key="{{ file.key }}"
+                                            data-file-size="{{ file.size }}">
                                         {{ file.key }}
                                         <small class="text-muted">
                                             ({{ (file.size / 1024)|round|int }} KB)
@@ -263,7 +263,13 @@
 
                     <!-- Plot Type -->
                     <div class="mb-3">
-                        <label for="plotType" class="form-label">Plot Type</label>
+                        <label for="plotType" class="form-label">Plot Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="plotType" name="type">
+                            <option value="timeline" id="timelineOption">Timeline</option>
+                            <option value="box">Box Plot</option>
+                            <option value="bar">Bar Chart</option>
+                            <option value="table">Table</option>
+                        </select>
                         <div id="plotTypeFeedback" class="alert alert-secondary mt-2 small">
                             <i class="bi bi-exclamation-triangle"></i>
                             Timelines are disabled for sources without a datetime column
@@ -272,12 +278,6 @@
                             <i class="bi bi-check-circle"></i>
                             Using <span id="datetimeColumnName"></span> column for datetime
                         </div>
-                        <select class="form-select" id="plotType" name="type">
-                            <option value="timeline" id="timelineOption">Timeline</option>
-                            <option value="box">Box Plot</option>
-                            <option value="bar">Bar Chart</option>
-                            <option value="table">Table</option>
-                        </select>
                     </div>
 
                     <!-- Plot Fields -->
@@ -289,6 +289,25 @@
                                 <option value="">Select column...</option>
                             </select>
                             <div class="invalid-feedback">Please select a data column.</div>
+                        </div>
+
+                        <!-- Group By Selection -->
+                        <div class="mb-3">
+                            <label class="form-label">Group By</label>
+                            <input type="hidden" id="groupBy" name="group_by" value="">
+                            <div id="groupPills">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button type="button" 
+                                            class="btn btn-outline-dark active" 
+                                            data-value="" 
+                                            onclick="selectGroup(this)">
+                                        No grouping
+                                    </button>
+                                    <span class="text-muted">or</span>
+                                    <a href="#" onclick="togglePathLevels(event)" class="text-decoration-none">Group by path level</a>
+                                </div>
+                                <div class="path-levels mt-3" style="display: none;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -339,111 +358,110 @@
 
 <!-- Page-specific scripts -->
 <script>
-    // Utility functions
-    function validateTags() {
-        const form = document.getElementById('sourceForm');
-        if (form.classList.contains('was-validated')) {
-            form.checkValidity();
+    // Group selection functionality
+    function togglePathLevels(event) {
+        event.preventDefault();
+        const pathLevels = document.querySelector('#groupPills .path-levels');
+        const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
+        
+        if (pathLevels.style.display === 'none') {
+            pathLevels.style.display = 'block';
+            noGroupingBtn.classList.remove('active');
+            // Select first available level if exists
+            const firstLevel = pathLevels.querySelector('button:not([disabled])');
+            if (firstLevel) {
+                selectGroup(firstLevel);
+            } else {
+                // If no enabled levels exist, revert to "No grouping"
+                noGroupingBtn.classList.add('active');
+                selectGroup(noGroupingBtn);
+            }
+        } else {
+            pathLevels.style.display = 'none';
+            noGroupingBtn.classList.add('active');
+            selectGroup(noGroupingBtn);
         }
     }
 
-    function toggleDataPoints() {
-        const tailOnly = document.getElementById('tailOnly');
-        const dataPointsContainer = document.getElementById('dataPointsContainer');
-        dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
-    }
-
-    function detectColumns() {
-        const sourceId = document.getElementById('source_id').value;
-        if (!sourceId) {
-            alert('Please select a source first');
-            return;
-        }
-
-        // Show loading state
-        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
-        const originalText = detectButton.innerHTML;
-        detectButton.innerHTML = 'Detecting...';
-        detectButton.disabled = true;
-
-        const formData = new FormData();
-        formData.append('source_id', sourceId);
-
-        fetch('/detect_columns', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            // Update columns input
-            const columnsInput = document.getElementById('include_columns');
-            columnsInput.value = data.columns.join(',');
-
-            // Update datetime column select
-            const datetimeSelect = document.getElementById('datetime_column');
-            datetimeSelect.innerHTML = '<option value="">No datetime column selected</option>';
-            
-            data.datetime_columns.forEach(col => {
-                const option = document.createElement('option');
-                option.value = col;
-                option.textContent = col;
-                datetimeSelect.appendChild(option);
-            });
-
-            // If only one datetime column, select it
-            if (data.datetime_columns.length === 1) {
-                datetimeSelect.value = data.datetime_columns[0];
-            }
-
-            // Show success message
-            alert('Columns detected successfully!');
-        })
-        .catch(error => {
-            alert('Error detecting columns: ' + error.message);
-        })
-        .finally(() => {
-            // Restore button state
-            detectButton.innerHTML = originalText;
-            detectButton.disabled = false;
+    function selectGroup(element) {
+        // Remove active class from all pills
+        document.querySelectorAll('#groupPills .btn').forEach(btn => {
+            btn.classList.remove('active');
         });
+        // Add active class to selected pill
+        element.classList.add('active');
+        // Update hidden input
+        document.getElementById('groupBy').value = element.dataset.value;
+        
+        // Handle path levels visibility
+        const pathLevels = document.querySelector('#groupPills .path-levels');
+        if (element.dataset.value === '') {
+            pathLevels.style.display = 'none';
+        }
+    }
+
+    function updateGroupOptions(sourceGroups) {
+        const pillsContainer = document.querySelector('#groupPills .path-levels');
+        // Clear existing path levels
+        pillsContainer.innerHTML = '';
+        
+        // Find max group number
+        const maxGroup = sourceGroups && sourceGroups.length > 0 ? 
+            Math.max(...sourceGroups) : 0;
+        
+        // Create pills from 0 to maxGroup
+        for (let i = 0; i <= maxGroup; i++) {
+            // Add separator before each pill except the first one
+            if (i > 0) {
+                const separator = document.createElement('span');
+                separator.className = 'separator';
+                separator.textContent = '/';
+                pillsContainer.appendChild(separator);
+            }
+
+            const isEnabled = sourceGroups.includes(i);
+            const pill = document.createElement('button');
+            pill.type = 'button';
+            pill.className = `btn ${isEnabled ? 'btn-outline-primary' : 'btn-outline-secondary'}`;
+            if (!isEnabled) {
+                pill.disabled = true;
+                pill.title = 'No data for this path level';
+            } else {
+                pill.onclick = () => selectGroup(pill);
+            }
+            pill.dataset.value = i;
+            pill.textContent = `Level ${i}`;
+            pillsContainer.appendChild(pill);
+        }
     }
 
     // Initialize all functionality when DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
-        // Handle subdirectory toggle
-        const fileFilter = document.getElementById('fileFilter');
-        const includeSubdirs = document.getElementById('includeSubdirs');
-        
-        function updateFilterPattern() {
-            const selectedOption = fileFilter.options[fileFilter.selectedIndex];
-            if (selectedOption.value) {
-                const basePath = selectedOption.value.replace('/[^/]+/', '/').replace('/*', '');
-                fileFilter.value = basePath + (includeSubdirs.checked ? '/[^/]+/' : '/*');
-            }
-        }
-
-        if (fileFilter && includeSubdirs) {
-            includeSubdirs.addEventListener('change', updateFilterPattern);
-            fileFilter.addEventListener('change', function() {
-                if (this.value) {
-                    const isSubdirPattern = this.value.includes('[^/]+');
-                    includeSubdirs.checked = isSubdirPattern;
-                    updateFilterPattern();
-                }
-            });
-        }
-
         // Initialize source modal
         document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function() {
-            const form = document.getElementById('sourceForm');
-            form.reset();
-            form.action = `/{{ account.url }}/source`;
-            document.getElementById('sourceModalLabel').textContent = 'Add Source';
+            // Reset form
+            document.getElementById('sourceForm').reset();
             document.getElementById('sourceId').value = '';
+            document.getElementById('sourceModalLabel').textContent = 'Add Source';
+            
+            // Reset datetime column UI
+            const datetimeColumn = document.getElementById('datetime_column');
+            if (datetimeColumn) {
+                datetimeColumn.innerHTML = '<option value="">Select a column...</option>';
+                datetimeColumn.style.display = 'none';
+            }
+            const datetimeFeedback = document.getElementById('datetime_feedback');
+            if (datetimeFeedback) {
+                datetimeFeedback.style.display = 'block';
+            }
+            const datetimeSuccess = document.getElementById('datetime_success');
+            if (datetimeSuccess) {
+                datetimeSuccess.style.display = 'none';
+            }
+            const dataPointsContainer = document.getElementById('dataPointsContainer');
+            if (dataPointsContainer) {
+                dataPointsContainer.style.display = 'none';
+            }
         });
 
         // Remove any existing show classes or inline styles that might interfere with Bootstrap
@@ -467,12 +485,87 @@
             });
         });
 
-        // Initialize popovers
-        const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-        const popoverList = [...popoverTriggerList].map(el => new bootstrap.Popover(el, {
-            html: true,
-            container: 'body'
-        }));
+        // Initialize file size display
+        const recentFileItems = document.querySelectorAll('.recent-file-item');
+        recentFileItems.forEach(item => {
+            const fileSize = parseInt(item.dataset.fileSize);
+            const fileSizeElement = item.querySelector('.file-size');
+            if (fileSizeElement && fileSize) {
+                fileSizeElement.textContent = formatFileSize(fileSize);
+            }
+        });
+
+        // Function to format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Function to detect datetime columns
+        function detectColumns(sourceId) {
+            if (!sourceId) {
+                alert('Please select a source first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('source_id', sourceId);
+
+            fetch('/detect_columns', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Update datetime column select
+                const datetimeSelect = document.getElementById('datetime_column');
+                const datetimeFeedback = document.getElementById('datetime_feedback');
+                
+                if (datetimeSelect && data.datetime_columns?.length > 0) {
+                    datetimeSelect.innerHTML = '<option value="">Select a column...</option>';
+                    data.datetime_columns.forEach(col => {
+                        const option = document.createElement('option');
+                        option.value = col;
+                        option.textContent = col;
+                        datetimeSelect.appendChild(option);
+                    });
+
+                    if (data.datetime_columns.length === 1) {
+                        datetimeSelect.value = data.datetime_columns[0];
+                    }
+                    
+                    datetimeSelect.style.display = 'block';
+                    if (datetimeFeedback) {
+                        datetimeFeedback.textContent = 'Column containing datetime values';
+                    }
+                } else if (datetimeFeedback) {
+                    datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                    if (datetimeSelect) {
+                        datetimeSelect.style.display = 'none';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error detecting columns:', error);
+                alert('Error detecting columns: ' + error.message);
+            });
+        }
+
+        // Add click handler for detect columns button
+        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
+        if (detectButton) {
+            detectButton.onclick = function() {
+                const sourceId = document.getElementById('source_id')?.value;
+                detectColumns(sourceId);
+            };
+        }
 
         // Initialize Tagify
         const includeColumnsInput = document.getElementById('includeColumns');
@@ -504,7 +597,6 @@
             recentFileItems.forEach(item => {
                 item.addEventListener('click', async function() {
                     const fileId = this.dataset.fileId;
-                    const fileKey = this.dataset.fileKey;
                     
                     try {
                         const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
@@ -549,56 +641,34 @@
                 });
             });
         }
-    });
 
-    // Copy link functionality
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('copy-link')) {
-            const url = e.target.dataset.url;
-            const sourceId = e.target.dataset.sourceId;
-            navigator.clipboard.writeText(url).then(() => {
-                const feedbackElement = document.getElementById(`copyFeedback-${sourceId}`);
-                feedbackElement.style.display = 'inline';
-                setTimeout(() => {
-                    feedbackElement.style.display = 'none';
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
+        // Add validateTags utility function
+        function validateTags() {
+            const form = document.getElementById('sourceForm');
+            if (form.classList.contains('was-validated')) {
+                form.checkValidity();
+            }
+        }
+
+        // Add toggleDataPoints function
+        function toggleDataPoints() {
+            const tailOnly = document.getElementById('tailOnly');
+            const dataPointsContainer = document.getElementById('dataPointsContainer');
+            dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
         }
     });
 
+    // Function to edit an existing source
     function editSource(source) {
-        // Update form action
-        const form = document.getElementById('sourceForm');
-        form.action = `/{{ account.url }}/source/${source.id}/edit`;
-
-        // Update modal title
-        document.getElementById('sourceModalLabel').textContent = 'Edit Source';
-
-        // Fill form fields
         document.getElementById('sourceId').value = source.id;
         document.getElementById('sourceName').value = source.name;
-        document.getElementById('fileFilter').value = source.file_filter;
+        document.getElementById('directory_filter').value = source.directory_filter;
+        document.getElementById('includeSubdirs').checked = source.include_subdirs;
         document.getElementById('includeColumns').value = source.include_columns;
         document.getElementById('dataPoints').value = source.data_points;
-        document.getElementById('tailOnly').checked = source.tail_only;
+        document.getElementById('sourceModalLabel').textContent = 'Edit Source';
         
-        // Set datetime column if it exists
-        const datetimeSelect = document.getElementById('datetime_column');
-        if (source.datetime_column) {
-            // First ensure the select is visible
-            datetimeSelect.style.display = 'block';
-            // Clear existing options
-            datetimeSelect.innerHTML = '';
-            // Add the current datetime column as an option
-            const option = new Option(source.datetime_column, source.datetime_column);
-            datetimeSelect.add(option);
-            // Set it as selected
-            datetimeSelect.value = source.datetime_column;
-        }
-
-        // Show modal using Bootstrap's API
+        // Show the modal
         const sourceModal = new bootstrap.Modal(document.getElementById('sourceModal'));
         sourceModal.show();
     }
@@ -728,6 +798,19 @@
         document.getElementById('plotForm').reset();
         document.getElementById('plotSourceId').value = source.id;
         document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot`;
+
+        // Handle group options visibility
+        const groupByPathLevel = document.querySelector('#groupPills .text-muted');
+        const groupByLink = document.querySelector('#groupPills a');
+        if (!source.groups || source.groups.length === 0) {
+            groupByPathLevel.style.display = 'none';
+            groupByLink.style.display = 'none';
+        } else {
+            groupByPathLevel.style.display = '';
+            groupByLink.style.display = '';
+            // Update group options
+            updateGroupOptions(source.groups);
+        }
 
         // Clear existing options
         const yDataSelect = document.getElementById('yData');

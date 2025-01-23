@@ -213,14 +213,22 @@ def check_files(account_url):
         logging.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": "There was an issue processing your request."}), 500
 
-def s3_pattern_to_regex(pattern):
-    """Convert an S3 pattern to a regex pattern."""
-    # Escape special regex characters
+def s3_pattern_to_regex(pattern, include_subdirs=False):
+    """Convert a directory filter pattern to a regex pattern."""
+    # Handle root directory case
+    if pattern == '/':
+        return '^[^/]+$' if not include_subdirs else '^.+$'
+    
+    # Strip leading slash and escape special regex characters
+    pattern = pattern.lstrip('/')
     pattern = re.escape(pattern)
-    # Convert S3 wildcards to regex patterns
-    pattern = pattern.replace('\\*', '[^/]*')  # Single-level wildcard
-    pattern = pattern.replace('\\[\\^/\\]\\+', '[^/]+')  # Keep [^/]+ as is
-    pattern = f'^{pattern}$'  # Ensure full string match
+    
+    # Add pattern for matching files in the directory
+    if include_subdirs:
+        pattern = f"^{pattern}/.*$"  # Match any files in directory or subdirectories
+    else:
+        pattern = f"^{pattern}/[^/]+$"  # Match only files directly in directory
+        
     return pattern
 
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
@@ -231,6 +239,7 @@ def rebuild(account_url):
 
         # Get list of affected files from rebuild operation
         affected_files = rebuild_S3_files(settings)
+        refresh_count = 0
         
         if affected_files:
             # Update account counter
@@ -243,7 +252,7 @@ def rebuild(account_url):
             # For each source, check if any affected files match its pattern
             for source in sources:
                 try:
-                    pattern = s3_pattern_to_regex(source.file_filter)
+                    pattern = s3_pattern_to_regex(source.directory_filter, source.include_subdirs)
                     regex = re.compile(pattern)
                     
                     # Check each affected file against this source's pattern
@@ -256,7 +265,6 @@ def rebuild(account_url):
                     continue
             
             # Trigger refresh for each affected source
-            refresh_count = 0
             for source in affected_sources:
                 try:
                     success, error = initiate_source_refresh(source, settings)
@@ -275,7 +283,7 @@ def rebuild(account_url):
         return jsonify({
             "message": "Rebuild completed successfully",
             "affected_files": len(affected_files),
-            "refreshed_sources": refresh_count if 'refresh_count' in locals() else 0
+            "refreshed_sources": refresh_count
         }), 200
     except Exception as e:
         logging.error(f"Error during '/rebuild' endpoint: {e}")
@@ -371,42 +379,24 @@ def account_plots(account_url):
         return "There was an issue loading the plots page.", 500
 
 def generate_directory_patterns(file_keys):
-    """Get unique top-level directories from file keys."""
-    directories = set()
+    """Get unique directory paths from file keys."""
+    directories = {'/'}  # Start with root
     
     for key in file_keys:
-        # Split the path and get the top-level directory
+        if key.startswith('.') or '/' not in key:
+            continue
+            
+        # Split the path and build each level
         parts = key.split('/')
-        if len(parts) > 1:  # If there's at least one directory
-            top_dir = parts[0]
-            # Only add if it doesn't start with a dot
-            if not top_dir.startswith('.'):
-                directories.add(top_dir)
+        current_path = ''
+        for part in parts[:-1]:  # Exclude the filename
+            if part.startswith('.'):
+                break
+            current_path = f"{current_path}/{part}" if current_path else f"/{part}"
+            directories.add(current_path)
     
-    # Convert to sorted list, with '*' as the first option
-    return ['*'] + sorted(list(directories))
-
-def validate_source_data(form_data):
-    """Validate source form data and return cleaned data"""
-    if not form_data.get('name'):
-        raise BadRequest('Source name is required.')
-        
-    # Clean and validate data
-    data = {
-        'name': form_data.get('name').strip(),
-        'file_filter': form_data.get('file_filter', '*').strip(),
-        'include_columns': form_data.get('include_columns', '').strip(),
-        'data_points': int(form_data.get('data_points', 0)),
-        'tail_only': form_data.get('tail_only') == 'on',
-        'datetime_column': form_data.get('datetime_column', '').strip(),
-        'state': 'running'
-    }
-    
-    # Validate data points range if specified
-    if data['data_points'] < 0:
-        raise BadRequest('Data points must be a positive number.')
-    
-    return data
+    # Convert to sorted list
+    return sorted(list(directories))
 
 def initiate_source_refresh(source, settings):
     """
@@ -424,7 +414,8 @@ def initiate_source_refresh(source, settings):
         payload = {
             'source': {
                 'name': source.name,
-                'file_filter': source.file_filter,
+                'directory_filter': source.directory_filter,
+                'include_subdirs': source.include_subdirs,
                 'include_columns': source.include_columns,
                 'data_points': source.data_points,
                 'tail_only': source.tail_only,
@@ -481,33 +472,26 @@ def create_source(account_url):
         
         # Get form data
         name = request.form.get('name', '').strip()
-        file_filter = request.form.get('file_filter', '')
+        directory_filter = request.form.get('directory_filter', '')
         include_subdirs = request.form.get('include_subdirs') == 'on'
         include_columns = request.form.get('include_columns', '')
         datetime_column = request.form.get('datetime_column', '')
         tail_only = request.form.get('tail_only') == 'on'
         data_points = request.form.get('data_points', type=int)
-        
-        # Build the file pattern based on selection
-        if file_filter == '*':
-            pattern = '*'
-        else:
-            # If including subdirectories, match any depth
-            if include_subdirs:
-                pattern = f"{file_filter}/*"
-            else:
-                # If not including subdirectories, only match immediate files
-                pattern = f"{file_filter}/[^/]+$"
+        groups = []  # Initialize with empty list for new sources
         
         # Create new source
         new_source = Source(
             name=name,
-            file_filter=pattern,  # Use the constructed pattern
+            directory_filter=directory_filter,
+            include_subdirs=include_subdirs,
             include_columns=include_columns,
             datetime_column=datetime_column,
             tail_only=tail_only,
             data_points=data_points,
-            account_id=account.id
+            account_id=account.id,
+            state='running',
+            groups=groups  # Initialize with empty list
         )
         
         db.session.add(new_source)
@@ -546,27 +530,17 @@ def edit_source(account_url, source_id):
         
         # Get form data
         name = request.form.get('name', '').strip()
-        file_filter = request.form.get('file_filter', '')
+        directory_filter = request.form.get('directory_filter', '')
         include_subdirs = request.form.get('include_subdirs') == 'on'
         include_columns = request.form.get('include_columns', '')
         datetime_column = request.form.get('datetime_column', '')
         tail_only = request.form.get('tail_only') == 'on'
         data_points = request.form.get('data_points', type=int)
         
-        # Build the file pattern based on selection
-        if file_filter == '*':
-            pattern = '*'
-        else:
-            # If including subdirectories, match any depth
-            if include_subdirs:
-                pattern = f"{file_filter}/*"
-            else:
-                # If not including subdirectories, only match immediate files
-                pattern = f"{file_filter}/[^/]+$"
-        
         # Update source
         source.name = name
-        source.file_filter = pattern  # Use the constructed pattern
+        source.directory_filter = directory_filter
+        source.include_subdirs = include_subdirs
         source.include_columns = include_columns
         source.datetime_column = datetime_column
         source.tail_only = tail_only
@@ -642,7 +616,8 @@ def create_plot(account_url, source_id):
             source_id=source_id,
             name=plot_name,
             type=plot_type,
-            config=json.dumps(config)
+            config=json.dumps(config),
+            group_by=request.form.get('group_by', type=int, default=None)  # Handle group_by field
         )
         
         print("[DEBUG] Processing plot data...")
@@ -1298,3 +1273,47 @@ def source_list(account_url):
     except Exception as e:
         logging.error(f"Error loading source list for {account_url}: {e}")
         return "Error loading source list", 500
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/plot/<int:plot_id>/edit', methods=['POST'])
+def edit_plot(account_url, source_id, plot_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        plot = Plot.query.filter_by(id=plot_id, source_id=source_id).first_or_404()
+        
+        # Update plot fields
+        plot.name = request.form.get('name')
+        plot.type = request.form.get('type')
+        plot.group_by = request.form.get('group_by', type=int, default=None)  # Handle group_by field
+        
+        # Update config based on plot type
+        config = {}
+        if plot.type == 'timeline':
+            y_data = request.form.get('y_data')
+            if not y_data:
+                flash('Data Column is required for timeline plots.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+                
+            config = {
+                'x_data': plot.source.datetime_column,
+                'y_data': y_data
+            }
+        elif plot.type in ['box', 'bar', 'table']:
+            y_data = request.form.get('y_data')
+            if not y_data:
+                flash('Data column is required.', 'error')
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+                
+            config = {
+                'y_data': y_data
+            }
+            
+        plot.config = json.dumps(config)
+        db.session.commit()
+        flash('Plot updated successfully', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash('Error updating plot', 'error')
+        logging.error(f"Error updating plot: {e}")
+        
+    return redirect(url_for('accounts.account_plots', account_url=account_url))

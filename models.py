@@ -134,7 +134,8 @@ class Source(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, server_default='')
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
-    file_filter = db.Column(db.String(200), nullable=False, server_default='*')
+    directory_filter = db.Column(db.String(200), nullable=False, server_default='*')
+    include_subdirs = db.Column(db.Boolean, nullable=False, server_default='0')
     include_columns = db.Column(db.String(500), nullable=False, server_default='')
     data_points = db.Column(db.Integer, nullable=False, server_default='0')
     tail_only = db.Column(db.Boolean, nullable=False, server_default='0')
@@ -142,9 +143,9 @@ class Source(db.Model):
     last_updated = db.Column(db.DateTime, nullable=True)
     error = db.Column(db.String(500), nullable=True, server_default='')
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
-    devices = db.Column(db.String(500), nullable=False, server_default='[]')
     state = db.Column(db.String(50), nullable=False, server_default='created')
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
+    groups = db.Column(db.JSON, nullable=False, server_default='[]')  # Store array of integers as JSON
 
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"
@@ -154,8 +155,9 @@ class Source(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
-            'file_filter': self.file_filter,
+            'directory_filter': self.directory_filter,
             'include_columns': self.include_columns,
+            'include_subdirs': self.include_subdirs,
             'data_points': self.data_points,
             'tail_only': self.tail_only,
             'datetime_column': self.datetime_column,
@@ -163,8 +165,8 @@ class Source(db.Model):
             'state': self.state,
             'error': self.error,
             'file_id': self.file_id,  # Just include the file_id
-            'devices': json.loads(self.devices) if self.devices else [],  # Decode JSON string to list
-            'file_size': self.file.size if self.file else 0  # Add file size
+            'file_size': self.file.size if self.file else 0,  # Add file size
+            'groups': self.groups if isinstance(self.groups, list) else []  # Ensure groups is always a list
         }
 
         return data
@@ -183,6 +185,7 @@ class Plot(db.Model):
     name = db.Column(db.String(100), nullable=False, server_default='')
     type = db.Column(db.String(50), nullable=False, server_default='timeline')
     config = db.Column(db.String(500), nullable=False, server_default='{}')  # JSON string
+    group_by = db.Column(db.Integer, nullable=True)  # Add group_by field
     
     # Add relationship to Source
     source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
@@ -196,7 +199,8 @@ class Plot(db.Model):
             'source_id': self.source_id,
             'name': self.name,
             'type': self.type,
-            'config': json.loads(self.config)
+            'config': json.loads(self.config),
+            'group_by': self.group_by  # Add group_by to dict output
         }
 
 # Define the layout model

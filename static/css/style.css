@@ -1585,3 +1585,34 @@ table td code {
         justify-content: center;
     }
 }
+
+/* Group Pills Styling */
+#groupPills .btn {
+    border-radius: 50rem;
+    font-size: 0.8rem;
+    padding: 0.15rem 0.5rem;
+}
+
+#groupPills .btn.active {
+    font-weight: 500;
+}
+
+#groupPills .path-levels {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+#groupPills .path-levels .btn {
+    min-width: 70px;
+    text-align: center;
+}
+
+/* Path level separator */
+#groupPills .path-levels .separator {
+    color: #6c757d;
+    opacity: 0.5;
+    font-size: 0.9rem;
+    margin: 0 0.1rem;
+}
