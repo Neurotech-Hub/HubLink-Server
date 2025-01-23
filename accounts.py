@@ -496,8 +496,15 @@ def create_source(account_url):
         
         db.session.add(new_source)
         db.session.commit()
-        
-        flash('Source created successfully', 'success')
+
+        # Get settings and initiate refresh
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        success, error = initiate_source_refresh(new_source, settings)
+        if not success:
+            flash(f'Source created but refresh failed: {error}', 'warning')
+        else:
+            flash('Source created successfully', 'success')
+            
         return redirect(url_for('accounts.account_plots', account_url=account_url))
         
     except Exception as e:
@@ -512,6 +519,27 @@ def delete_source(account_url, source_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
         
+        # Get all plot IDs from this source before deleting
+        plot_ids = [str(plot.id) for plot in source.plots]
+        
+        # Clean up layout configurations for all plots in this source
+        layouts = Layout.query.filter_by(account_id=account.id).all()
+        for layout in layouts:
+            if layout.config:
+                try:
+                    config = json.loads(layout.config)
+                    if not isinstance(config, list):
+                        logging.error(f"Invalid layout config format for layout {layout.id}: expected list")
+                        continue
+                        
+                    # Remove any widgets that reference any plot from this source
+                    config = [widget for widget in config if str(widget.get('plotId', '')) not in plot_ids]
+                    layout.config = json.dumps(config)
+                except json.JSONDecodeError as e:
+                    logging.error(f"Invalid JSON in layout {layout.id} config: {e}")
+                    continue  # Skip this layout instead of resetting it
+        
+        # Delete the source (this will cascade delete all its plots)
         db.session.delete(source)
         db.session.commit()
         
@@ -547,7 +575,15 @@ def edit_source(account_url, source_id):
         source.data_points = data_points
         
         db.session.commit()
-        flash('Source updated successfully', 'success')
+
+        # Get settings and initiate refresh
+        settings = Setting.query.filter_by(account_id=source.account_id).first_or_404()
+        success, error = initiate_source_refresh(source, settings)
+        if not success:
+            flash(f'Source updated but refresh failed: {error}', 'warning')
+        else:
+            flash('Source updated successfully', 'success')
+            
         return redirect(url_for('accounts.account_plots', account_url=account_url))
         
     except Exception as e:
