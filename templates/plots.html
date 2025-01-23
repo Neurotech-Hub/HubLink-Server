@@ -363,6 +363,14 @@
 
 <!-- Page-specific scripts -->
 <script>
+    // Initialize all popovers
+    document.addEventListener('DOMContentLoaded', function() {
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
+    });
+
     // Group selection functionality
     function togglePathLevels(event) {
         event.preventDefault();
