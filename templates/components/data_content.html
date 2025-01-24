@@ -1,24 +1,14 @@
 <!-- Device Filter Pills and Download Bar -->
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-3">
     <!-- Directory Filter -->
-    <div class="dropdown">
-        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            {% if directory %}
-                {{ directory }}
-            {% else %}
-                All Files
-            {% endif %}
+    <div class="dropdown mb-3">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {% if current_directory %}{{ current_directory }}{% else %}All Files{% endif %}
         </button>
         <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{{ url_for('accounts.account_data_content', account_url=account.url) }}" 
-                   hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}" 
-                   hx-target="#dataContent"
-                   hx-preserve>All Files</a></li>
-            {% for dir in directories %}
-                <li><a class="dropdown-item" href="{{ url_for('accounts.account_data_content', account_url=account.url, directory=dir) }}" 
-                       hx-get="{{ url_for('accounts.account_data_content', account_url=account.url, directory=dir) }}" 
-                       hx-target="#dataContent"
-                       hx-preserve>{{ dir }}</a></li>
+            <li><a class="dropdown-item{% if not current_directory %} active{% endif %}" href="{{ url_for('accounts.account_data', account_url=account.url) }}">All Files</a></li>
+            {% for directory in directories %}
+            <li><a class="dropdown-item{% if directory == current_directory %} active{% endif %}" href="{{ url_for('accounts.account_data', account_url=account.url, directory=directory) }}">{{ directory }}</a></li>
             {% endfor %}
         </ul>
     </div>
@@ -115,56 +105,30 @@
 </div>
 
 <!-- Pagination -->
-{% if pagination and pagination.pages and pagination.pages > 1 %}
-<nav aria-label="Page navigation" class="mt-4">
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Page navigation">
     <ul class="pagination justify-content-center">
-        <!-- Previous button -->
-        <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
-            <a class="page-link" href="#"
-                hx-get="{{ url_for('accounts.account_data_content', 
-                    account_url=account.url, 
-                    directory=current_directory, 
-                    page=pagination.prev_num) if pagination.has_prev else '#' }}"
-                hx-target="#dataContent"
-                hx-swap="innerHTML transition:true"
-                hx-preserve>
-                Previous
-            </a>
+        {% if pagination.has_prev %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('accounts.account_data', account_url=account.url, page=pagination.prev_num, directory=directory) }}">Previous</a>
         </li>
+        {% endif %}
         
-        <!-- Page numbers -->
-        {% for page_num in pagination.iter_pages(left_edge=2, left_current=2, right_current=2, right_edge=2) %}
+        {% for page_num in pagination.iter_pages() %}
             {% if page_num %}
-                <li class="page-item {{ 'active' if page_num == pagination.page }}">
-                    <a class="page-link" href="#"
-                       hx-get="{{ url_for('accounts.account_data_content', 
-                           account_url=account.url, 
-                           directory=current_directory, 
-                           page=page_num) }}"
-                       hx-target="#dataContent"
-                       hx-swap="innerHTML transition:true"
-                       hx-preserve>
-                        {{ page_num }}
-                    </a>
+                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('accounts.account_data', account_url=account.url, page=page_num, directory=directory) }}">{{ page_num }}</a>
                 </li>
             {% else %}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
             {% endif %}
         {% endfor %}
         
-        <!-- Next button -->
-        <li class="page-item {{ 'disabled' if not pagination.has_next }}">
-            <a class="page-link" href="#"
-                hx-get="{{ url_for('accounts.account_data_content', 
-                    account_url=account.url, 
-                    directory=current_directory, 
-                    page=pagination.next_num) if pagination.has_next else '#' }}"
-                hx-target="#dataContent"
-                hx-swap="innerHTML transition:true"
-                hx-preserve>
-                Next
-            </a>
+        {% if pagination.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="{{ url_for('accounts.account_data', account_url=account.url, page=pagination.next_num, directory=directory) }}">Next</a>
         </li>
+        {% endif %}
     </ul>
 </nav>
 {% endif %} 

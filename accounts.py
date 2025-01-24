@@ -169,7 +169,7 @@ def account_data(account_url, directory=None):
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         db.session.commit()
-        return render_template('data.html', account=account)
+        return render_template('data.html', account=account, directory=directory)
     except Exception as e:
         logging.error(f"Error loading data for {account_url}: {e}")
         return "There was an issue loading the data page.", 500

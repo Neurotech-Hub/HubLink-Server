@@ -21,7 +21,7 @@
     <h2 class="mb-4">Data</h2>
 
     <div id="dataContent" 
-         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}"
+         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}{% if directory or request.args.get('page') %}?{% endif %}{% if directory %}directory={{ directory }}{% endif %}{% if directory and request.args.get('page') %}&{% endif %}{% if request.args.get('page') %}page={{ request.args.get('page') }}{% endif %}"
          hx-trigger="load, every 30s"
          hx-swap="innerHTML transition:true"
          hx-preserve>
