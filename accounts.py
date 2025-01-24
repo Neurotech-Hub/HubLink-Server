@@ -854,13 +854,14 @@ def create_layout(account_url):
         if should_be_default:
             Layout.query.filter_by(account_id=account.id).update({'is_default': False})
         
-        # Create new layout with empty config
+        # Create new layout with empty config and default time_range
         layout = Layout(
             account_id=account.id,
             name=layout_name,
             config=json.dumps([]),
             is_default=should_be_default,  # Set based on first layout or form input
-            show_nav=request.form.get('show_nav') == 'on'
+            show_nav=request.form.get('show_nav') == 'on',
+            time_range='all'  # Default time range
         )
         db.session.add(layout)
         db.session.commit()
@@ -868,7 +869,8 @@ def create_layout(account_url):
         return redirect(url_for('accounts.layout_edit', account_url=account_url, layout_id=layout.id))
     except Exception as e:
         logging.error(f"Error creating layout for {account_url}: {e}")
-        flash('Error creating layout.', 'error')
+        db.session.rollback()  # Add rollback on error
+        flash('Error creating layout.', 'error')  # Add user feedback
         return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>/update', methods=['POST'])
