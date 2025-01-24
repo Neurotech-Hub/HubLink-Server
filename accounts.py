@@ -142,7 +142,7 @@ def update_settings(account_url):
         return "There was an issue updating the settings."
 
 def get_directory_paths(account_id):
-    """Get unique top-level directory paths from files for an account."""
+    """Get unique directory paths that directly contain files for an account."""
     files = File.query.filter_by(account_id=account_id)\
         .filter(~File.key.like('.%'))\
         .filter(~File.key.contains('/.')) \
@@ -150,13 +150,13 @@ def get_directory_paths(account_id):
     directories = set()
     
     for file in files:
-        # Get the top-level directory
+        # Get the directory path by removing the file name
         path_parts = file.key.split('/')
-        if len(path_parts) > 1:  # If there's at least one directory
-            top_dir = path_parts[0]
-            # Only add if it doesn't start with a dot
-            if not top_dir.startswith('.'):
-                directories.add(top_dir)
+        if len(path_parts) > 1:  # If file is in a directory
+            # Join all parts except the last one (file name)
+            dir_path = '/'.join(path_parts[:-1])
+            if not any(part.startswith('.') for part in path_parts):  # Skip if any part is hidden
+                directories.add(dir_path)
     
     # Convert to sorted list
     return sorted(list(directories))
@@ -926,7 +926,7 @@ def get_file_header(account_url, file_id):
             return jsonify({'error': result['error']}), 400
 
         # Parse header into columns
-        columns = [col.strip() for col in result['header'].split(',')]
+        columns = [col.strip() for col in result['header'].split(',') if col.strip()]  # Skip empty columns
         # Check first row for datetime values
         datetime_columns = []
         if result['first_row']:
