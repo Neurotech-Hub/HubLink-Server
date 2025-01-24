@@ -186,6 +186,7 @@ class Plot(db.Model):
     type = db.Column(db.String(50), nullable=False, server_default='timeline')
     config = db.Column(db.String(500), nullable=False, server_default='{}')  # JSON string
     group_by = db.Column(db.Integer, nullable=True)  # Add group_by field
+    advanced = db.Column(db.String(500), nullable=False, server_default='[]')  # JSON string for advanced options
     
     # Add relationship to Source
     source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
@@ -200,7 +201,8 @@ class Plot(db.Model):
             'name': self.name,
             'type': self.type,
             'config': json.loads(self.config),
-            'group_by': self.group_by  # Add group_by to dict output
+            'group_by': self.group_by,  # Add group_by to dict output
+            'advanced': json.loads(self.advanced)  # Add advanced options to dict output
         }
 
 # Define the layout model

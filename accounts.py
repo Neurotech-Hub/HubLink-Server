@@ -647,13 +647,19 @@ def create_plot(account_url, source_id):
             
         print(f"[DEBUG] Final config: {config}")
         
+        # Collect advanced options
+        advanced_options = []
+        if request.form.get('accumulate') == 'on':
+            advanced_options.append('accumulate')
+        
         # Create new plot with JSON config
         plot = Plot(
             source_id=source_id,
             name=plot_name,
             type=plot_type,
             config=json.dumps(config),
-            group_by=request.form.get('group_by', type=int, default=None)  # Handle group_by field
+            group_by=request.form.get('group_by', type=int, default=None),  # Handle group_by field
+            advanced=json.dumps(advanced_options)  # Add advanced options
         )
         
         print("[DEBUG] Processing plot data...")
@@ -1354,6 +1360,13 @@ def edit_plot(account_url, source_id, plot_id):
             }
             
         plot.config = json.dumps(config)
+        
+        # Update advanced options
+        advanced_options = []
+        if request.form.get('accumulate') == 'on':
+            advanced_options.append('accumulate')
+        plot.advanced = json.dumps(advanced_options)
+        
         db.session.commit()
         flash('Plot updated successfully', 'success')
         
@@ -1361,5 +1374,5 @@ def edit_plot(account_url, source_id, plot_id):
         db.session.rollback()
         flash('Error updating plot', 'error')
         logging.error(f"Error updating plot: {e}")
-        
+    
     return redirect(url_for('accounts.account_plots', account_url=account_url))

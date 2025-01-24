@@ -284,6 +284,21 @@
                             <div class="invalid-feedback">Please select a data column.</div>
                         </div>
 
+                        <!-- Advanced Options -->
+                        <div class="mb-3">
+                            <a href="#" class="text-secondary text-decoration-none small" onclick="toggleAdvancedOptions(event)">
+                                Advanced <i class="fa fa-chevron-right ms-1 advanced-icon"></i>
+                            </a>
+                            <div id="advancedOptions" style="display: none;" class="mt-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="accumulateValues" name="accumulate">
+                                    <label class="form-check-label" for="accumulateValues">
+                                        Accumulate across files
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Plot Name -->
                         <div class="mb-3">
                             <label for="plotName" class="form-label">Plot Name <span class="text-danger">*</span></label>
@@ -892,6 +907,75 @@
     function clearPlotName() {
         document.getElementById('plotName').value = '';
         userEditedName = true;  // Prevent auto-population after clearing
+    }
+
+    function editPlot(source, plot) {
+        // First call createPlot to set up the modal with source data
+        createPlot(source);
+        
+        // Then populate the form with plot data
+        document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot/${plot.id}/edit`;
+        document.getElementById('plotType').value = plot.type;
+        document.getElementById('yData').value = plot.config.y_data;
+        document.getElementById('plotName').value = plot.name;
+        document.getElementById('groupBy').value = plot.group_by || '';
+        
+        // Handle advanced options
+        const advancedOptions = plot.advanced || [];
+        document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate_values');
+        
+        // Handle group selection
+        const groupByPathLevel = document.querySelector('#groupPills .text-muted');
+        const groupByLink = document.querySelector('#groupPills a');
+        const pathLevels = document.querySelector('#groupPills .path-levels');
+        const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
+
+        if (source.groups && source.groups.length > 0) {
+            groupByPathLevel.style.display = '';
+            groupByLink.style.display = '';
+            
+            if (plot.group_by !== null) {
+                // Show path levels and select the correct level
+                pathLevels.style.display = 'block';
+                noGroupingBtn.classList.remove('active');
+                
+                // Find and activate the correct group button
+                const groupBtn = pathLevels.querySelector(`button[data-value="${plot.group_by}"]`);
+                if (groupBtn) {
+                    groupBtn.classList.add('active');
+                }
+            } else {
+                // No grouping selected
+                pathLevels.style.display = 'none';
+                noGroupingBtn.classList.add('active');
+            }
+        } else {
+            groupByPathLevel.style.display = 'none';
+            groupByLink.style.display = 'none';
+            noGroupingBtn.classList.add('active');
+        }
+        
+        // Update modal title
+        document.getElementById('plotModalLabel').textContent = 'Edit Plot';
+        
+        // Update submit button text
+        const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
+        submitButton.textContent = 'Update';
+    }
+
+    function toggleAdvancedOptions(event) {
+        event.preventDefault();
+        const advancedOptions = document.getElementById('advancedOptions');
+        const icon = event.currentTarget.querySelector('.advanced-icon');
+        if (advancedOptions.style.display === 'none') {
+            advancedOptions.style.display = 'block';
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            advancedOptions.style.display = 'none';
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-right');
+        }
     }
 </script>
 

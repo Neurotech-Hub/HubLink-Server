@@ -50,7 +50,7 @@
                 <div class="col">
                     <div class="mini-plot-card">
                         <div class="card h-100" tabindex="0">
-                            <div class="card-body p-2">
+                            <div class="card-body p-2" onclick='editPlot({{ source.to_dict() | tojson | safe }}, {{ plot.to_dict() | tojson | safe }})' style="cursor: pointer;">
                                 <div class="d-flex justify-content-between align-items-start">
                                     <h6 class="card-title mb-0 text-truncate">
                                         {% if plot.type == 'timeline' %}
@@ -64,7 +64,7 @@
                                         {% endif %}
                                         {{ plot.name }}
                                     </h6>
-                                    <form action="{{ url_for('accounts.delete_plot', account_url=account.url, plot_id=plot.id) }}" method="post">
+                                    <form action="{{ url_for('accounts.delete_plot', account_url=account.url, plot_id=plot.id) }}" method="post" onclick="event.stopPropagation();">
                                         <button type="submit" class="btn-close btn-sm" aria-label="Close"></button>
                                     </form>
                                 </div>

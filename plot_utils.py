@@ -155,6 +155,8 @@ def process_timeseries_plot(plot, csv_content):
         config = json.loads(plot.config)
         x_data = plot.source.datetime_column
         y_data = config['y_data']
+        advanced_options = json.loads(plot.advanced) if plot.advanced else []
+        should_accumulate = 'accumulate_values' in advanced_options
         
         if not x_data:
             return {'error': 'No datetime column configured for this source'}
@@ -170,6 +172,7 @@ def process_timeseries_plot(plot, csv_content):
             logger.error(f"Failed to parse datetime column {x_data}: {str(e)}")
             return {'error': f'Could not parse datetime column {x_data}'}
         
+        # Convert y_data to numeric, handling non-numeric values
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[x_data, y_data])
         
@@ -178,7 +181,44 @@ def process_timeseries_plot(plot, csv_content):
 
         # Apply grouping
         df = prepare_grouped_df(df, plot)
+        
+        # Sort by datetime within each group
         df = df.sort_values(['group', x_data])
+        
+        # Handle accumulation if enabled
+        if should_accumulate and plot.type == 'timeline':
+            logger.info("Accumulating values across files")
+            # Process each group separately
+            groups = []
+            for group_name, group_df in df.groupby('group'):
+                # Sort by datetime
+                group_df = group_df.sort_values(x_data)
+                
+                # Initialize accumulation
+                last_value = 0
+                accumulated_data = []
+                current_file = None
+                
+                # Process each row
+                for _, row in group_df.iterrows():
+                    if current_file != row['file_path']:
+                        # New file started
+                        current_file = row['file_path']
+                        if accumulated_data:  # If we have previous data
+                            last_value = accumulated_data[-1]  # Use last accumulated value
+                    
+                    # Add to accumulated value
+                    accumulated_value = last_value + row[y_data]
+                    accumulated_data.append(accumulated_value)
+                    last_value = accumulated_value
+                
+                # Update the group's data
+                group_df[y_data] = accumulated_data
+                groups.append(group_df)
+            
+            # Combine all groups back
+            if groups:
+                df = pd.concat(groups)
         
         # Create figure using go.Figure for more control
         fig = go.Figure()
