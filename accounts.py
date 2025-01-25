@@ -471,6 +471,7 @@ def create_source(account_url):
         account = Account.query.filter_by(url=account_url).first_or_404()
         
         # Get form data
+        source_id = request.form.get('source_id')
         name = request.form.get('name', '').strip()
         directory_filter = request.form.get('directory_filter', '')
         include_subdirs = request.form.get('include_subdirs') == 'on'
@@ -479,38 +480,58 @@ def create_source(account_url):
         tail_only = request.form.get('tail_only') == 'on'
         data_points = request.form.get('data_points', type=int)
         groups = []  # Initialize with empty list for new sources
+
+        # Check if a source with this name already exists
+        existing_source = Source.query.filter_by(account_id=account.id, name=name).first()
+        if existing_source and (not source_id or int(source_id) != existing_source.id):
+            flash('A source with this name already exists', 'danger')
+            return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+        if source_id:
+            # Update existing source
+            source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+            source.name = name
+            source.directory_filter = directory_filter
+            source.include_subdirs = include_subdirs
+            source.include_columns = include_columns
+            source.datetime_column = datetime_column
+            source.tail_only = tail_only
+            source.data_points = data_points
+            source.state = 'running'
+            flash_message = 'Source updated successfully'
+        else:
+            # Create new source
+            source = Source(
+                name=name,
+                directory_filter=directory_filter,
+                include_subdirs=include_subdirs,
+                include_columns=include_columns,
+                datetime_column=datetime_column,
+                tail_only=tail_only,
+                data_points=data_points,
+                account_id=account.id,
+                state='running',
+                groups=groups
+            )
+            db.session.add(source)
+            flash_message = 'Source created successfully'
         
-        # Create new source
-        new_source = Source(
-            name=name,
-            directory_filter=directory_filter,
-            include_subdirs=include_subdirs,
-            include_columns=include_columns,
-            datetime_column=datetime_column,
-            tail_only=tail_only,
-            data_points=data_points,
-            account_id=account.id,
-            state='running',
-            groups=groups  # Initialize with empty list
-        )
-        
-        db.session.add(new_source)
         db.session.commit()
 
         # Get settings and initiate refresh
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        success, error = initiate_source_refresh(new_source, settings)
+        success, error = initiate_source_refresh(source, settings)
         if not success:
-            flash(f'Source created but refresh failed: {error}', 'warning')
+            flash(f'{flash_message} but refresh failed: {error}', 'warning')
         else:
-            flash('Source created successfully', 'success')
+            flash(flash_message, 'success')
             
         return redirect(url_for('accounts.account_plots', account_url=account_url))
         
     except Exception as e:
         db.session.rollback()
-        flash('Error creating source', 'error')
-        logging.error(f"Error creating source: {e}")
+        flash('Error creating/updating source', 'danger')
+        logging.error(f"Error creating/updating source: {e}")
         return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/source/<int:source_id>/delete', methods=['POST'])

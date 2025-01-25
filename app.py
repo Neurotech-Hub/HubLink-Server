@@ -316,9 +316,8 @@ def page_not_found(e):
 @app.route('/source', methods=['POST'])
 def create_source():
     try:
-        print("Received source update request")
         data = request.get_json()
-        print(f"Request data: {data}")
+        print(f"Create source data: {data}")
         
         if not data or 'bucket_name' not in data or 'name' not in data:
             print("Missing required fields in request")
@@ -378,7 +377,6 @@ def create_source():
         source.file_id = file.id
         
         db.session.commit()
-        print("Successfully committed all changes to database")
         
         return jsonify({
             'message': 'Source updated successfully',

@@ -197,24 +197,19 @@ def generate_s3_url(bucket_name, key):
 def sync_source_files(account_settings):
     """Sync source files with their corresponding .hublink/source/ files"""
     try:
-        print(f"Starting source file sync for account {account_settings.account_id}")
-        
         # Get all source files from S3 that match the pattern
         source_files = File.query.filter_by(account_id=account_settings.account_id)\
             .filter(File.key.like('.hublink/source/%.csv'))\
             .all()
-        print(f"Found {len(source_files)} source files in S3")
         
         # Get all sources for this account
         sources = Source.query.filter_by(account_id=account_settings.account_id).all()
-        print(f"Found {len(sources)} sources in database")
         
         # Create a mapping of source names to their files
         source_file_map = {
             file.key.split('/')[-1].replace('.csv', ''): file
             for file in source_files
         }
-        print(f"Source file mapping: {list(source_file_map.keys())}")
         
         # Update source.file_id for matching files
         for source in sources:
@@ -223,11 +218,9 @@ def sync_source_files(account_settings):
                 source.file_id = file.id
                 source.state = 'success'
                 source.last_updated = file.last_modified
-                print(f"Updated source {source.name} with file {file.key}, last_modified: {file.last_modified}")
             else:
                 source.file_id = None
                 source.state = 'error'
-                print(f"No matching file found for source {source.name}")
                 
         db.session.commit()
         logging.info(f"Successfully synced source files for account {account_settings.account_id}")

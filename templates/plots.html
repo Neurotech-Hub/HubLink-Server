@@ -186,7 +186,7 @@
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end" style="max-height: 200px; overflow-y: auto;">
                                 {% for file in recent_files %}
-                                {% if file.size > 1024 %}
+                                {% if file.size > 0 %}
                                 <li>
                                     <button type="button" 
                                             class="dropdown-item recent-file-item" 
@@ -695,7 +695,29 @@
         document.getElementById('includeSubdirs').checked = source.include_subdirs;
         document.getElementById('includeColumns').value = source.include_columns;
         document.getElementById('dataPoints').value = source.data_points;
+        document.getElementById('tailOnly').checked = source.tail_only;
         document.getElementById('sourceModalLabel').textContent = 'Edit Source';
+
+        // Handle datetime column
+        const datetimeSelect = document.getElementById('datetime_column');
+        const datetimeFeedback = document.getElementById('datetime_feedback');
+        
+        if (source.datetime_column) {
+            // Create option for existing datetime column
+            datetimeSelect.innerHTML = `<option value="${source.datetime_column}">${source.datetime_column}</option>`;
+            datetimeSelect.value = source.datetime_column;
+            datetimeSelect.style.display = 'block';
+            datetimeFeedback.textContent = 'Column containing datetime values';
+        } else {
+            datetimeSelect.style.display = 'none';
+            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+        }
+
+        // Show data points if tail only is checked
+        const dataPointsContainer = document.getElementById('dataPointsContainer');
+        if (dataPointsContainer) {
+            dataPointsContainer.style.display = source.tail_only ? 'block' : 'none';
+        }
         
         // Show the modal
         const sourceModal = new bootstrap.Modal(document.getElementById('sourceModal'));
