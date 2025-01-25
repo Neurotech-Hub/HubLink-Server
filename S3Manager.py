@@ -1,7 +1,7 @@
 import boto3
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from models import *
 import json
 from dateutil import parser
@@ -63,13 +63,11 @@ def rebuild_S3_files(account_settings):
                             version_count = 1  # Default to 1 if we can't get versions
 
                         if file_key in db_files:
-                            # File exists - check if size has changed
                             existing_file = db_files[file_key]
                             if existing_file.version != version_count:
                                 logging.info(f"File {file_key} version changed from {existing_file.version} to {version_count}")
                                 existing_file.size = obj['Size']
                                 existing_file.last_modified = obj['LastModified']
-                                existing_file.last_checked = existing_file.last_checked
                                 existing_file.version = version_count
                                 existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                                 db.session.add(existing_file)
@@ -82,8 +80,8 @@ def rebuild_S3_files(account_settings):
                                 url=generate_s3_url(account_settings.bucket_name, file_key),
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
-                                last_checked=obj['LastModified'],
-                                version=version_count  # Store version count
+                                last_checked=datetime.now(timezone.utc),
+                                version=version_count
                             )
                             db.session.add(new_file)
                             affected_files.append(new_file)  # Add new file

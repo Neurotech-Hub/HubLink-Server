@@ -1478,7 +1478,7 @@ table td code {
 /* HTMX Fade Transitions */
 .fade-me {
     opacity: 0;
-    transition: opacity 200ms ease-in;
+    transition: opacity 300ms ease-out;
 }
 
 .fade-me.htmx-settling {

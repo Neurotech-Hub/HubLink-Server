@@ -65,7 +65,7 @@
         </thead>
         <tbody>
             {% for file in recent_files %}
-            <tr class="{% if (now - file.last_modified).total_seconds() < 1800 %}fileActive{% endif %}">
+            <tr class="{% if file.raw_last_modified and (now - file.raw_last_modified).total_seconds() < 1800 %}fileActive{% endif %}">
                 <td>
                     <div class="form-check">
                         <input class="form-check-input file-select" type="checkbox" 
@@ -84,9 +84,9 @@
                                 '{{ file.id }}',
                                 '{{ file.key | replace("'", "\\'") }}',
                                 '{{ file.size | filesizeformat }}',
-                                '{{ file.last_modified.isoformat() if file.last_modified else "" }}',
+                                '{{ file.last_modified }}',
                                 '{{ file.version }}',
-                                '{{ file.last_checked.isoformat() if file.last_checked else " Never" }}')"
+                                '{{ file.last_checked }}')"
                             style="cursor: pointer;">
                             v{{ file.version }}
                         </span>
@@ -95,7 +95,7 @@
                 <td>{{ file.size|filesizeformat }}</td>
                 <td>
                     <script>
-                        document.currentScript.parentElement.textContent = moment("{{ file.last_modified.isoformat() if file.last_modified else '' }}").fromNow();
+                        document.currentScript.parentElement.textContent = moment("{{ file.last_modified }}").fromNow();
                     </script>
                 </td>
             </tr>

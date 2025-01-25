@@ -28,9 +28,16 @@ logging.basicConfig(
 # Create logger for the application
 logger = logging.getLogger(__name__)
 
-# Ensure all loggers are set to INFO level
-logging.getLogger('plot_utils').setLevel(logging.INFO)
-logging.getLogger('accounts').setLevel(logging.INFO)
+# Configure all loggers to propagate and set levels
+loggers = ['plot_utils', 'accounts', 'models', 'S3Manager']
+for logger_name in loggers:
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.INFO)
+    logger.propagate = True  # Ensure messages propagate to root logger
+
+# Configure SQLAlchemy logging to be less verbose
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)  # Hide SQL queries
+logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)   # Hide connection pool events
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)

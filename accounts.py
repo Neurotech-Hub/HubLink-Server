@@ -193,6 +193,7 @@ def check_files(account_url):
 
         # Get the current time in UTC
         current_time = datetime.now(timezone.utc)
+        logger.info(f"Setting last_checked to UTC time: {current_time} for files: {[f['filename'] for f in files]}")
         
         # Update last_checked for all files being checked
         for file_data in files:
@@ -1162,12 +1163,16 @@ def account_data_content(account_url):
         # Get directories for dropdown
         directories = get_directory_paths(account.id)
         
-        # Ensure all timestamps have timezone info
+        # Convert files to dicts to ensure proper timezone handling
         now = datetime.now(timezone.utc)
-        files = pagination.items
-        for file in files:
-            if file.last_modified and file.last_modified.tzinfo is None:
-                file.last_modified = file.last_modified.replace(tzinfo=timezone.utc)
+        files = []
+        for file in pagination.items:
+            file_dict = file.to_dict()
+            # Add any additional fields needed for the template
+            file_dict['id'] = file.id
+            # Keep raw datetime objects for template comparisons
+            file_dict['raw_last_modified'] = file.last_modified.replace(tzinfo=timezone.utc) if file.last_modified else None
+            files.append(file_dict)
         
         return render_template('components/data_content.html',
                              account=account,

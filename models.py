@@ -5,6 +5,8 @@ import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.sql import func
 
+logger = logging.getLogger(__name__)
+
 db = SQLAlchemy()
 
 # Define the accounts model
@@ -99,14 +101,17 @@ class File(db.Model):
         return f"<File {self.key} for Account {self.account_id}>"
 
     def to_dict(self):
+        """Convert file object to dictionary."""
+        utc_last_modified = self.last_modified.replace(tzinfo=timezone.utc) if self.last_modified else None
+        utc_last_checked = self.last_checked.replace(tzinfo=timezone.utc) if self.last_checked else None
+        
         return {
-            'account_id': self.account_id,
             'key': self.key,
             'url': self.url,
             'size': self.size,
-            'last_modified': self.last_modified.isoformat(),
-            'version': self.version,
-            'last_checked': self.last_checked.isoformat() if self.last_checked else None
+            'last_modified': utc_last_modified.isoformat() if utc_last_modified else None,
+            'last_checked': utc_last_checked.isoformat() if utc_last_checked else None,
+            'version': self.version
         }
 
 # Define the device model with ip_address instead of mac_address
@@ -126,7 +131,7 @@ class Gateway(db.Model):
             'account_id': self.account_id,
             'ip_address': self.ip_address,
             'name': self.name,
-            'created_at': self.created_at.isoformat()
+            'created_at': self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None
         }
 
 # Define the source model
@@ -161,14 +166,13 @@ class Source(db.Model):
             'data_points': self.data_points,
             'tail_only': self.tail_only,
             'datetime_column': self.datetime_column,
-            'last_updated': self.last_updated.isoformat() if self.last_updated else None,
+            'last_updated': self.last_updated.replace(tzinfo=timezone.utc).isoformat() if self.last_updated else None,
             'state': self.state,
             'error': self.error,
-            'file_id': self.file_id,  # Just include the file_id
-            'file_size': self.file.size if self.file else 0,  # Add file size
-            'groups': self.groups if isinstance(self.groups, list) else []  # Ensure groups is always a list
+            'file_id': self.file_id,
+            'file_size': self.file.size if self.file else 0,
+            'groups': self.groups if isinstance(self.groups, list) else []
         }
-
         return data
 
     def get_data(self):
@@ -224,7 +228,7 @@ class Layout(db.Model):
             'id': self.id,
             'name': self.name,
             'config': json.loads(self.config),
-            'created_at': self.created_at.isoformat(),
+            'created_at': self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
             'is_default': self.is_default,
             'show_nav': self.show_nav
         }

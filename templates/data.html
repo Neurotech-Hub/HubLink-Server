@@ -365,9 +365,9 @@
         
         document.getElementById('modalFileName').textContent = key;
         document.getElementById('modalFileSize').textContent = size;
-        document.getElementById('modalLastModified').textContent = lastModified ? new Date(lastModified).toLocaleString() : 'Never';
+        document.getElementById('modalLastModified').textContent = lastModified && lastModified !== 'Never' ? new Date(lastModified).toLocaleString() : 'Never';
         document.getElementById('modalVersion').textContent = version || 'N/A';
-        document.getElementById('modalLastChecked').textContent = lastChecked ? new Date(lastChecked).toLocaleString() : 'Never';
+        document.getElementById('modalLastChecked').textContent = lastChecked && lastChecked !== 'Never' ? new Date(lastChecked).toLocaleString() : 'Never';
         
         const modal = bootstrap.Modal.getOrCreateInstance(fileDetailsModal);
         modal.show();
