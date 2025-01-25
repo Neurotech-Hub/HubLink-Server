@@ -23,8 +23,8 @@
     <div id="dataContent" 
          hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}{% if directory or request.args.get('page') %}?{% endif %}{% if directory %}directory={{ directory }}{% endif %}{% if directory and request.args.get('page') %}&{% endif %}{% if request.args.get('page') %}page={{ request.args.get('page') }}{% endif %}"
          hx-trigger="load, every 30s"
-         hx-swap="innerHTML transition:true"
-         hx-preserve>
+         hx-swap="innerHTML"
+         hx-preserve="true">
         {% include "components/data_content.html" %}
     </div>
 </div>
@@ -108,10 +108,10 @@
     let selectedFiles = new Map();
     const ONE_GB = 1024 * 1024 * 1024;
     let downloadModal, deleteModal, fileDetailsModal;
+    let dataContent = document.getElementById('dataContent');
     
     // Initialize event listeners on page load
     document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded, initializing event listeners...');
         initializeEventListeners();
     });
     
@@ -129,9 +129,12 @@
         }
     }
     
+    // Function to toggle HTMX polling
+    function toggleHtmxPolling(enable) {
+        window.toggleHtmxPolling('dataContent', enable);
+    }
+
     function updateSelectedFilesUI() {
-        console.log('Updating UI with selected files:', selectedFiles);
-        
         const selectedCount = document.getElementById('selectedCount');
         const selectedSize = document.getElementById('selectedSize');
         const downloadBtn = document.getElementById('downloadSelectedBtn');
@@ -139,17 +142,7 @@
         {% if g.user and g.user.is_admin %}
         const deleteBtn = document.getElementById('deleteSelectedBtn');
         {% endif %}
-        
-        if (!selectedCount || !selectedSize || !downloadBtn || !clearBtn) {
-            console.warn('Missing UI elements:', {
-                selectedCount: !!selectedCount,
-                selectedSize: !!selectedSize,
-                downloadBtn: !!downloadBtn,
-                clearBtn: !!clearBtn
-            });
-            return;
-        }
-        
+
         selectedCount.textContent = selectedFiles.size;
         
         // Calculate total size
@@ -168,15 +161,9 @@
         }
         {% endif %}
         
-        // Control HTMX processing based on selections
-        htmx.config.processingEvents = !hasSelections;
-        console.log('HTMX processing:', htmx.config.processingEvents ? 'enabled' : 'disabled');
-        
-        console.log('Button states updated:', {
-            clearDisabled: clearBtn.disabled,
-            downloadDisabled: downloadBtn.disabled,
-            totalSize: formatFileSize(totalSize)
-        });
+        // Control HTMX polling based on selections
+        // Enable polling when no selections, disable when there are selections
+        toggleHtmxPolling('dataContent', !hasSelections);
         
         if (totalSize > ONE_GB) {
             downloadBtn.title = "File download exceeds 1GB. Please connect to your S3 bucket using API methods.";
@@ -201,13 +188,6 @@
     // Handle checkbox changes at document level
     document.addEventListener('change', function(e) {
         if (e.target.classList.contains('file-select')) {
-            console.log('Checkbox changed:', {
-                checked: e.target.checked,
-                fileId: e.target.dataset.id,
-                fileKey: e.target.dataset.key,
-                fileSize: e.target.dataset.size
-            });
-            
             const fileId = e.target.dataset.id;
             
             if (e.target.checked) {
@@ -219,14 +199,11 @@
             } else {
                 selectedFiles.delete(fileId);
             }
-            
-            console.log('Selected files after change:', selectedFiles);
             updateSelectedFilesUI();
         }
     });
 
     function initializeEventListeners() {
-        console.log('Initializing event listeners...');
         getModalElements();
         
         // Select all checkbox
@@ -246,7 +223,6 @@
         const clearBtn = document.getElementById('clearSelectionBtn');
         if (clearBtn) {
             clearBtn.onclick = function() {
-                console.log('Clear button clicked');
                 selectedFiles.clear();
                 document.querySelectorAll('.file-select').forEach(checkbox => {
                     checkbox.checked = false;
@@ -265,7 +241,6 @@
         if (downloadBtn) {
             downloadBtn.onclick = async function() {
                 if (selectedFiles.size === 0) return;
-                console.log('Download button clicked, files:', selectedFiles);
                 
                 const fileIds = Array.from(selectedFiles.keys());
                 
@@ -331,7 +306,6 @@
         if (deleteBtn) {
             deleteBtn.onclick = async function() {
                 if (selectedFiles.size === 0 || !confirm('Are you sure you want to delete the selected files?')) return;
-                console.log('Delete button clicked, files:', selectedFiles);
                 
                 const fileIds = Array.from(selectedFiles.keys());
                 if (!deleteModal) {
@@ -389,15 +363,6 @@
             return;
         }
         
-        console.log('Showing file details:', {
-            fileId,
-            key,
-            size,
-            lastModified,
-            version,
-            lastChecked
-        });
-        
         document.getElementById('modalFileName').textContent = key;
         document.getElementById('modalFileSize').textContent = size;
         document.getElementById('modalLastModified').textContent = lastModified ? new Date(lastModified).toLocaleString() : 'Never';
@@ -410,7 +375,7 @@
 
     // Initialize event listeners after HTMX content swap
     document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'dataContent') {
+        if (evt.detail.target.id === 'dataContentInner') {
             console.log('HTMX content swapped, reinitializing...');
             // Clear selection when content is updated
             selectedFiles.clear();

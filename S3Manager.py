@@ -715,6 +715,8 @@ def delete_files_from_s3(account_settings, files):
         Tuple of (success, error_message)
     """
     try:
+        logging.info(f"Starting deletion of {len(files)} files from S3")
+        
         # Create S3 client
         s3_client = boto3.client(
             's3',
@@ -722,15 +724,19 @@ def delete_files_from_s3(account_settings, files):
             aws_secret_access_key=account_settings.aws_secret_access_key,
             region_name=os.getenv('AWS_REGION', 'us-east-1')
         )
+        logging.debug(f"S3 client created for bucket: {account_settings.bucket_name}")
         
         # Delete each file from S3
         for file in files:
             try:
+                logging.info(f"Processing file: {file.key}")
+                
                 # Delete all versions of the file
                 versions = s3_client.list_object_versions(
                     Bucket=account_settings.bucket_name,
                     Prefix=file.key
                 )
+                logging.debug(f"Retrieved versions for {file.key}")
                 
                 # Delete version markers first
                 if 'DeleteMarkers' in versions:
@@ -739,10 +745,12 @@ def delete_files_from_s3(account_settings, files):
                         for marker in versions['DeleteMarkers']
                     ]
                     if delete_markers:
+                        logging.debug(f"Deleting {len(delete_markers)} delete markers for {file.key}")
                         s3_client.delete_objects(
                             Bucket=account_settings.bucket_name,
                             Delete={'Objects': delete_markers}
                         )
+                        logging.debug(f"Successfully deleted markers for {file.key}")
                 
                 # Then delete all versions
                 if 'Versions' in versions:
@@ -751,22 +759,33 @@ def delete_files_from_s3(account_settings, files):
                         for version in versions['Versions']
                     ]
                     if version_objects:
+                        logging.debug(f"Deleting {len(version_objects)} versions for {file.key}")
                         s3_client.delete_objects(
                             Bucket=account_settings.bucket_name,
                             Delete={'Objects': version_objects}
                         )
+                        logging.debug(f"Successfully deleted versions for {file.key}")
                 
                 # Delete the file from database
+                logging.debug(f"Deleting file {file.key} from database")
                 db.session.delete(file)
+                logging.info(f"Successfully processed file: {file.key}")
                 
+            except botocore.exceptions.ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+                error_message = e.response.get('Error', {}).get('Message', str(e))
+                logging.error(f"AWS Error deleting file {file.key}: {error_code} - {error_message}")
+                continue
             except Exception as e:
-                logging.error(f"Error deleting file {file.key}: {e}")
+                logging.error(f"Error deleting file {file.key}: {str(e)}")
                 continue
         
+        logging.debug("Committing database changes")
         db.session.commit()
+        logging.info("Successfully completed file deletion process")
         return True, None
         
     except Exception as e:
-        logging.error(f"Error in delete_files_from_s3: {e}")
+        logging.error(f"Error in delete_files_from_s3: {str(e)}")
         db.session.rollback()
         return False, str(e)

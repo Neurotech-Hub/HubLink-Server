@@ -20,4 +20,40 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     });
+
+    // HTMX Polling Control
+    window.htmxPollingState = new Map();
+
+    window.toggleHtmxPolling = function (elementId, enable) {
+        const element = document.getElementById(elementId);
+        if (!element) {
+            console.warn(`Element ${elementId} not found for HTMX polling toggle`);
+            return;
+        }
+
+        const currentState = window.htmxPollingState.get(elementId) ?? true;
+        if (enable === currentState) return;
+
+        if (enable) {
+            console.log(`HTMX processing: enabled for ${elementId}`);
+            element.setAttribute('hx-trigger', 'load, every 30s');
+            htmx.trigger(element, 'load');
+        } else {
+            console.log(`HTMX processing: disabled for ${elementId}`);
+            element.setAttribute('hx-trigger', 'none');
+        }
+        window.htmxPollingState.set(elementId, enable);
+    }
+
+    // Global HTMX request interceptor
+    document.body.addEventListener('htmx:beforeRequest', function (evt) {
+        const elementId = evt.target.id;
+        if (elementId && window.htmxPollingState.has(elementId)) {
+            const isEnabled = window.htmxPollingState.get(elementId);
+            if (!isEnabled) {
+                console.log(`Blocking HTMX request - polling disabled for ${elementId}`);
+                evt.preventDefault();
+            }
+        }
+    });
 });

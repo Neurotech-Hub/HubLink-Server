@@ -35,11 +35,12 @@
             </div>
 
             <!-- Sources List Container -->
-            <div id="sourceListContainer" 
-                 hx-get="{{ url_for('accounts.source_list', account_url=account.url) }}" 
-                 hx-trigger="load, every 10s"
-                 hx-preserve>
-                {% include 'components/source_list.html' %}
+            <div id="sourceListContent" 
+                 hx-get="{{ url_for('accounts.source_list', account_url=account.url) }}"
+                 hx-trigger="load, every 30s"
+                 hx-swap="innerHTML"
+                 hx-preserve="true">
+                {% include "components/source_list.html" %}
             </div>
         </div>
     </div>
@@ -977,6 +978,23 @@
             icon.classList.add('fa-chevron-right');
         }
     }
+
+    // Function to toggle HTMX polling for source list
+    function toggleSourceListPolling(enable) {
+        window.toggleHtmxPolling('sourceListContent', enable);
+    }
+
+    // Disable polling when modal is open
+    document.addEventListener('show.bs.modal', function() {
+        toggleSourceListPolling(false);
+    });
+
+    // Re-enable polling when all modals are closed
+    document.addEventListener('hidden.bs.modal', function() {
+        if (!document.querySelector('.modal.show')) {
+            toggleSourceListPolling(true);
+        }
+    });
 </script>
 
 <!-- Add this in the head section or before closing body -->
