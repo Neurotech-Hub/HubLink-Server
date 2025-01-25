@@ -149,11 +149,17 @@ def get_default_layout(plot_name):
         }
     }
 
+def get_plot_title(plot):
+    """Helper function to generate consistent plot titles"""
+    if hasattr(plot, 'source') and plot.source:
+        return f"{plot.source.name} → {plot.name}"
+    return plot.name
+
 def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
         config = json.loads(plot.config)
-        x_data = plot.source.datetime_column
+        x_data = plot.source.datetime_column if hasattr(plot, 'source') else None
         y_data = config['y_data']
         advanced_options = json.loads(plot.advanced) if plot.advanced else []
         should_accumulate = 'accumulate_values' in advanced_options
@@ -179,11 +185,14 @@ def process_timeseries_plot(plot, csv_content):
         if len(df) == 0:
             return {'error': 'No valid data points after cleaning'}
 
-        # Apply grouping
-        df = prepare_grouped_df(df, plot)
-        
-        # Sort by datetime within each group
-        df = df.sort_values(['group', x_data])
+        # Apply grouping if needed
+        if plot.group_by:
+            df = prepare_grouped_df(df, plot)
+            # Sort by datetime within each group
+            df = df.sort_values(['group', x_data])
+        else:
+            # Just sort by datetime if no grouping
+            df = df.sort_values(x_data)
         
         # Handle accumulation if enabled
         if should_accumulate and plot.type == 'timeline':
@@ -226,14 +235,29 @@ def process_timeseries_plot(plot, csv_content):
         # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
-        for idx, group in enumerate(sorted(df['group'].unique())):
-            group_data = df[df['group'] == group]
-            color = colors[idx % len(colors)]
-            
+        if plot.group_by:
+            # Plot each group separately
+            for idx, group in enumerate(sorted(df['group'].unique())):
+                group_data = df[df['group'] == group]
+                color = colors[idx % len(colors)]
+                
+                fig.add_trace(go.Scatter(
+                    x=group_data[x_data],
+                    y=group_data[y_data],
+                    name=group,
+                    mode='lines+markers',
+                    marker=dict(size=6, opacity=0.7, color=color),
+                    line=dict(width=2, shape='linear', color=color),
+                    fill='tozeroy',
+                    fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}'
+                ))
+        else:
+            # Plot single line for non-grouped data
+            color = colors[0]
             fig.add_trace(go.Scatter(
-                x=group_data[x_data],
-                y=group_data[y_data],
-                name=group,
+                x=df[x_data],
+                y=df[y_data],
+                name=y_data,
                 mode='lines+markers',
                 marker=dict(size=6, opacity=0.7, color=color),
                 line=dict(width=2, shape='linear', color=color),
@@ -242,7 +266,7 @@ def process_timeseries_plot(plot, csv_content):
             ))
         
         # Update layout
-        layout = get_default_layout(plot.name)
+        layout = get_default_layout(get_plot_title(plot))
         layout.update({
             'xaxis_title': x_data,
             'yaxis_title': y_data
@@ -268,34 +292,43 @@ def process_box_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        # Apply grouping
-        df = prepare_grouped_df(df, plot)
+        if len(df) == 0:
+            return {'error': 'No valid data points after cleaning'}
+            
+        # Apply grouping if needed
+        if plot.group_by:
+            df = prepare_grouped_df(df, plot)
         
-        # Create figure using go.Figure
+        # Create figure
         fig = go.Figure()
-        
-        # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
-        # Add box plots with different colors for each group
-        for idx, group in enumerate(sorted(df['group'].unique())):
-            group_data = df[df['group'] == group]
-            color = colors[idx % len(colors)]
-            
+        if plot.group_by:
+            # Plot each group as a separate box
+            for idx, group in enumerate(sorted(df['group'].unique())):
+                group_data = df[df['group'] == group]
+                color = colors[idx % len(colors)]
+                
+                fig.add_trace(go.Box(
+                    y=group_data[y_data],
+                    name=group,
+                    marker_color=color,
+                    boxpoints='outliers'
+                ))
+        else:
+            # Single box plot for all data
             fig.add_trace(go.Box(
-                y=group_data[y_data],
-                name=group,
-                marker_color=color,
-                line=dict(color=color),
-                boxmean=True  # adds mean marker
+                y=df[y_data],
+                name=y_data,
+                marker_color=colors[0],
+                boxpoints='outliers'
             ))
         
         # Update layout
-        layout = get_default_layout(plot.name)
+        layout = get_default_layout(get_plot_title(plot))
         layout.update({
-            'xaxis_title': 'Group',
             'yaxis_title': y_data,
-            'boxmode': 'group'
+            'showlegend': plot.group_by  # Only show legend if grouped
         })
         fig.update_layout(layout)
         
@@ -303,7 +336,6 @@ def process_box_plot(plot, csv_content):
             'plotly_json': fig.to_json(),
             'error': None
         }
-
     except Exception as e:
         logger.error(f"Error processing box plot: {e}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'}
@@ -315,47 +347,49 @@ def process_bar_plot(plot, csv_content):
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content))
-        logger.debug(f"Available columns: {df.columns.tolist()}")
-        
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        # Apply grouping
-        df = prepare_grouped_df(df, plot)
+        if len(df) == 0:
+            return {'error': 'No valid data points after cleaning'}
+            
+        # Apply grouping if needed
+        if plot.group_by:
+            df = prepare_grouped_df(df, plot)
+            # Calculate statistics by group
+            stats = (df.groupby('group', observed=True)[y_data]
+                    .agg(['mean', 'std', 'count'])
+                    .round(2))
+        else:
+            # Calculate overall statistics
+            stats = pd.DataFrame({
+                'mean': [df[y_data].mean()],
+                'std': [df[y_data].std()],
+                'count': [len(df)]
+            }, index=['all']).round(2)
         
-        # Pre-process data to calculate statistics
-        stats = (df.groupby('group', observed=True)[y_data]
-                .agg(['mean', 'std'])
-                .reset_index())
-        
-        # Create figure using go.Figure
+        # Create figure
         fig = go.Figure()
-        
-        # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
-        # Add bars with different colors for each group
-        for idx, group in enumerate(sorted(stats['group'])):
-            color = colors[idx % len(colors)]
-            fig.add_trace(go.Bar(
-                x=[group],
-                y=[stats.loc[stats['group'] == group, 'mean'].iloc[0]],
-                error_y=dict(
-                    type='data',
-                    array=[stats.loc[stats['group'] == group, 'std'].iloc[0]],
-                    visible=True
-                ),
-                name=group,
-                marker_color=color,
-                showlegend=True
-            ))
+        # Add bars with error bars
+        fig.add_trace(go.Bar(
+            x=stats.index,
+            y=stats['mean'],
+            error_y=dict(
+                type='data',
+                array=stats['std'],
+                visible=True
+            ),
+            marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))]
+        ))
         
         # Update layout
-        layout = get_default_layout(plot.name)
+        layout = get_default_layout(get_plot_title(plot))
         layout.update({
-            'xaxis_title': 'Group',
-            'yaxis_title': f'{y_data} (Mean)',
-            'barmode': 'group'
+            'yaxis_title': y_data,
+            'xaxis_title': 'Group' if plot.group_by else None,
+            'showlegend': False
         })
         fig.update_layout(layout)
         
@@ -363,7 +397,6 @@ def process_bar_plot(plot, csv_content):
             'plotly_json': fig.to_json(),
             'error': None
         }
-
     except Exception as e:
         logger.error(f"Error processing bar plot: {e}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'}
@@ -378,50 +411,54 @@ def process_table_plot(plot, csv_content):
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
-        # Apply grouping
-        df = prepare_grouped_df(df, plot)
+        if len(df) == 0:
+            return {'error': 'No valid data points after cleaning'}
+            
+        # Apply grouping if needed
+        if plot.group_by:
+            df = prepare_grouped_df(df, plot)
+            # Calculate statistics by group
+            stats = (df.groupby('group', observed=True)[y_data]
+                    .agg(['count', 'mean', 'std', 'min', 'max'])
+                    .round(2))
+        else:
+            # Calculate overall statistics
+            stats = pd.DataFrame({
+                'count': [len(df)],
+                'mean': [df[y_data].mean()],
+                'std': [df[y_data].std()],
+                'min': [df[y_data].min()],
+                'max': [df[y_data].max()]
+            }, index=['all']).round(2)
         
-        # Calculate statistics by group
-        stats = (df.groupby('group', observed=True)[y_data]
-                .agg([
-                    'count',
-                    'mean',
-                    'std',
-                    'min',
-                    'max'
-                ])
-                .reset_index())
-        
-        # Round numeric columns to 3 decimal places
-        numeric_cols = stats.select_dtypes(include=['float64']).columns
-        stats[numeric_cols] = stats[numeric_cols].round(3)
-        
-        # Rename columns for display
-        stats.columns = ['Group', 'Count', 'Mean', 'Std Dev', 'Min', 'Max']
-        
+        # Create figure
         fig = go.Figure(data=[go.Table(
             header=dict(
-                values=list(stats.columns),
-                fill_color='#f0f0f0',
+                values=['Group' if plot.group_by else 'Metric'] + list(stats.columns),
+                fill_color='#f0f0f0',  # Light gray
                 align='left',
-                font=dict(size=14)
+                font=dict(color='black', size=12)
             ),
             cells=dict(
-                values=[stats[col] for col in stats.columns],
-                fill_color='#ffffff',
+                values=[stats.index] + [stats[col] for col in stats.columns],
+                fill_color='white',
                 align='left',
-                font=dict(size=13)
+                font=dict(color='#333333', size=12)  # Dark gray text
             )
         )])
         
-        fig.update_layout(get_default_layout(plot.name))
-        fig.update_layout(height=400)  # Adjust height for table
+        # Update layout
+        layout = get_default_layout(get_plot_title(plot))
+        layout.update({
+            'paper_bgcolor': 'white',
+            'plot_bgcolor': 'white'
+        })
+        fig.update_layout(layout)
         
         return {
             'plotly_json': fig.to_json(),
             'error': None
         }
-
     except Exception as e:
         logger.error(f"Error processing table plot: {e}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'} 

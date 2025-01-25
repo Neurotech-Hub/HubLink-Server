@@ -375,7 +375,7 @@
 
     // Initialize event listeners after HTMX content swap
     document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'dataContentInner') {
+        if (evt.detail.target.id === 'dataContent') {
             console.log('HTMX content swapped, reinitializing...');
             // Clear selection when content is updated
             selectedFiles.clear();

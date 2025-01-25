@@ -662,18 +662,22 @@ def create_plot(account_url, source_id):
             advanced=json.dumps(advanced_options)  # Add advanced options
         )
         
+        # Add to session to set up relationships
+        db.session.add(plot)
+        db.session.flush()  # This sets up relationships without committing
+        
         print("[DEBUG] Processing plot data...")
         # Process plot data and save it to plot.data
         plot_data = get_plot_data(plot, source, account)
         print(f"[DEBUG] Plot data processed, length: {len(str(plot_data))} chars")
         
         if not plot_data:
+            db.session.rollback()
             print("[DEBUG] Error: No plot data generated")
             flash('Error: No data available for the selected columns.', 'error')
             return redirect(url_for('accounts.account_plots', account_url=account_url))
         
         plot.data = json.dumps(plot_data)
-        db.session.add(plot)
         db.session.commit()
         print(f"[DEBUG] Plot created successfully with ID: {plot.id}")
         
