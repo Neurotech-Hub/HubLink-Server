@@ -27,7 +27,7 @@
     <!-- Stats Row -->
     <div class="row mb-4" id="dashboardStats" 
          hx-get="{{ url_for('accounts.dashboard_stats', account_url=account.url) }}" 
-         hx-trigger="load, every 30s"
+         hx-trigger="load, every 120s"
          hx-swap="innerHTML transition:true"
          hx-preserve>
         <div class="fade-me">
@@ -43,7 +43,7 @@
     <div class="row mb-4">
         <div class="col-12" id="dashboardUploads" 
              hx-get="{{ url_for('accounts.dashboard_uploads', account_url=account.url) }}" 
-             hx-trigger="load, every 30s"
+             hx-trigger="load, every 120s"
              hx-swap="innerHTML transition:true"
              hx-preserve>
             <div class="fade-me">
@@ -61,7 +61,7 @@
         <!-- Directory Distribution -->
         <div class="col-md-6 mb-4" id="dashboardDirs" 
              hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" 
-             hx-trigger="load, every 30s"
+             hx-trigger="load, every 120s"
              hx-swap="innerHTML transition:true"
              hx-preserve>
             <div class="fade-me">
@@ -76,7 +76,7 @@
         <!-- Gateway Activity -->
         <div class="col-md-6 mb-4" id="dashboardGateways" 
              hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" 
-             hx-trigger="load, every 30s"
+             hx-trigger="load, every 120s"
              hx-swap="innerHTML transition:true">
             <div class="fade-me">
                 <div class="text-center py-5">

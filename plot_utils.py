@@ -152,7 +152,7 @@ def get_default_layout(plot_name):
 def get_plot_title(plot):
     """Helper function to generate consistent plot titles"""
     if hasattr(plot, 'source') and plot.source:
-        return f"{plot.source.name} → {plot.name}"
+        return f"{plot.name} ({plot.source.name})"
     return plot.name
 
 def process_timeseries_plot(plot, csv_content):
