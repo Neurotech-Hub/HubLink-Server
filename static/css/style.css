@@ -1625,3 +1625,11 @@ table td code {
 #advancedOptions .form-check {
     margin-left: 8px;
 }
+
+.bg-purple-light {
+    background-color: rgba(103, 58, 183, 0.1);
+}
+
+.text-purple {
+    color: #673ab7;
+}

@@ -2,11 +2,11 @@
 <html lang="en">
 
 <head>
-    {% include 'head.html' %}
+    {% include "head.html" %}
 </head>
 
 <body>
-    {% include 'nav.html' %}
+    {% include "nav.html" %}
 
     <div class="container mt-5 mb-5">
         <h1 class="mb-5">Documentation</h1>
@@ -33,7 +33,7 @@
 
         <!-- Settings Section -->
         <section class="mb-5">
-            <h2 class="border-bottom pb-2 mb-4">Available Settings</h2>
+            <h2 class="border-bottom pb-2 mb-4">Dashboard Settings</h2>
             <div class="card mb-4">
                 <div class="card-body">
                     <h3 class="h5">Storage Settings</h3>
@@ -60,9 +60,51 @@
             </div>
         </section>
 
+        <!-- Gateway Configuration -->
+        <section class="mb-5">
+            <h2 class="border-bottom pb-2 mb-4">Gateway Configuration</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p>All gateways should be pre-configured — it is unlikely you will need to make any changes. The following information is provided for reference or troubleshooting purposes.</p>
+
+                    <p>Gateway settings can be updated or data can be retrieved using a USB drive. The system automatically recognizes drives labeled "HUBLINK":</p>
+                    
+                    <ol>
+                        <li>Format the drive with a compatible filesystem (e.g., ext4, FAT32)</li>
+                        <li>Label the drive as "HUBLINK"</li>
+                        <li>Create a <code>hublink.json</code> file in the root of the drive with the configuration:</li>
+                    </ol>
+
+                    <div class="bg-light p-3 rounded mb-4">
+                        <pre class="mb-0"><code>{
+  "secret_url": "https://hublink.cloud/&lt;secret_url&gt;",
+  "gateway_name": "Gateway1"
+}</code></pre>
+                    </div>
+
+                    <p>The secret URL is used to authenticate the gateway with the cloud service. The gateway name will automatically have a unique identifier appended to it based on the device's MAC address to make
+                        it easier to identify on the dashboard.</p>
+
+                    <div class="bg-purple-light p-4 rounded-3 shadow-sm mb-3 mt-5">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <i class="fa-solid fa-tools fa-2x"></i>
+                            </div>
+                            <div class="col">
+                                <h5 class="mb-2">Need Help Formatting?</h5>
+                                <p class="mb-0 text-secondary">
+                                    Use our <a href="https://github.com/Neurotech-Hub/HublinkCardFormatter" class="text-purple fw-bold" target="_blank">HublinkCardFormatter <i class="fa-solid fa-up-right-from-square"></i></a> tool to safely format SD cards for both nodes and gateways. Includes safety checks and automatic configuration.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- SD Card Configuration -->
         <section class="mb-5">
-            <h2 class="border-bottom pb-2 mb-4">SD Card Configuration</h2>
+            <h2 class="border-bottom pb-2 mb-4">Node Configuration</h2>
             <div class="card mb-4">
                 <div class="card-body">
                     <p>Create a file named <code>meta.json</code> on your SD card to configure node behavior and store metadata. The file uses JSON format:</p>
@@ -79,7 +121,7 @@
     "reconnect_attempts": 3,
     "reconnect_every": 30,
     "upload_path": "/FED",
-    "append_path": "subject:id",
+    "append_path": "subject:id/experimenter:name",
     "disable": false
   },
   "subject": {
@@ -97,6 +139,18 @@
     "sex_options": [
       "male",
       "female"
+    ]
+  },
+  "experimenter": {
+    "name": "john_doe"
+  },
+  "fed": {
+    "program": "Classic",
+    "program_options": [
+      "Classic",
+      "Intense",
+      "Minimal",
+      "Custom"
     ]
   }
 }</code></pre>
@@ -162,7 +216,7 @@
                             </tr>
                             <tr>
                                 <td><code>append_path</code></td>
-                                <td>Reference to another JSON field to append to upload path (format: "root:key")</td>
+                                <td>Dynamic path segments using nested JSON values (e.g., "subject:id/experimenter:name")</td>
                                 <td>none</td>
                             </tr>
                             <tr>
@@ -203,7 +257,23 @@
         │   └── another_path/
         └── ...</code></pre>
         
-                    <h5 class="mt-4">Path Configuration Examples</h5>
+                    <h5 class="mt-4">Path Construction</h5>
+                    <p>The <code>append_path</code> field supports multiple nested JSON values separated by forward slashes. The path is constructed as follows:</p>
+                    <ol>
+                        <li>Starts with <code>upload_path</code></li>
+                        <li>Appends each value specified in <code>append_path</code> if it exists and is not empty</li>
+                        <li>Skips any missing or empty values</li>
+                        <li>Sanitizes the path to ensure it's valid for S3 storage:
+                            <ul>
+                                <li>Allows alphanumeric characters (a-z, A-Z, 0-9)</li>
+                                <li>Allows hyphen (-), underscore (_), plus (+), period (.)</li>
+                                <li>Removes duplicate slashes</li>
+                                <li>Removes trailing slashes</li>
+                            </ul>
+                        </li>
+                    </ol>
+
+                    <h5 class="mt-4">Path Construction Examples</h5>
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <div class="card">
@@ -222,22 +292,29 @@
                         <div class="col-md-6 mb-3">
                             <div class="card">
                                 <div class="card-header bg-light">
-                                    <code>upload_path: "/"</code><br>
-                                    <code>append_path: ""</code>
+                                    <code>upload_path: "/FED"</code><br>
+                                    <code>append_path: "subject:id/experimenter:name"</code>
                                 </div>
                                 <div class="card-body">
                                     <pre class="mb-0"><code>bucket/
-        └── data.csv</code></pre>
+        └── FED/
+            └── mouse001/
+                └── john_doe/
+                    └── data.csv</code></pre>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="alert alert-info mt-3">
+                        <strong>Note:</strong> If a value referenced in <code>append_path</code> is missing or empty, that segment will be skipped. For example, if <code>experimenter:name</code> is missing in the path <code>subject:id/experimenter:name</code>, the final path would be <code>/FED/mouse001</code> instead of <code>/FED/mouse001/john_doe</code>.
                     </div>
                 </div>
             </div>
         </section>
     </div>
 
-    {% include 'footer.html' %}
+    {% include "footer.html" %}
 
 </body>
 
