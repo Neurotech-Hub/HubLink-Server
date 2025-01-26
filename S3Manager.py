@@ -70,6 +70,7 @@ def rebuild_S3_files(account_settings):
                                 existing_file.last_modified = obj['LastModified']
                                 existing_file.version = version_count
                                 existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
+                                existing_file.last_checked = datetime.now(timezone.utc)
                                 db.session.add(existing_file)
                                 affected_files.append(existing_file)  # Add updated file
                         else:

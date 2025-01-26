@@ -93,7 +93,7 @@ class File(db.Model):
     key = db.Column(db.String(200), nullable=False, server_default='')
     url = db.Column(db.String(500), nullable=False, server_default='')
     size = db.Column(db.Integer, nullable=False, server_default='0')
-    last_modified = db.Column(db.DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+    last_modified = db.Column(db.DateTime, nullable=False, server_default=func.now())
     version = db.Column(db.Integer, nullable=False, server_default='1')
     last_checked = db.Column(db.DateTime, nullable=True)
 
