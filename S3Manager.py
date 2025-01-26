@@ -65,15 +65,17 @@ def rebuild_S3_files(account_settings):
                         # rewrite all right now, check version in the future to minimize db operations
                         if file_key in db_files:
                             existing_file = db_files[file_key]
+
+                            # affected files determines if the source needs to be rebuilt
+                            if existing_file.version != version_count:
+                                affected_files.append(existing_file)  # Add updated file
+
                             existing_file.size = obj['Size']
                             existing_file.last_modified = obj['LastModified']
                             existing_file.version = version_count
                             existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                             existing_file.last_checked = datetime.now(timezone.utc)
                             db.session.add(existing_file)
-                            # affected files determines if the source needs to be rebuilt
-                            if existing_file.version != version_count:
-                                affected_files.append(existing_file)  # Add updated file
                         else:
                             # New file - create new entry
                             new_file = File(

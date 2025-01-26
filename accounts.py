@@ -215,22 +215,28 @@ def check_files(account_url):
         return jsonify({"error": "There was an issue processing your request."}), 500
 
 def s3_pattern_to_regex(pattern, include_subdirs=False):
-    """Convert a directory filter pattern to a regex pattern."""
-    # Handle root directory case
-    if pattern == '/':
-        return '^[^/]+$' if not include_subdirs else '^.+$'
+    """Convert a directory filter pattern to a regex pattern that matches CSV files.
+    Matches Lambda's behavior:
+    - For non-recursive: directory/*.csv
+    - For recursive: directory/**/*.csv
+    - Root directory becomes empty string after stripping
+    """
+    # Strip leading/trailing slashes as Lambda does
+    clean_dir = pattern.strip('/')
     
-    # Strip leading slash and escape special regex characters
-    pattern = pattern.lstrip('/')
-    pattern = re.escape(pattern)
+    if not clean_dir:  # Root directory case
+        if include_subdirs:
+            return r'^.*\.csv$'  # Matches any .csv file in any directory
+        else:
+            return r'^[^/]*\.csv$'  # Matches only .csv files in root
     
-    # Add pattern for matching files in the directory
+    # Escape special regex characters in the directory pattern
+    clean_dir = re.escape(clean_dir)
+    
     if include_subdirs:
-        pattern = f"^{pattern}/.*$"  # Match any files in directory or subdirectories
+        return f"^{clean_dir}/.*\\.csv$"  # Matches .csv files in directory and subdirectories
     else:
-        pattern = f"^{pattern}/[^/]+$"  # Match only files directly in directory
-        
-    return pattern
+        return f"^{clean_dir}/[^/]*\\.csv$"  # Matches only .csv files directly in directory
 
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
 def rebuild(account_url):
