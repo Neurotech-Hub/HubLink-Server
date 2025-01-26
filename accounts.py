@@ -1151,7 +1151,19 @@ def account_data_content(account_url):
             .filter(~File.key.like('__MACOSX%'))  # Also exclude macOS metadata
         
         if directory:
-            files_query = files_query.filter(File.key.like(f"{directory}/%"))
+            # For root directory
+            if directory == '/':
+                files_query = files_query.filter(~File.key.contains('/'))
+            else:
+                # Remove leading slash if present for consistency
+                directory = directory.lstrip('/')
+                # Match files that are directly in this directory
+                # This means the key should have exactly one more forward slash than the directory
+                files_query = files_query.filter(
+                    File.key.like(f"{directory}/%")  # Starts with directory/
+                ).filter(
+                    ~File.key.like(f"{directory}/%/%")  # But doesn't have another slash after
+                )
         
         # Order by last modified and paginate
         pagination = files_query.order_by(File.last_modified.desc()).paginate(

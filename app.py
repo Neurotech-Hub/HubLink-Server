@@ -324,7 +324,6 @@ def page_not_found(e):
 def create_source():
     try:
         data = request.get_json()
-        print(f"Create source data: {data}")
         
         if not data or 'bucket_name' not in data or 'name' not in data:
             print("Missing required fields in request")
