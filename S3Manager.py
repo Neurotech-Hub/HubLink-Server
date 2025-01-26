@@ -64,15 +64,13 @@ def rebuild_S3_files(account_settings):
 
                         if file_key in db_files:
                             existing_file = db_files[file_key]
-                            if existing_file.version != version_count:
-                                logging.info(f"File {file_key} version changed from {existing_file.version} to {version_count}")
-                                existing_file.size = obj['Size']
-                                existing_file.last_modified = obj['LastModified']
-                                existing_file.version = version_count
-                                existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
-                                existing_file.last_checked = datetime.now(timezone.utc)
-                                db.session.add(existing_file)
-                                affected_files.append(existing_file)  # Add updated file
+                            existing_file.size = obj['Size']
+                            existing_file.last_modified = obj['LastModified']
+                            existing_file.version = version_count
+                            existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
+                            existing_file.last_checked = datetime.now(timezone.utc)
+                            db.session.add(existing_file)
+                            affected_files.append(existing_file)  # Add updated file
                         else:
                             # New file - create new entry
                             new_file = File(
