@@ -215,28 +215,40 @@ def check_files(account_url):
         return jsonify({"error": "There was an issue processing your request."}), 500
 
 def s3_pattern_to_regex(pattern, include_subdirs=False):
-    """Convert a directory filter pattern to a regex pattern that matches CSV files.
-    Matches Lambda's behavior:
-    - For non-recursive: directory/*.csv
-    - For recursive: directory/**/*.csv
-    - Root directory becomes empty string after stripping
+    """Convert a directory filter pattern to match the Lambda's exact behavior.
+    Test cases:
+    1. directory_filter="/", include_subdirs=false:
+       - matches: file.csv
+       - does not match: FED/file.csv
+    2. directory_filter="/FED", include_subdirs=false:
+       - does not match: file.csv
+       - matches: FED/file.csv
+    3. directory_filter="/FED", include_subdirs=true:
+       - does not match: file.csv
+       - matches: FED/file.csv
+       - matches: FED/DA56/file.CSV
     """
     # Strip leading/trailing slashes as Lambda does
     clean_dir = pattern.strip('/')
     
-    if not clean_dir:  # Root directory case
+    if not clean_dir:  # Root directory case "/"
         if include_subdirs:
-            return r'^.*\.csv$'  # Matches any .csv file in any directory
+            return r'^.*[^/]+\.csv$'  # Matches any .csv file in any directory
         else:
-            return r'^[^/]*\.csv$'  # Matches only .csv files in root
+            return r'^[^/]+\.csv$'  # Matches ONLY .csv files in root (no slashes)
     
     # Escape special regex characters in the directory pattern
     clean_dir = re.escape(clean_dir)
     
     if include_subdirs:
-        return f"^{clean_dir}/.*\\.csv$"  # Matches .csv files in directory and subdirectories
+        # Must start with directory, then match any subdirectories and csv file
+        pattern = f"^{clean_dir}/.*[^/]+\\.csv$"
     else:
-        return f"^{clean_dir}/[^/]*\\.csv$"  # Matches only .csv files directly in directory
+        # Must start with directory and match only csv files directly in that directory
+        pattern = f"^{clean_dir}/[^/]+\\.csv$"
+    
+    # Compile with IGNORECASE to match .csv, .CSV, etc.
+    return re.compile(pattern, re.IGNORECASE)
 
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
 def rebuild(account_url):
@@ -260,7 +272,7 @@ def rebuild(account_url):
             for source in sources:
                 try:
                     pattern = s3_pattern_to_regex(source.directory_filter, source.include_subdirs)
-                    regex = re.compile(pattern)
+                    regex = pattern
                     
                     # Check each affected file against this source's pattern
                     for file in affected_files:
