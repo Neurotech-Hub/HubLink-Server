@@ -150,7 +150,7 @@ class Source(db.Model):
     file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
     state = db.Column(db.String(50), nullable=False, server_default='created')
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
-    groups = db.Column(db.JSON, nullable=False, server_default='[]')  # Store array of integers as JSON
+    max_path_level = db.Column(db.Integer, nullable=False, server_default='0')  # Store the maximum path level for grouping
 
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"
@@ -171,7 +171,7 @@ class Source(db.Model):
             'error': self.error,
             'file_id': self.file_id,
             'file_size': self.file.size if self.file else 0,
-            'groups': self.groups if isinstance(self.groups, list) else []
+            'max_path_level': self.max_path_level
         }
         return data
 

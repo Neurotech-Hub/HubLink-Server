@@ -361,7 +361,7 @@ def create_source():
         source.state = 'success' if is_success else 'error'
         source.error = data.get('error')  # Store error message if present
         source.last_updated = datetime.now(timezone.utc)
-        source.groups = data.get('groups', [])  # Set groups from data, default to empty list
+        source.max_path_level = data.get('max_path_level', 0)  # Set max_path_level from data, default to 0
         
         # Handle file record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()

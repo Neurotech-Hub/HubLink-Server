@@ -426,17 +426,18 @@
         }
     }
 
-    function updateGroupOptions(sourceGroups) {
+    function updateGroupOptions(source) {
         const pillsContainer = document.querySelector('#groupPills .path-levels');
         // Clear existing path levels
         pillsContainer.innerHTML = '';
         
-        // Find max group number
-        const maxGroup = sourceGroups && sourceGroups.length > 0 ? 
-            Math.max(...sourceGroups) : 0;
+        // If max_path_level is 0, grouping is disabled
+        if (source.max_path_level === 0) {
+            return;
+        }
         
-        // Create pills from 0 to maxGroup
-        for (let i = 0; i <= maxGroup; i++) {
+        // Create pills from 0 to max_path_level
+        for (let i = 0; i <= source.max_path_level; i++) {
             // Add separator before each pill except the first one
             if (i > 0) {
                 const separator = document.createElement('span');
@@ -445,18 +446,19 @@
                 pillsContainer.appendChild(separator);
             }
 
-            const isEnabled = sourceGroups.includes(i);
             const pill = document.createElement('button');
             pill.type = 'button';
-            pill.className = `btn ${isEnabled ? 'btn-outline-primary' : 'btn-outline-secondary'}`;
-            if (!isEnabled) {
+            if (i === 0) {
+                pill.className = 'btn btn-outline-secondary';
                 pill.disabled = true;
-                pill.title = 'No data for this path level';
+                pill.title = 'Use "No grouping" for root level';
+                pill.textContent = 'Root';
             } else {
+                pill.className = 'btn btn-outline-primary';
                 pill.onclick = () => selectGroup(pill);
+                pill.textContent = `Level ${i}`;
             }
             pill.dataset.value = i;
-            pill.textContent = `Level ${i}`;
             pillsContainer.appendChild(pill);
         }
     }
@@ -850,14 +852,14 @@
         // Handle group options visibility
         const groupByPathLevel = document.querySelector('#groupPills .text-muted');
         const groupByLink = document.querySelector('#groupPills a');
-        if (!source.groups || source.groups.length === 0) {
+        if (source.max_path_level === 0) {
             groupByPathLevel.style.display = 'none';
             groupByLink.style.display = 'none';
         } else {
             groupByPathLevel.style.display = '';
             groupByLink.style.display = '';
             // Update group options
-            updateGroupOptions(source.groups);
+            updateGroupOptions(source);
         }
 
         // Clear existing options
@@ -950,7 +952,7 @@
         const pathLevels = document.querySelector('#groupPills .path-levels');
         const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
 
-        if (source.groups && source.groups.length > 0) {
+        if (source.max_path_level > 0) {
             groupByPathLevel.style.display = '';
             groupByLink.style.display = '';
             
