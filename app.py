@@ -390,7 +390,7 @@ def create_source():
                 'status': 404
             }), 404
         
-        print(f"Found source: {source.name} (ID: {source.id})")
+        print(f"Labmda callback for source: {source.name} (ID: {source.id})")
         
         # Update source fields
         is_success = not data.get('error')  # Success if no error field or error is empty

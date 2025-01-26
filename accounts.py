@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app, session, abort
 from models import db, Account, Setting, File, Gateway, Source, Plot, Layout
 from datetime import datetime, timedelta, timezone
 import logging
@@ -567,17 +567,13 @@ def edit_source(account_url, source_id):
 @accounts_bp.route('/<account_url>/source/<int:source_id>/plot', methods=['POST'])
 def create_plot(account_url, source_id):
     try:
-        print(f"[DEBUG] Starting create_plot for account_url: {account_url}, source_id: {source_id}")
         account = Account.query.filter_by(url=account_url).first_or_404()
-        print(f"[DEBUG] Found account: {account.id}")
         
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
-        print(f"[DEBUG] Found source: {source.id}, name: {source.name}")
         
         plot_name = request.form.get('name')
         plot_type = request.form.get('type')
-        print(f"[DEBUG] Plot details - name: {plot_name}, type: {plot_type}")
-        
+
         # Validate plot name
         if not plot_name:
             flash('Plot name is required.', 'error')
@@ -587,7 +583,6 @@ def create_plot(account_url, source_id):
         config = {}
         if plot_type == 'timeline':
             y_data = request.form.get('y_data')
-            print(f"[DEBUG] Timeline plot data - y_data: {y_data}")
             
             # Validate datetime column
             if not source.datetime_column:
@@ -616,8 +611,6 @@ def create_plot(account_url, source_id):
             config = {
                 'y_data': y_data
             }
-            
-        print(f"[DEBUG] Final config: {config}")
         
         # Collect advanced options
         advanced_options = []
@@ -638,10 +631,8 @@ def create_plot(account_url, source_id):
         db.session.add(plot)
         db.session.flush()  # This sets up relationships without committing
         
-        print("[DEBUG] Processing plot data...")
         # Process plot data and save it to plot.data
         plot_data = get_plot_data(plot, source, account)
-        print(f"[DEBUG] Plot data processed, length: {len(str(plot_data))} chars")
         
         if not plot_data:
             db.session.rollback()
@@ -651,7 +642,6 @@ def create_plot(account_url, source_id):
         
         plot.data = json.dumps(plot_data)
         db.session.commit()
-        print(f"[DEBUG] Plot created successfully with ID: {plot.id}")
         
         return redirect(url_for('accounts.account_plots', account_url=account_url))
     except Exception as e:
