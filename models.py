@@ -151,6 +151,7 @@ class Source(db.Model):
     state = db.Column(db.String(50), nullable=False, server_default='created')
     file = db.relationship('File', backref=db.backref('sources', lazy=True))
     max_path_level = db.Column(db.Integer, nullable=False, server_default='0')  # Store the maximum path level for grouping
+    do_update = db.Column(db.Boolean, nullable=False, server_default='0')  # New field for deferred updates
 
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"

@@ -2,6 +2,9 @@ from functools import wraps
 from flask import session, redirect, url_for
 from models import db, Account, Gateway
 from sqlalchemy import distinct, func
+import logging
+import requests
+import os
 
 def admin_required(f):
     @wraps(f)
@@ -64,3 +67,51 @@ def get_analytics(account_id=None):
     except Exception as e:
         print(f"Error getting analytics: {e}")
         return None 
+
+def initiate_source_refresh(source, settings):
+    """
+    Initiates a refresh for a source without any HTTP redirects.
+    Returns (success, error_message) tuple.
+    """
+    try:
+        # Reset source status
+        source.success = False
+        source.error = None
+        source.file_id = None
+        source.state = 'running'
+        source.do_update = False  # Set do_update to False when refresh is initiated
+
+        # Prepare payload for lambda
+        payload = {
+            'source': {
+                'name': source.name,
+                'directory_filter': source.directory_filter,
+                'include_subdirs': source.include_subdirs,
+                'include_columns': source.include_columns,
+                'data_points': source.data_points,
+                'tail_only': source.tail_only,
+                'bucket_name': settings.bucket_name
+            }
+        }
+        
+        lambda_url = os.environ.get('LAMBDA_URL')
+        if not lambda_url:
+            raise ValueError("LAMBDA_URL environment variable not set")
+            
+        try:
+            requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
+        except requests.exceptions.Timeout:
+            # This is expected, ignore it
+            pass
+        
+        db.session.commit()
+        return True, None
+        
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"Error refreshing source {source.id}: {error_msg}")
+        if not source.error:  # Only set error if not already set
+            source.error = error_msg
+            source.state = 'error'
+            db.session.commit()
+        return False, error_msg 

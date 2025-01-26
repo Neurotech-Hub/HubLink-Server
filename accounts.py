@@ -15,7 +15,7 @@ import zipfile
 from werkzeug.utils import secure_filename
 import io
 import shutil
-from utils import admin_required, get_analytics  # Import get_analytics
+from utils import admin_required, get_analytics, initiate_source_refresh
 import dateutil.parser as parser
 
 # Create the Blueprint for account-related routes
@@ -265,26 +265,23 @@ def rebuild(account_url):
                     logging.error(f"Error matching pattern for source {source.id}: {e}")
                     continue
             
-            # Trigger refresh for each affected source
+            # Set do_update=True for each affected source
             for source in affected_sources:
                 try:
-                    success, error = initiate_source_refresh(source, settings)
-                    if success:
-                        refresh_count += 1
-                        logging.info(f"Initiated refresh for source {source.id}")
-                    else:
-                        logging.error(f"Failed to refresh source {source.id}: {error}")
+                    source.do_update = True
+                    refresh_count += 1
+                    logging.info(f"Marked source {source.id} for update")
                 except Exception as e:
-                    logging.error(f"Error refreshing source {source.id}: {e}")
+                    logging.error(f"Error marking source {source.id} for update: {e}")
                     continue
 
             db.session.commit()
-            logging.info(f"Added/updated {len(affected_files)} files and triggered {refresh_count} source refreshes for account {account.id}")
+            logging.info(f"Added/updated {len(affected_files)} files and marked {refresh_count} sources for refresh for account {account.id}")
 
         return jsonify({
             "message": "Rebuild completed successfully",
             "affected_files": len(affected_files),
-            "refreshed_sources": refresh_count
+            "marked_for_refresh": refresh_count
         }), 200
     except Exception as e:
         logging.error(f"Error during '/rebuild' endpoint: {e}")
@@ -398,53 +395,6 @@ def generate_directory_patterns(file_keys):
     
     # Convert to sorted list
     return sorted(list(directories))
-
-def initiate_source_refresh(source, settings):
-    """
-    Initiates a refresh for a source without any HTTP redirects.
-    Returns (success, error_message) tuple.
-    """
-    try:
-        # Reset source status
-        source.success = False
-        source.error = None
-        source.file_id = None
-        source.state = 'running'
-
-        # Prepare payload for lambda
-        payload = {
-            'source': {
-                'name': source.name,
-                'directory_filter': source.directory_filter,
-                'include_subdirs': source.include_subdirs,
-                'include_columns': source.include_columns,
-                'data_points': source.data_points,
-                'tail_only': source.tail_only,
-                'bucket_name': settings.bucket_name
-            }
-        }
-        
-        lambda_url = os.environ.get('LAMBDA_URL')
-        if not lambda_url:
-            raise ValueError("LAMBDA_URL environment variable not set")
-            
-        try:
-            requests.post(lambda_url, json=payload, timeout=0.1)  # timeout right away
-        except requests.exceptions.Timeout:
-            # This is expected, ignore it
-            pass
-        
-        db.session.commit()
-        return True, None
-        
-    except Exception as e:
-        error_msg = str(e)
-        logging.error(f"Error refreshing source {source.id}: {error_msg}")
-        if not source.error:  # Only set error if not already set
-            source.error = error_msg
-            source.state = 'error'
-            db.session.commit()
-        return False, error_msg
 
 @accounts_bp.route('/<account_url>/source/<int:source_id>/refresh', methods=['POST'])
 def refresh_source(account_url, source_id):

@@ -6,7 +6,7 @@ import os
 import logging
 import random
 import string
-from datetime import datetime, timezone  # Added timezone import
+from datetime import datetime, timezone, timedelta  # Added timezone import and timedelta
 from accounts import accounts_bp  # Importing Blueprint for account-specific routes
 from dotenv import load_dotenv
 from flask_moment import Moment
@@ -14,7 +14,7 @@ import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
 from functools import wraps
-from utils import admin_required, get_analytics
+from utils import admin_required, get_analytics, initiate_source_refresh
 
 load_dotenv(override=True)
 
@@ -149,13 +149,13 @@ def admin_required(f):
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
+    g.title = "Admin"
     # Check if already logged in first
     if 'admin_id' in session:
         account = db.session.get(Account, session['admin_id'])
         if account and account.is_admin:
             # Handle GET request - show dashboard
             if request.method == 'GET':
-                g.title = "Admin"
                 try:
                     all_accounts = Account.query.all()
                     analytics = get_analytics()  # Get analytics for all accounts
@@ -313,6 +313,42 @@ def pricing():
 @app.route('/favicon.ico')
 def favicon():
     return redirect(url_for('static', filename='favicon.ico'))
+    
+@app.route('/cronjob')
+def cronjob():
+    try:
+        # Get SOURCE_INTERVAL_MINUTES from environment, default to 5
+        interval_minutes = int(os.getenv('SOURCE_INTERVAL_MINUTES', '5'))
+        current_time = datetime.now(timezone.utc)
+        
+        # Find sources that need updating
+        sources = Source.query.filter(
+            Source.do_update == True,
+            (Source.last_updated == None) | 
+            (Source.last_updated <= current_time - timedelta(minutes=interval_minutes))
+        ).all()
+        
+        updated_count = 0
+        for source in sources:
+            settings = Setting.query.filter_by(account_id=source.account_id).first()
+            if settings:
+                success, _ = initiate_source_refresh(source, settings)
+                if success:
+                    updated_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Processed {len(sources)} sources, updated {updated_count}',
+            'processed': len(sources),
+            'updated': updated_count
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in cronjob: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
     
 # Define error handler
 @app.errorhandler(404)

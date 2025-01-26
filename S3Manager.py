@@ -62,6 +62,7 @@ def rebuild_S3_files(account_settings):
                             logging.error(f"Error getting versions for {file_key}: {ve}")
                             version_count = 1  # Default to 1 if we can't get versions
 
+                        # rewrite all right now, check version in the future to minimize db operations
                         if file_key in db_files:
                             existing_file = db_files[file_key]
                             existing_file.size = obj['Size']
@@ -70,7 +71,9 @@ def rebuild_S3_files(account_settings):
                             existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                             existing_file.last_checked = datetime.now(timezone.utc)
                             db.session.add(existing_file)
-                            affected_files.append(existing_file)  # Add updated file
+                            # affected files determines if the source needs to be rebuilt
+                            if existing_file.version != version_count:
+                                affected_files.append(existing_file)  # Add updated file
                         else:
                             # New file - create new entry
                             new_file = File(
