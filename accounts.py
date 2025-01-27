@@ -1375,7 +1375,7 @@ def source_callback(account_url, source_id):
         source.last_updated = datetime.now(timezone.utc)
         
         # Get matching files and calculate max_path_level
-        matching_files = list_source_files(source, account)
+        matching_files = list_source_files(account, source)
         max_level = 0
         for file in matching_files:
             # Split path and count segments (including root)
