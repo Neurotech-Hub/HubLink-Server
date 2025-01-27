@@ -255,7 +255,7 @@ def rebuild(account_url):
             # For each source, check if any affected files match its pattern
             for source in sources:
                 try:
-                    matching_files = list_source_files(source, affected_files)
+                    matching_files = list_source_files(account, source)
                     if matching_files:
                         affected_sources.add(source)
                 except Exception as e:
