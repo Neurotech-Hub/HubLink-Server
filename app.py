@@ -14,7 +14,7 @@ import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
 from functools import wraps
-from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files
+from utils import admin_required, get_analytics, initiate_source_refresh
 
 load_dotenv(override=True)
 
@@ -330,9 +330,10 @@ def cronjob():
         
         updated_count = 0
         for source in sources:
-            settings = Setting.query.filter_by(account_id=source.account_id).first()
-            if settings:
-                success, _ = initiate_source_refresh(source, settings)
+            # Get the account for this source
+            account = Account.query.get(source.account_id)
+            if account:
+                success, _ = initiate_source_refresh(account, source)
                 if success:
                     updated_count += 1
         

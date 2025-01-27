@@ -462,7 +462,6 @@ def create_source(account_url):
         db.session.commit()
         
         # Get settings and initiate refresh
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         success, error = initiate_source_refresh(account, source)
         if not success:
             flash(f'{flash_message} but refresh failed: {error}', 'warning')
