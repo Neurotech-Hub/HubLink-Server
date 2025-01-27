@@ -116,7 +116,7 @@ def list_source_files(account, source):
         logging.error(f"Error in list_source_files for source {source.id}: {e}")
         return []
 
-def initiate_source_refresh(source, settings):
+def initiate_source_refresh(account, source):
     """
     Initiates a refresh for a source without any HTTP redirects.
     Returns (success, error_message) tuple.
@@ -128,17 +128,17 @@ def initiate_source_refresh(source, settings):
         source.file_id = None
         source.state = 'running'
         source.do_update = False  # Set do_update to False when refresh is initiated
-
         # Prepare payload for lambda
         payload = {
             'source': {
                 'name': source.name,
+                'id': source.id,
                 'directory_filter': source.directory_filter,
                 'include_subdirs': source.include_subdirs,
                 'include_columns': source.include_columns,
                 'data_points': source.data_points,
                 'tail_only': source.tail_only,
-                'bucket_name': settings.bucket_name
+                'account_url': account.url
             }
         }
         

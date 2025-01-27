@@ -398,9 +398,8 @@ def refresh_source(account_url, source_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
-        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
 
-        success, error = initiate_source_refresh(source, settings)
+        success, error = initiate_source_refresh(account, source)
         
         if not success:
             flash(f'Error refreshing source: {error}', 'error')
@@ -425,7 +424,6 @@ def create_source(account_url):
         datetime_column = request.form.get('datetime_column', '')
         tail_only = request.form.get('tail_only') == 'on'
         data_points = request.form.get('data_points', type=int)
-        groups = []  # Initialize with empty list for new sources
         
         # Check if a source with this name already exists
         existing_source = Source.query.filter_by(account_id=account.id, name=name).first()
@@ -456,8 +454,7 @@ def create_source(account_url):
                 tail_only=tail_only,
                 data_points=data_points,
                 account_id=account.id,
-                state='running',
-                groups=groups
+                state='running'
             )
             db.session.add(source)
             flash_message = 'Source created successfully'
@@ -466,7 +463,7 @@ def create_source(account_url):
         
         # Get settings and initiate refresh
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
-        success, error = initiate_source_refresh(source, settings)
+        success, error = initiate_source_refresh(account, source)
         if not success:
             flash(f'{flash_message} but refresh failed: {error}', 'warning')
         else:
@@ -545,7 +542,7 @@ def edit_source(account_url, source_id):
 
         # Get settings and initiate refresh
         settings = Setting.query.filter_by(account_id=source.account_id).first_or_404()
-        success, error = initiate_source_refresh(source, settings)
+        success, error = (source, settings)
         if not success:
             flash(f'Source updated but refresh failed: {error}', 'warning')
         else:
