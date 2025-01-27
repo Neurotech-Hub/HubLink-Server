@@ -1,10 +1,11 @@
 from functools import wraps
 from flask import session, redirect, url_for
-from models import db, Account, Gateway
+from models import db, Account, Gateway, File
 from sqlalchemy import distinct, func
 import logging
 import requests
 import os
+import re
 
 def admin_required(f):
     @wraps(f)
@@ -66,7 +67,54 @@ def get_analytics(account_id=None):
         
     except Exception as e:
         print(f"Error getting analytics: {e}")
-        return None 
+        return None
+    
+def list_source_files(account, source):
+    """Returns a list of files that match the source's directory filter pattern.
+    Takes a source and a list of files and returns which files match the source pattern.
+    Does NOT rebuild or fetch files from S3.
+    """
+    try:
+        # Get existing files from database
+        files = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.')) \
+            .all()
+        
+        # Convert glob pattern to regex
+        clean_dir = source.directory_filter.strip('/')
+        if source.include_subdirs:
+            file_filter = f"{clean_dir}/**/*.[cC][sS][vV]"
+        else:
+            file_filter = f"{clean_dir}/*.[cC][sS][vV]"
+            
+        # Convert glob pattern to regex
+        if '**' in file_filter:
+            # Handle recursive matching
+            parts = file_filter.split('**')
+            prefix = parts[0].lstrip('/')
+            # For directory matching, we want exact prefix match
+            pattern_str = f"^{prefix}.*[^/]+\\.csv$"
+            pattern = re.compile(pattern_str, re.IGNORECASE)
+        elif '*' in file_filter:
+            # Handle single-level matching
+            file_filter = file_filter.lstrip('/')
+            base_pattern = file_filter.replace('*.[cC][sS][vV]', '')
+            pattern_str = f"^{base_pattern}[^/]+\\.csv$"
+            pattern = re.compile(pattern_str, re.IGNORECASE)
+        else:
+            pattern = re.compile(file_filter)
+            
+        # Find matching files
+        matching_files = []
+        for file in files:
+            if pattern.match(file.key):
+                matching_files.append(file)
+                
+        return matching_files
+    except Exception as e:
+        logging.error(f"Error in list_source_files for source {source.id}: {e}")
+        return []
 
 def initiate_source_refresh(source, settings):
     """

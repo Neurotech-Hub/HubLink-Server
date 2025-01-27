@@ -15,7 +15,7 @@ import zipfile
 from werkzeug.utils import secure_filename
 import io
 import shutil
-from utils import admin_required, get_analytics, initiate_source_refresh
+from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files
 import dateutil.parser as parser
 
 # Create the Blueprint for account-related routes
@@ -214,41 +214,25 @@ def check_files(account_url):
         logging.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": "There was an issue processing your request."}), 500
 
-def s3_pattern_to_regex(pattern, include_subdirs=False):
-    """Convert a directory filter pattern to match the Lambda's exact behavior.
-    Test cases:
-    1. directory_filter="/", include_subdirs=false:
-       - matches: file.csv
-       - does not match: FED/file.csv
-    2. directory_filter="/FED", include_subdirs=false:
-       - does not match: file.csv
-       - matches: FED/file.csv
-    3. directory_filter="/FED", include_subdirs=true:
-       - does not match: file.csv
-       - matches: FED/file.csv
-       - matches: FED/DA56/file.CSV
-    """
-    # Strip leading/trailing slashes as Lambda does
-    clean_dir = pattern.strip('/')
-    
-    if not clean_dir:  # Root directory case "/"
-        if include_subdirs:
-            return r'^.*[^/]+\.csv$'  # Matches any .csv file in any directory
-        else:
-            return r'^[^/]+\.csv$'  # Matches ONLY .csv files in root (no slashes)
-    
-    # Escape special regex characters in the directory pattern
-    clean_dir = re.escape(clean_dir)
-    
-    if include_subdirs:
-        # Must start with directory, then match any subdirectories and csv file
-        pattern = f"^{clean_dir}/.*[^/]+\\.csv$"
-    else:
-        # Must start with directory and match only csv files directly in that directory
-        pattern = f"^{clean_dir}/[^/]+\\.csv$"
-    
-    # Compile with IGNORECASE to match .csv, .CSV, etc.
-    return re.compile(pattern, re.IGNORECASE)
+@accounts_bp.route('/<account_url>/source/<int:source_id>.json', methods=['GET'])
+def get_source_files(account_url, source_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+            
+        # Get matching files for this source
+        matching_files = list_source_files(account, source)
+        
+        # Convert files to dict for JSON response
+        files_data = [{'key': f.key, 'size': f.size, 
+                      'last_modified': f.last_modified.isoformat() if f.last_modified else None} 
+                     for f in matching_files]
+        
+        return jsonify(files_data)
+        
+    except Exception as e:
+        logging.error(f"Error getting source files: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
 def rebuild(account_url):
@@ -271,14 +255,9 @@ def rebuild(account_url):
             # For each source, check if any affected files match its pattern
             for source in sources:
                 try:
-                    pattern = s3_pattern_to_regex(source.directory_filter, source.include_subdirs)
-                    regex = pattern
-                    
-                    # Check each affected file against this source's pattern
-                    for file in affected_files:
-                        if regex.match(file.key):
-                            affected_sources.add(source)
-                            break  # One matching file is enough to trigger a refresh
+                    matching_files = list_source_files(source, affected_files)
+                    if matching_files:
+                        affected_sources.add(source)
                 except Exception as e:
                     logging.error(f"Error matching pattern for source {source.id}: {e}")
                     continue
@@ -423,9 +402,7 @@ def refresh_source(account_url, source_id):
 
         success, error = initiate_source_refresh(source, settings)
         
-        if success:
-            flash('Source refresh initiated.', 'success')
-        else:
+        if not success:
             flash(f'Error refreshing source: {error}', 'error')
         
     except Exception as e:
@@ -449,13 +426,13 @@ def create_source(account_url):
         tail_only = request.form.get('tail_only') == 'on'
         data_points = request.form.get('data_points', type=int)
         groups = []  # Initialize with empty list for new sources
-
+        
         # Check if a source with this name already exists
         existing_source = Source.query.filter_by(account_id=account.id, name=name).first()
         if existing_source and (not source_id or int(source_id) != existing_source.id):
             flash('A source with this name already exists', 'danger')
             return redirect(url_for('accounts.account_plots', account_url=account_url))
-
+        
         if source_id:
             # Update existing source
             source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
@@ -486,7 +463,7 @@ def create_source(account_url):
             flash_message = 'Source created successfully'
         
         db.session.commit()
-
+        
         # Get settings and initiate refresh
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         success, error = initiate_source_refresh(source, settings)
@@ -1376,3 +1353,70 @@ def edit_plot(account_url, source_id, plot_id):
         logging.error(f"Error updating plot: {e}")
     
     return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/source/<int:source_id>/callback', methods=['POST'])
+def source_callback(account_url, source_id):
+    """Endpoint for Lambda function to update source status and file information."""
+    try:
+        data = request.get_json()
+        if not data or 'key' not in data or 'size' not in data:
+            return jsonify({
+                'error': 'Missing required fields (key or size)',
+                'status': 400
+            }), 400
+        
+        # Get account and source directly using URL and ID
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        
+        logging.info(f"Processing Lambda callback for source: {source.name} (ID: {source.id})")
+        
+        # Update source fields
+        is_success = not data.get('error')  # Success if no error field or error is empty
+        source.state = 'success' if is_success else 'error'
+        source.error = data.get('error')  # Store error message if present
+        source.last_updated = datetime.now(timezone.utc)
+        
+        # Get matching files and calculate max_path_level
+        matching_files = list_source_files(source, account)
+        max_level = 0
+        for file in matching_files:
+            # Split path and count segments (including root)
+            path_segments = file.key.strip('/').split('/')
+            max_level = max(max_level, len(path_segments))
+        
+        source.max_path_level = max_level
+        
+        # Handle file record
+        file = File.query.filter_by(account_id=account.id, key=data['key']).first()
+        if not file:
+            logging.info(f"Creating new file record for key: {data['key']}")
+            file = File(
+                account_id=account.id,
+                key=data['key'],
+                url=generate_s3_url(account.settings.bucket_name, data['key']),
+                size=data['size'],
+                last_modified=datetime.now(timezone.utc),
+                version=1
+            )
+            db.session.add(file)
+            db.session.flush()
+        else:
+            file.last_modified = datetime.now(timezone.utc)
+        
+        source.file_id = file.id
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Source updated successfully',
+            'status': 200
+        })
+        
+    except Exception as e:
+        logging.error(f"Error in source_callback: {e}")
+        db.session.rollback()
+        return jsonify({
+            'error': 'Internal server error',
+            'status': 500
+        }), 500

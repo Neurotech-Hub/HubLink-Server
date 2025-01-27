@@ -14,7 +14,7 @@ import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
 from functools import wraps
-from utils import admin_required, get_analytics, initiate_source_refresh
+from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files
 
 load_dotenv(override=True)
 
@@ -390,14 +390,23 @@ def create_source():
                 'status': 404
             }), 404
         
-        print(f"Labmda callback for source: {source.name} (ID: {source.id})")
+        print(f"Lambda callback for source: {source.name} (ID: {source.id})")
         
         # Update source fields
         is_success = not data.get('error')  # Success if no error field or error is empty
         source.state = 'success' if is_success else 'error'
         source.error = data.get('error')  # Store error message if present
         source.last_updated = datetime.now(timezone.utc)
-        source.max_path_level = data.get('max_path_level', 0)  # Set max_path_level from data, default to 0
+        
+        # Get matching files and calculate max_path_level
+        matching_files = list_source_files(source, Account.query.get(settings.account_id))
+        max_level = 0
+        for file in matching_files:
+            # Split path and count segments (including root)
+            path_segments = file.key.strip('/').split('/')
+            max_level = max(max_level, len(path_segments))
+        
+        source.max_path_level = max_level
         
         # Handle file record
         file = File.query.filter_by(account_id=source.account_id, key=data['key']).first()
