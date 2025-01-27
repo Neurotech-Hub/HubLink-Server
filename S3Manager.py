@@ -237,7 +237,7 @@ def download_source_file(account_settings, source):
     Returns: CSV content as string, or None if error
     """
     if not source.file_id:
-        logging.error(f"Source {source.name} has no associated file")
+        logging.error(f"Source {source.name} ")
         return None
 
     try:
