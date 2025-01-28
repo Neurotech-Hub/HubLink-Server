@@ -294,6 +294,12 @@
                                         Accumulate across files
                                     </label>
                                 </div>
+                                <div class="form-check mt-2">
+                                    <input class="form-check-input" type="checkbox" id="lastValue" name="last_value">
+                                    <label class="form-check-label" for="lastValue">
+                                        Only use last value
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
@@ -950,7 +956,8 @@
         
         // Handle advanced options
         const advancedOptions = plot.advanced || [];
-        document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate_values');
+        document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate');
+        document.getElementById('lastValue').checked = advancedOptions.includes('last_value');
         
         // Handle group selection
         const groupByPathLevel = document.querySelector('#groupPills .text-muted');

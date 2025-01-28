@@ -1633,3 +1633,15 @@ table td code {
 .text-purple {
     color: #673ab7;
 }
+
+.dev-alert {
+    position: sticky;
+    top: 56px;
+    /* Height of navbar */
+    width: 50%;
+    z-index: 1020;
+}
+
+.navbar.info {
+    background: rgb(251, 188, 0) !important;
+}

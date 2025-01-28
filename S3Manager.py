@@ -719,19 +719,26 @@ def delete_files_from_s3(account_settings, files):
             aws_secret_access_key=account_settings.aws_secret_access_key,
             region_name=os.getenv('AWS_REGION', 'us-east-1')
         )
-        logging.debug(f"S3 client created for bucket: {account_settings.bucket_name}")
+        
+        # Track processed files to prevent duplicates
+        processed_files = set()
         
         # Delete each file from S3
         for file in files:
+            if file.key in processed_files:
+                logging.warning(f"Skipping duplicate file: {file.key}")
+                continue
+                
             try:
-                logging.info(f"Processing file: {file.key}")
+                logging.info(f"Starting deletion of file: {file.key}")
                 
                 # Delete all versions of the file
                 versions = s3_client.list_object_versions(
                     Bucket=account_settings.bucket_name,
                     Prefix=file.key
                 )
-                logging.debug(f"Retrieved versions for {file.key}")
+                
+                deletion_errors = []
                 
                 # Delete version markers first
                 if 'DeleteMarkers' in versions:
@@ -740,12 +747,13 @@ def delete_files_from_s3(account_settings, files):
                         for marker in versions['DeleteMarkers']
                     ]
                     if delete_markers:
-                        logging.debug(f"Deleting {len(delete_markers)} delete markers for {file.key}")
-                        s3_client.delete_objects(
+                        response = s3_client.delete_objects(
                             Bucket=account_settings.bucket_name,
                             Delete={'Objects': delete_markers}
                         )
-                        logging.debug(f"Successfully deleted markers for {file.key}")
+                        if 'Errors' in response:
+                            deletion_errors.extend(response['Errors'])
+                            logging.error(f"Errors deleting markers for {file.key}: {response['Errors']}")
                 
                 # Then delete all versions
                 if 'Versions' in versions:
@@ -754,17 +762,35 @@ def delete_files_from_s3(account_settings, files):
                         for version in versions['Versions']
                     ]
                     if version_objects:
-                        logging.debug(f"Deleting {len(version_objects)} versions for {file.key}")
-                        s3_client.delete_objects(
+                        response = s3_client.delete_objects(
                             Bucket=account_settings.bucket_name,
                             Delete={'Objects': version_objects}
                         )
-                        logging.debug(f"Successfully deleted versions for {file.key}")
+                        if 'Errors' in response:
+                            deletion_errors.extend(response['Errors'])
+                            logging.error(f"Errors deleting versions for {file.key}: {response['Errors']}")
                 
-                # Delete the file from database
-                logging.debug(f"Deleting file {file.key} from database")
-                db.session.delete(file)
-                logging.info(f"Successfully processed file: {file.key}")
+                # Verify file is completely deleted
+                try:
+                    s3_client.head_object(
+                        Bucket=account_settings.bucket_name,
+                        Key=file.key
+                    )
+                    logging.error(f"File {file.key} still exists after deletion attempt")
+                    continue
+                except s3_client.exceptions.ClientError as e:
+                    error_code = e.response.get('Error', {}).get('Code')
+                    if error_code == '404':
+                        # File is confirmed deleted
+                        if not deletion_errors:
+                            db.session.delete(file)
+                            processed_files.add(file.key)
+                            logging.info(f"Successfully deleted file: {file.key}")
+                        else:
+                            logging.error(f"Skipping database deletion for {file.key} due to S3 errors")
+                    else:
+                        logging.error(f"Error verifying deletion of {file.key}: {error_code}")
+                        continue
                 
             except botocore.exceptions.ClientError as e:
                 error_code = e.response.get('Error', {}).get('Code', 'Unknown')
@@ -775,10 +801,13 @@ def delete_files_from_s3(account_settings, files):
                 logging.error(f"Error deleting file {file.key}: {str(e)}")
                 continue
         
-        logging.debug("Committing database changes")
-        db.session.commit()
-        logging.info("Successfully completed file deletion process")
-        return True, None
+        if processed_files:
+            db.session.commit()
+            logging.info(f"Successfully completed deletion of {len(processed_files)} files")
+            return True, None
+        else:
+            logging.error("No files were successfully processed")
+            return False, "No files were successfully deleted"
         
     except Exception as e:
         logging.error(f"Error in delete_files_from_s3: {str(e)}")

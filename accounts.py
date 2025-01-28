@@ -611,6 +611,8 @@ def create_plot(account_url, source_id):
         advanced_options = []
         if request.form.get('accumulate') == 'on':
             advanced_options.append('accumulate')
+        if request.form.get('last_value') == 'on':
+            advanced_options.append('last_value')
         
         # Create new plot with JSON config
         plot = Plot(
@@ -718,19 +720,58 @@ def update_layout(account_url, layout_id):
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['GET'])
 def layout_view(account_url, layout_id):
-    logger = logging.getLogger(__name__)  # Get logger for this module
     logger.info(f"Starting layout_view for account {account_url}, layout {layout_id}")
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         db.session.commit()
+        
+        # Get the layout and validate its configuration
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name
         
-        # Parse layout config
-        config = json.loads(layout.config)
-        required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
-
+        # Validate layout configuration
+        try:
+            config = json.loads(layout.config)
+            if not isinstance(config, list):
+                logging.error(f"Invalid layout config format for layout {layout_id}: expected list, got {type(config)}")
+                flash("Invalid layout configuration format", "error")
+                return redirect(url_for('accounts.account_plots', account_url=account_url))
+                
+            # Validate each item in the config
+            required_plot_ids = []
+            for item in config:
+                if not isinstance(item, dict):
+                    logging.error(f"Invalid layout config item: expected dict, got {type(item)}")
+                    flash("Invalid layout configuration item format", "error")
+                    return redirect(url_for('accounts.account_plots', account_url=account_url))
+                    
+                if 'plotId' not in item:
+                    logging.error("Layout config item missing plotId")
+                    flash("Layout configuration missing plot ID", "error")
+                    return redirect(url_for('accounts.account_plots', account_url=account_url))
+                    
+                try:
+                    plot_id = int(item['plotId'])
+                    required_plot_ids.append(plot_id)
+                    # Verify the plot exists and belongs to this account
+                    plot = Plot.query.join(Source).filter(
+                        Plot.id == plot_id,
+                        Source.account_id == account.id
+                    ).first()
+                    if not plot:
+                        logging.error(f"Plot {plot_id} not found or does not belong to account")
+                        flash(f"Plot {plot_id} not found", "error")
+                        return redirect(url_for('accounts.account_plots', account_url=account_url))
+                except (ValueError, TypeError):
+                    logging.error(f"Invalid plotId value: {item['plotId']}")
+                    flash("Invalid plot ID in layout configuration", "error")
+                    return redirect(url_for('accounts.account_plots', account_url=account_url))
+        except json.JSONDecodeError as e:
+            logging.error(f"Error parsing layout config JSON for layout {layout_id}: {e}")
+            flash("Invalid layout configuration JSON", "error")
+            return redirect(url_for('accounts.account_plots', account_url=account_url))
+        
         # Get all required plots
         plots = Plot.query.filter(Plot.id.in_(required_plot_ids)).all()
         
@@ -738,7 +779,7 @@ def layout_view(account_url, layout_id):
         source_data = {}
         unique_sources = {plot.source_id: plot.source for plot in plots}
         
-        # Time source file downloads
+        # Pre-fetch source data
         for source in unique_sources.values():
             start_time = time.time()
             csv_content = download_source_file(account.settings, source)
@@ -746,7 +787,7 @@ def layout_view(account_url, layout_id):
             logging.info(f"Source {source.name} download took {download_time:.2f} seconds")
             source_data[source.id] = csv_content
 
-        # Time plot generation
+        # Generate plot information with source data
         plot_info_arr = []
         for plot in plots:
             start_time = time.time()
@@ -760,20 +801,103 @@ def layout_view(account_url, layout_id):
         layout_data = {
             'id': layout.id,
             'name': layout.name,
-            'config': config,  # This is now a parsed JSON object
+            'config': config,  # Use the parsed config
             'is_default': layout.is_default,
             'show_nav': layout.show_nav,
             'time_range': layout.time_range
         }
         
+        # Render the full layout page with the grid content
         return render_template('layout.html',
                            account=account,
                            layout=layout_data,
                            plot_info_arr=plot_info_arr)
+                
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
         traceback.print_exc()
-        return "There was an issue loading the layout view page.", 500
+        flash("Error loading layout view", "error")
+        return redirect(url_for('accounts.account_plots', account_url=account_url))
+
+@accounts_bp.route('/<account_url>/layout/grid', methods=['GET'])
+def layout_grid(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get current layout
+        layout = Layout.query.filter_by(
+            account_id=account.id,
+            is_default=True
+        ).first_or_404()
+        
+        # Parse layout config and ensure it's a list of dictionaries
+        try:
+            config = json.loads(layout.config)
+            if not isinstance(config, list):
+                logging.error(f"Invalid layout config format: expected list, got {type(config)}")
+                return "Error: Invalid layout configuration", 500
+                
+            # Validate each item in the config has a plotId
+            required_plot_ids = []
+            for item in config:
+                if not isinstance(item, dict):
+                    logging.error(f"Invalid layout config item: expected dict, got {type(item)}")
+                    return "Error: Invalid layout configuration item", 500
+                if 'plotId' not in item:
+                    logging.error("Layout config item missing plotId")
+                    return "Error: Layout configuration missing plot ID", 500
+                try:
+                    plot_id = int(item['plotId'])
+                    required_plot_ids.append(plot_id)
+                except (ValueError, TypeError):
+                    logging.error(f"Invalid plotId value: {item['plotId']}")
+                    return "Error: Invalid plot ID in layout configuration", 500
+        except json.JSONDecodeError as e:
+            logging.error(f"Error parsing layout config JSON: {e}")
+            return "Error: Invalid layout configuration JSON", 500
+
+        # Get all required plots
+        plots = Plot.query.filter(Plot.id.in_(required_plot_ids)).all()
+        
+        # Get unique sources and pre-fetch their data
+        source_data = {}
+        unique_sources = {plot.source_id: plot.source for plot in plots}
+        
+        # Pre-fetch source data
+        for source in unique_sources.values():
+            start_time = time.time()
+            csv_content = download_source_file(account.settings, source)
+            download_time = time.time() - start_time
+            logging.info(f"Source {source.name} download took {download_time:.2f} seconds")
+            source_data[source.id] = csv_content
+
+        # Generate plot information with source data
+        plot_info_arr = []
+        for plot in plots:
+            start_time = time.time()
+            plot_info = get_plot_info(plot, source_data.get(plot.source_id))
+            plot_time = time.time() - start_time
+            logging.info(f"Plot {plot.name} generation took {plot_time:.2f} seconds")
+            if plot_info:
+                plot_info_arr.append(plot_info)
+        
+        # Create a new layout object with parsed config
+        layout_data = {
+            'id': layout.id,
+            'name': layout.name,
+            'config': config,
+            'is_default': layout.is_default,
+            'show_nav': layout.show_nav,
+            'time_range': layout.time_range
+        }
+        
+        return render_template('components/layout_grid.html',
+                             account=account,
+                             layout=layout_data,
+                             plot_info_arr=plot_info_arr)
+    except Exception as e:
+        logging.error(f"Error loading layout grid for {account_url}: {e}")
+        return "Error loading layout grid", 500
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>/edit', methods=['GET'])
 def layout_edit(account_url, layout_id):
@@ -1177,45 +1301,6 @@ def dashboard_gateways(account_url):
         logging.error(f"Error loading dashboard gateways for {account_url}: {e}")
         return "Error loading gateway activity", 500
     
-@accounts_bp.route('/<account_url>/layout/grid', methods=['GET'])
-def layout_grid(account_url):
-    try:
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        
-        # Get current layout
-        layout = Layout.query.filter_by(
-            account_id=account.id,
-            is_default=True
-        ).first_or_404()
-        
-        # Parse layout config
-        config = json.loads(layout.config)
-        required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
-
-        # Get plot information for all required plots
-        plot_info_arr = []
-        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
-            plot_info = get_plot_info(plot)
-            plot_info_arr.append(plot_info)
-        
-        # Create a new layout object with parsed config
-        layout_data = {
-            'id': layout.id,
-            'name': layout.name,
-            'config': config,  # This is now a parsed JSON object
-            'is_default': layout.is_default,
-            'show_nav': layout.show_nav,
-            'time_range': layout.time_range
-        }
-        
-        return render_template('components/layout_grid.html',
-                             account=account,
-                             layout=layout_data,
-                             plot_info_arr=plot_info_arr)
-    except Exception as e:
-        logging.error(f"Error loading layout grid for {account_url}: {e}")
-        return "Error loading layout grid", 500
-    
 @accounts_bp.route('/<account_url>/dashboard/stats', methods=['GET'])
 def dashboard_stats(account_url):
     try:
@@ -1363,6 +1448,8 @@ def edit_plot(account_url, source_id, plot_id):
         advanced_options = []
         if request.form.get('accumulate') == 'on':
             advanced_options.append('accumulate')
+        if request.form.get('last_value') == 'on':
+            advanced_options.append('last_value')
         plot.advanced = json.dumps(advanced_options)
         
         db.session.commit()
