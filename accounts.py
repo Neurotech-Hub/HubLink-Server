@@ -256,11 +256,15 @@ def rebuild(account_url):
             sources = Source.query.filter_by(account_id=account.id).all()
             affected_sources = set()  # Use set to ensure uniqueness
             
-            # For each source, check if any affected files match its pattern
+            # Create a set of affected file keys for efficient lookup
+            affected_file_keys = {file.key for file in affected_files}
+            
+            # For each source, check if any of its matching files were affected
             for source in sources:
                 try:
                     matching_files = list_source_files(account, source)
-                    if matching_files:
+                    # Check if any matching files were affected by the rebuild
+                    if any(file.key in affected_file_keys for file in matching_files):
                         affected_sources.add(source)
                 except Exception as e:
                     logging.error(f"Error matching pattern for source {source.id}: {e}")

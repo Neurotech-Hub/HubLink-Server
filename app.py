@@ -55,6 +55,9 @@ logger.info("Logging configuration completed")
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
 
+# Load environment configuration
+app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
+
 # Configure Flask app logger
 app.logger.setLevel(logging.INFO)
 # Remove default Flask handlers
