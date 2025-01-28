@@ -15,7 +15,7 @@
 
     <!-- View Mode Container -->
     <div id="gridContainer" 
-         hx-get="{{ url_for('accounts.layout_grid', account_url=account.url) }}" 
+         hx-get="{{ url_for('accounts.layout_grid', account_url=account.url, layout_id=layout.id) }}" 
          hx-trigger="every 300s"
          hx-preserve>
         {% include "components/layout_grid.html" %}

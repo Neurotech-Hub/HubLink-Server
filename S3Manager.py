@@ -104,8 +104,9 @@ def rebuild_S3_files(account_settings):
             db.session.commit()
             logging.info(f"Successfully synchronized files for account {account_id}")
 
-            # After successful rebuild, sync source files
-            sync_source_files(account_settings)
+            # Only sync source files in non-production environments
+            if os.getenv('ENVIRONMENT', 'development') != 'production':
+                sync_source_files(account_settings)
             
             return affected_files
 
