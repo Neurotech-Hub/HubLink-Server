@@ -357,7 +357,7 @@ def process_box_plot(plot, csv_content):
         layout = get_default_layout(get_plot_title(plot))
         layout.update({
             'yaxis_title': y_data,
-            'showlegend': plot.group_by  # Only show legend if grouped
+            'showlegend': bool(plot.group_by)  # Convert to boolean - show legend only if grouped
         })
         fig.update_layout(layout)
         
@@ -366,7 +366,7 @@ def process_box_plot(plot, csv_content):
             'error': None
         }
     except Exception as e:
-        logger.error(f"Error processing box plot: {e}", exc_info=True)
+        logger.error(f"Error processing box plot {plot.id}: {str(e)}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'}
 
 def process_bar_plot(plot, csv_content):

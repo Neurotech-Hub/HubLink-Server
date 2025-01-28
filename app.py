@@ -18,15 +18,18 @@ from utils import admin_required, get_analytics, initiate_source_refresh
 
 load_dotenv(override=True)
 
+# Configure logging for production environment
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] [%(name)s] %(message)s')
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+
 # Configure root logger
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    force=True,  # This will override any existing configuration
-    handlers=[
-        logging.StreamHandler()  # Add StreamHandler to ensure logs go to stdout
-    ]
-)
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+# Remove any existing handlers to avoid duplicate logs
+for h in root_logger.handlers:
+    root_logger.removeHandler(h)
+root_logger.addHandler(handler)
 
 # Create logger for the application
 logger = logging.getLogger(__name__)
@@ -34,20 +37,20 @@ logger = logging.getLogger(__name__)
 # Configure all loggers to propagate and set levels
 loggers = ['plot_utils', 'accounts', 'models', 'S3Manager']
 for logger_name in loggers:
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.INFO)
-    logger.propagate = True  # Ensure messages propagate to root logger
-    
-    # Add StreamHandler if not already present
-    has_stream_handler = any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
-    if not has_stream_handler:
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        logger.addHandler(handler)
+    module_logger = logging.getLogger(logger_name)
+    module_logger.setLevel(logging.INFO)
+    # Remove any existing handlers to avoid duplicate logs
+    for h in module_logger.handlers:
+        module_logger.removeHandler(h)
+    module_logger.addHandler(handler)
+    module_logger.propagate = False  # Prevent duplicate logs
 
 # Configure SQLAlchemy logging to be less verbose
-logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)  # Hide SQL queries
-logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)   # Hide connection pool events
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)
+
+# Test log message
+logger.info("Logging configuration completed")
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
