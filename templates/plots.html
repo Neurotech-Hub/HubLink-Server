@@ -627,7 +627,13 @@
                     const fileId = this.dataset.fileId;
                     
                     try {
-                        const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                        
+                        const response = await fetch(`/{{ account.url }}/file/${fileId}/header`, {
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
                         const data = await response.json();
                         
                         if (data.success) {
