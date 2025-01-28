@@ -22,6 +22,9 @@ import time
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
 
+logger = logging.getLogger(__name__)
+logger.info("Accounts module initialized")
+
 @accounts_bp.before_request
 def load_blueprint_user():
     g.user = None

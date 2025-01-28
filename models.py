@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
 
+logger.info("Models module initialized")
+
 # Define the accounts model
 class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)

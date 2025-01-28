@@ -11,6 +11,8 @@ import os
 # Get logger for this module
 logger = logging.getLogger(__name__)
 
+logger.info("Plot utils module initialized")
+
 def get_group_name(file_path, group_by_level):
     """
     Get the group name for a file path based on the grouping level.
