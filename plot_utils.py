@@ -85,13 +85,42 @@ def get_plot_data(plot, source, account):
         logger.error(f"Error processing plot data: {str(e)}", exc_info=True)
         return {}
 
-def get_plot_info(plot):
+def get_plot_info(plot, source_data=None):
     config = json.loads(plot.config) if plot.config else {}
     
     try:
-        # Generate plot data in real-time
-        plot_data = get_plot_data(plot, plot.source, plot.source.account)
-        
+        # Use provided source data or fetch it if not provided
+        if source_data is None:
+            source_data = download_source_file(plot.source.account.settings, plot.source)
+            
+        if not source_data:
+            logger.warning(f"No source data available for plot {plot.id}")
+            plotly_json = json.dumps({
+                'data': [],
+                'layout': get_default_layout(plot.name)
+            })
+            return {
+                'plot_id': plot.id,
+                'name': plot.name,
+                'type': plot.type,
+                'source_name': plot.source.name,
+                'config': config,
+                'plotly_json': plotly_json,
+                'error': 'No source data available'
+            }
+
+        # Generate plot data using the source data
+        if plot.type == 'timeline':
+            plot_data = process_timeseries_plot(plot, source_data)
+        elif plot.type == 'box':
+            plot_data = process_box_plot(plot, source_data)
+        elif plot.type == 'bar':
+            plot_data = process_bar_plot(plot, source_data)
+        elif plot.type == 'table':
+            plot_data = process_table_plot(plot, source_data)
+        else:
+            plot_data = {}
+
         if not plot_data:
             logger.warning(f"No plot data generated for plot {plot.id}")
             plotly_json = json.dumps({

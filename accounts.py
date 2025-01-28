@@ -725,10 +725,23 @@ def layout_view(account_url, layout_id):
         config = json.loads(layout.config)
         required_plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
 
-        # Get plot information for all required plots
+        # Get all required plots
+        plots = Plot.query.filter(Plot.id.in_(required_plot_ids)).all()
+        
+        # Get unique sources and pre-fetch their data
+        source_data = {}
+        unique_sources = {plot.source_id: plot.source for plot in plots}
+        for source in unique_sources.values():
+            csv_content = download_source_file(account.settings, source)
+            if csv_content:
+                source_data[source.id] = csv_content
+            else:
+                logging.error(f"Failed to download source data for source {source.id}")
+
+        # Get plot information with pre-fetched source data
         plot_info_arr = []
-        for plot in Plot.query.filter(Plot.id.in_(required_plot_ids)).all():
-            plot_info = get_plot_info(plot)
+        for plot in plots:
+            plot_info = get_plot_info(plot, source_data.get(plot.source_id))
             plot_info_arr.append(plot_info)
         
         # Create a new layout object with parsed config
