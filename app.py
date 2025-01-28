@@ -22,7 +22,10 @@ load_dotenv(override=True)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    force=True  # This will override any existing configuration
+    force=True,  # This will override any existing configuration
+    handlers=[
+        logging.StreamHandler()  # Add StreamHandler to ensure logs go to stdout
+    ]
 )
 
 # Create logger for the application
@@ -34,6 +37,13 @@ for logger_name in loggers:
     logger = logging.getLogger(logger_name)
     logger.setLevel(logging.INFO)
     logger.propagate = True  # Ensure messages propagate to root logger
+    
+    # Add StreamHandler if not already present
+    has_stream_handler = any(isinstance(h, logging.StreamHandler) for h in logger.handlers)
+    if not has_stream_handler:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logger.addHandler(handler)
 
 # Configure SQLAlchemy logging to be less verbose
 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)  # Hide SQL queries

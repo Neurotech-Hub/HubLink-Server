@@ -17,6 +17,7 @@ import io
 import shutil
 from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files
 import dateutil.parser as parser
+import time
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -714,6 +715,8 @@ def update_layout(account_url, layout_id):
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>', methods=['GET'])
 def layout_view(account_url, layout_id):
+    logger = logging.getLogger(__name__)  # Get logger for this module
+    logger.info(f"Starting layout_view for account {account_url}, layout {layout_id}")
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
@@ -731,18 +734,24 @@ def layout_view(account_url, layout_id):
         # Get unique sources and pre-fetch their data
         source_data = {}
         unique_sources = {plot.source_id: plot.source for plot in plots}
+        
+        # Time source file downloads
         for source in unique_sources.values():
+            start_time = time.time()
             csv_content = download_source_file(account.settings, source)
-            if csv_content:
-                source_data[source.id] = csv_content
-            else:
-                logging.error(f"Failed to download source data for source {source.id}")
+            download_time = time.time() - start_time
+            logging.info(f"Source {source.name} download took {download_time:.2f} seconds")
+            source_data[source.id] = csv_content
 
-        # Get plot information with pre-fetched source data
+        # Time plot generation
         plot_info_arr = []
         for plot in plots:
+            start_time = time.time()
             plot_info = get_plot_info(plot, source_data.get(plot.source_id))
-            plot_info_arr.append(plot_info)
+            plot_time = time.time() - start_time
+            logging.info(f"Plot {plot.name} generation took {plot_time:.2f} seconds")
+            if plot_info:
+                plot_info_arr.append(plot_info)
         
         # Create a new layout object with parsed config
         layout_data = {
