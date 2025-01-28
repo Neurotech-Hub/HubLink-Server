@@ -63,6 +63,14 @@ app.logger.addHandler(handler)
 # Prevent propagation to avoid duplicate logs
 app.logger.propagate = False
 
+# Essential Flask and SQLAlchemy configuration
+app.config['SECRET_KEY'] = os.urandom(24)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL', 
+    f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 # timezone handling
 moment = Moment(app)
 
