@@ -248,6 +248,11 @@
             <h2 class="border-bottom pb-2 mb-4">File Structure</h2>
             <div class="card mb-4">
                 <div class="card-body">
+                    <p>Hublink uses file name and file size to determine if a file needs to be uploaded (or re-uploaded) to the cloud. Some common issues to be aware of:</p>
+                    <ul>
+                        <li><strong>Overwriting files byte-for-byte</strong>: If a file is overwritten byte-for-byte, the file size will not change, and Hublink will not upload the file again.</li>
+                        <li><strong>Large files</strong>: If a file is large, the upload time will be proportional to the file size, which may cause delays in data transfer and impacts battery life.</li>
+                    </ul>
                     <p>Files in Amazon S3 are organized according to the <code>upload_path</code> and optional
                         <code>append_path</code> settings. The resulting file structure is:</p>
                     <pre><code>bucket_name/
