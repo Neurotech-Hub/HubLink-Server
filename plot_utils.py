@@ -374,7 +374,7 @@ def process_box_plot(plot, csv_content):
         config = json.loads(plot.config)
         y_data = config['y_data']
         
-        df = pd.read_csv(StringIO(csv_content))
+        df = pd.read_csv(StringIO(csv_content), low_memory=False)
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
@@ -434,7 +434,7 @@ def process_bar_plot(plot, csv_content):
         advanced_options = json.loads(plot.advanced) if plot.advanced else []
         take_last_value = 'last_value' in advanced_options
         
-        df = pd.read_csv(StringIO(csv_content))
+        df = pd.read_csv(StringIO(csv_content), low_memory=False)
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
@@ -515,7 +515,7 @@ def process_table_plot(plot, csv_content):
         config = json.loads(plot.config)
         y_data = config['y_data']
         
-        df = pd.read_csv(StringIO(csv_content))
+        df = pd.read_csv(StringIO(csv_content), low_memory=False)
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         

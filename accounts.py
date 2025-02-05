@@ -52,6 +52,7 @@ def account_dashboard(account_url):
         logging.error(f"Error loading dashboard for {account_url}: {e}")
         return "There was an issue loading the dashboard page.", 500
 
+# RM <gateway_name> from future releases
 # Route to output account settings as JSON (gateway ping)
 @accounts_bp.route('/<account_url>.json', methods=['GET'])
 @accounts_bp.route('/<account_url>.json/<gateway_name>', methods=['GET'])
@@ -63,22 +64,6 @@ def get_account(account_url, gateway_name=None):
         db.session.commit()
         setting = Setting.query.filter_by(account_id=account.id).first()
         if setting:
-            # Extract client IP address
-            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-
-            if gateway_name:
-                # Add a row for the gateway
-                gateway = Gateway(
-                    account_id=account.id,
-                    ip_address=ip_address,
-                    name=gateway_name,
-                    created_at=datetime.now(timezone.utc)
-                )
-                
-                # Add the new gateway to the session and commit
-                db.session.add(gateway)
-                db.session.commit()
-
             return jsonify(setting.to_dict())
         else:
             return jsonify({'error': 'Settings not found'}), 404
