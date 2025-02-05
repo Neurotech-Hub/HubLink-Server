@@ -186,6 +186,34 @@ def get_plot_title(plot):
         return f"{plot.name} ({plot.source.name})"
     return plot.name
 
+def decimate_timeseries(df, x_column, max_points=1000):
+    """
+    Decimate a timeseries DataFrame to a maximum number of points while preserving
+    the overall shape of the data.
+    
+    Args:
+        df (pd.DataFrame): Input DataFrame
+        x_column (str): Name of the datetime column
+        max_points (int): Maximum number of points to return
+        
+    Returns:
+        pd.DataFrame: Decimated DataFrame
+    """
+    if len(df) <= max_points:
+        return df
+        
+    # Calculate the number of points to skip
+    skip = len(df) // max_points
+    
+    # Always include first and last points
+    decimated = pd.concat([
+        df.iloc[[0]],  # First point
+        df.iloc[1:-1:skip],  # Decimated middle points
+        df.iloc[[-1]]  # Last point
+    ])
+    
+    return decimated
+
 def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
@@ -291,14 +319,16 @@ def process_timeseries_plot(plot, csv_content):
         colors = px.colors.qualitative.Plotly
         
         if plot.group_by:
-            # Plot each group separately
+            # Plot each group separately with decimation
             for idx, group in enumerate(sorted(df['group'].unique())):
                 group_data = df[df['group'] == group]
+                # Decimate the group data
+                decimated_data = decimate_timeseries(group_data, x_data)
                 color = colors[idx % len(colors)]
                 
                 fig.add_trace(go.Scatter(
-                    x=group_data[x_data],
-                    y=group_data[y_data],
+                    x=decimated_data[x_data],
+                    y=decimated_data[y_data],
                     name=group,
                     mode='lines+markers',
                     marker=dict(size=6, opacity=0.7, color=color),
@@ -307,11 +337,12 @@ def process_timeseries_plot(plot, csv_content):
                     fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}'
                 ))
         else:
-            # Plot single line for non-grouped data
+            # Plot single line for non-grouped data with decimation
+            decimated_data = decimate_timeseries(df, x_data)
             color = colors[0]
             fig.add_trace(go.Scatter(
-                x=df[x_data],
-                y=df[y_data],
+                x=decimated_data[x_data],
+                y=decimated_data[y_data],
                 name=y_data,
                 mode='lines+markers',
                 marker=dict(size=6, opacity=0.7, color=color),
