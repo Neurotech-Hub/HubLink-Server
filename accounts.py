@@ -335,62 +335,62 @@ def page_not_found(e):
 
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
-    g.title = "Plots"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
+        db.session.commit()
         
-        # Get files sorted by last_modified in descending order
-        files = File.query.filter_by(account_id=account.id).order_by(File.last_modified.desc()).all()
-        file_keys = [file.key for file in files]
-        directories = generate_directory_patterns(file_keys)  # Now returns top-level directories
+        # Get all sources and their path levels
+        sources = account.sources
+        source_paths = {}
         
-        sources = Source.query.filter_by(account_id=account.id).all()
-        recent_files = get_latest_files(account.id, 100)
+        for source in sources:
+            # Get files for this source
+            files = list_source_files(account, source)
+            if files:
+                # Get the first file's path segments, including filename
+                path_segments = files[0].key.split('/')
+                # Create a list of truncated segments (now including the filename)
+                truncated_segments = []
+                for segment in path_segments:
+                    if len(segment) > 8:
+                        truncated = segment[:8] + "..."
+                    else:
+                        truncated = segment
+                    truncated_segments.append({
+                        'display': truncated,
+                        'full': segment
+                    })
+                source_paths[source.id] = truncated_segments
         
-        # Prepare layout plot names
+        # Get layout plot names for display
         layout_plot_names = {}
         for layout in account.layouts:
-            plot_names = []
             try:
                 config = json.loads(layout.config)
-                plot_ids = [int(item['plotId']) for item in config if 'plotId' in item]
-                
-                # Create a lookup dictionary for all plots
-                plot_lookup = {}
-                for source in sources:
-                    for plot in source.plots:
-                        plot_lookup[plot.id] = {
-                            'source_name': source.name,
-                            'plot_name': plot.name,
-                            'plot_type': plot.type
-                        }
-                
-                # Get plot names in order of layout config
-                for plot_id in plot_ids:
-                    if plot_id in plot_lookup:
-                        plot_info = plot_lookup[plot_id]
-                        plot_names.append(
-                            f"{plot_info['source_name']} → {plot_info['plot_name']} ({plot_info['plot_type']})"
-                        )
-                
-            except Exception as e:
-                logging.error(f"Error processing layout config: {e}")
-                plot_names = ["Error loading plots"]
-                
-            layout_plot_names[layout.id] = plot_names
-
+                plot_names = []
+                for item in config:
+                    if 'plot_id' in item:
+                        plot = Plot.query.get(item['plot_id'])
+                        if plot:
+                            plot_names.append(plot.name)
+                layout_plot_names[layout.id] = plot_names
+            except:
+                layout_plot_names[layout.id] = []
+        
+        # Get directories for source creation
+        directories = get_directory_paths(account.id)
+        
         return render_template('plots.html', 
-                          account=account, 
-                          sources=sources,
-                          layout_plot_names=layout_plot_names,
-                          directories=directories,  # Changed from dir_patterns to directories
-                          recent_files=recent_files)
-                       
+                             account=account, 
+                             sources=sources,
+                             source_paths=source_paths,
+                             layout_plot_names=layout_plot_names,
+                             directories=directories)
+                             
     except Exception as e:
-        print(f"Error in account_plots: {str(e)}")
-        print(f"Traceback: {traceback.format_exc()}")
         logging.error(f"Error loading plots for {account_url}: {e}")
+        traceback.print_exc()
         return "There was an issue loading the plots page.", 500
 
 def generate_directory_patterns(file_keys):

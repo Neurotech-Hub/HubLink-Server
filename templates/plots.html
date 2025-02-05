@@ -631,6 +631,10 @@
             return;
         }
         
+        // Get path segments for this source
+        const sourcePaths = {{ source_paths | tojson | safe }};
+        const pathSegments = sourcePaths[source.id] || [];
+        
         // Create pills from 0 to max_path_level
         for (let i = 0; i <= source.max_path_level; i++) {
             // Add separator before each pill except the first one
@@ -651,7 +655,14 @@
             } else {
                 pill.className = 'btn btn-outline-primary';
                 pill.onclick = () => selectGroup(pill);
-                pill.textContent = `Level ${i}`;
+                
+                // Use path segment if available, otherwise fallback to Level X
+                if (pathSegments[i - 1]) {
+                    pill.textContent = pathSegments[i - 1].display;
+                    pill.title = pathSegments[i - 1].full;  // Full path as tooltip
+                } else {
+                    pill.textContent = `Level ${i}`;
+                }
             }
             pill.dataset.value = i;
             pillsContainer.appendChild(pill);
