@@ -226,7 +226,7 @@ def process_timeseries_plot(plot, csv_content):
         if not x_data:
             return {'error': 'No datetime column configured for this source'}
         
-        df = pd.read_csv(StringIO(csv_content))
+        df = pd.read_csv(StringIO(csv_content), low_memory=False)
         logger.debug(f"DataFrame shape: {df.shape}")
         logger.debug(f"Available columns: {df.columns.tolist()}")
         

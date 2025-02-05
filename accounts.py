@@ -370,8 +370,8 @@ def account_plots(account_url):
                 config = json.loads(layout.config)
                 plot_names = []
                 for item in config:
-                    if 'plot_id' in item:
-                        plot = Plot.query.get(item['plot_id'])
+                    if 'plotId' in item:
+                        plot = Plot.query.get(item['plotId'])
                         if plot:
                             plot_names.append(plot.name)
                 layout_plot_names[layout.id] = plot_names

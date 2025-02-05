@@ -1807,3 +1807,10 @@ table td code {
         opacity: 0.5;
     }
 }
+
+@media (min-width: 576px) {
+    .modal-dialog {
+        max-width: 600px;
+        margin: 1.75rem auto;
+    }
+}
