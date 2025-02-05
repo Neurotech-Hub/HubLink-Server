@@ -6,15 +6,14 @@ import os
 import logging
 import random
 import string
-from datetime import datetime, timezone, timedelta  # Added timezone import and timedelta
+from datetime import datetime, timezone, timedelta
 from accounts import accounts_bp  # Importing Blueprint for account-specific routes
 from dotenv import load_dotenv
-from flask_moment import Moment
 import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
 from functools import wraps
-from utils import admin_required, get_analytics, initiate_source_refresh
+from utils import admin_required, get_analytics, initiate_source_refresh, format_datetime
 
 load_dotenv(override=True)
 
@@ -74,9 +73,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# timezone handling
-moment = Moment(app)
-
 # Initialize SQLAlchemy
 db.init_app(app)
 
@@ -108,11 +104,19 @@ app.register_blueprint(accounts_bp)
 
 # Add custom filters
 @app.template_filter('datetime')
-def format_datetime(value):
+def format_datetime_filter(value, format='relative'):
+    """
+    Template filter for formatting datetime values.
+    Uses the format_datetime utility function with the account's timezone setting.
+    """
     if value is None:
         return ''
-    # Return ISO format for moment.js to parse and format on client side
-    return value.isoformat()
+    
+    # Get account timezone from context if available
+    account = getattr(g, 'account', None)
+    timezone = account.settings.timezone if account and hasattr(account, 'settings') else 'America/Chicago'
+    
+    return format_datetime(value, timezone, format)
 
 # Function to generate random URL strings
 def generate_random_string(length=24):

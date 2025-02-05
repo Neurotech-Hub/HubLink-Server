@@ -13,7 +13,7 @@
         // Process dates into daily counts
         var dateCounts = {};
         uploadDates.forEach(function(date) {
-            var day = date.split('T')[0];  // Get just the date part
+            var day = date.split(' ')[0];  // Get just the date part
             dateCounts[day] = (dateCounts[day] || 0) + 1;
         });
         
@@ -30,7 +30,7 @@
             line: {
                 color: 'rgb(75, 192, 192)',
                 width: 4,
-                shape: dates.length > 1 ? 'spline' : 'linear'
+                shape: 'linear'
             },
             marker: {
                 size: 12,

@@ -1,51 +1,74 @@
-<div class="row g-3 mb-4" hx-get="{{ url_for('accounts.dashboard_stats', account_url=account.url) }}" hx-trigger="every 30s" hx-preserve>
-    <!-- File Uploads Card -->
-    <div class="col-md-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-muted fw-normal mb-0">File Uploads</h6>
-                        <h4 class="mb-0">{{ analytics.total_uploaded_files }}</h4>
-                        <small class="text-muted">{{ analytics.total_file_downloads }} downloads</small>
+<div class="container-fluid px-3">
+    <div class="row g-3">
+        <!-- File Uploads Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body pb-2">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted fw-normal mb-2">Uploads</h6>
+                            <div class="d-flex align-items-baseline">
+                                <h3 class="mb-0 me-2">{{ analytics.files_24h }}</h3>
+                                <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center">
+                                    <i class="bi bi-clock me-1"></i>Last 24h
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-file-earmark fs-3"></i>
+                        </div>
                     </div>
-                    <div class="ms-3">
-                        <i class="bi bi-file-earmark text-success fs-3"></i>
-                    </div>
+                </div>
+                <div class="card-footer bg-light py-1">
+                    <small class="text-muted">{{ analytics.total_uploaded_files }} total uploads</small>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- Page Views Card -->
-    <div class="col-md-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-muted fw-normal mb-0">Page Loads</h6>
-                        <h4 class="mb-0">{{ analytics.total_page_loads }}</h4>
-                        <small class="text-muted">{{ analytics.total_settings_updated }} settings updates</small>
+        <!-- Gateway Activity Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body pb-2">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted fw-normal mb-2">Gateways</h6>
+                            <div class="d-flex align-items-baseline">
+                                <h3 class="mb-0 me-2">{{ analytics.gateways_24h }}</h3>
+                                <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center">
+                                    <i class="bi bi-clock me-1"></i>Last 24h
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-hdd-network fs-3"></i>
+                        </div>
                     </div>
-                    <div class="ms-3">
-                        <i class="bi bi-graph-up text-warning fs-3"></i>
-                    </div>
+                </div>
+                <div class="card-footer bg-light py-1">
+                    <small class="text-muted">{{ analytics.total_gateway_pings }} total pings</small>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- Gateway Activity Card -->
-    <div class="col-md-4">
-        <div class="card shadow-sm h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center">
-                    <div class="flex-grow-1">
-                        <h6 class="text-muted fw-normal mb-0">Gateways</h6>
-                        <h4 class="mb-0">{{ analytics.total_gateways }}</h4>
-                        <small class="text-muted">{{ analytics.total_gateway_pings }} pings</small>
+        <!-- Node Activity Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body pb-2">
+                    <div class="d-flex align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="text-muted fw-normal mb-2">Nodes</h6>
+                            <div class="d-flex align-items-baseline">
+                                <h3 class="mb-0 me-2">{{ analytics.nodes_24h }}</h3>
+                                <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center">
+                                    <i class="bi bi-clock me-1"></i>Last 24h
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ms-3">
+                            <i class="bi bi-cpu fs-3"></i>
+                        </div>
                     </div>
-                    <div class="ms-3">
-                        <i class="bi bi-hdd-network text-info fs-3"></i>
-                    </div>
+                </div>
+                <div class="card-footer bg-light py-1">
+                    <small class="text-muted">{{ analytics.total_nodes }} total nodes</small>
                 </div>
             </div>
         </div>

@@ -193,7 +193,7 @@ def process_timeseries_plot(plot, csv_content):
         x_data = plot.source.datetime_column if hasattr(plot, 'source') else None
         y_data = config['y_data']
         advanced_options = json.loads(plot.advanced) if plot.advanced else []
-        should_accumulate = 'accumulate_values' in advanced_options
+        should_accumulate = 'accumulate' in advanced_options
         
         if not x_data:
             return {'error': 'No datetime column configured for this source'}
@@ -228,11 +228,41 @@ def process_timeseries_plot(plot, csv_content):
         # Handle accumulation if enabled
         if should_accumulate and plot.type == 'timeline':
             logger.info("Accumulating values across files")
-            # Process each group separately
-            groups = []
-            for group_name, group_df in df.groupby('group'):
+            
+            if plot.group_by:
+                # Process each group separately when grouping is enabled
+                groups = []
+                for group_name, group_df in df.groupby('group'):
+                    # Sort by datetime
+                    group_df = group_df.sort_values(x_data)
+                    
+                    # Initialize accumulation
+                    last_value = 0
+                    accumulated_data = []
+                    current_file = None
+                    
+                    # Process each row
+                    for _, row in group_df.iterrows():
+                        if current_file != row['file_path']:
+                            # New file started
+                            current_file = row['file_path']
+                            if accumulated_data:  # If we have previous data
+                                last_value = accumulated_data[-1]  # Use last accumulated value
+                        
+                        # Add to accumulated value
+                        new_value = last_value + row[y_data]
+                        accumulated_data.append(new_value)
+                    
+                    # Update the group's data with accumulated values
+                    group_df[y_data] = accumulated_data
+                    groups.append(group_df)
+                
+                # Combine all groups back together
+                df = pd.concat(groups)
+            else:
+                # Handle accumulation without grouping
                 # Sort by datetime
-                group_df = group_df.sort_values(x_data)
+                df = df.sort_values(x_data)
                 
                 # Initialize accumulation
                 last_value = 0
@@ -240,7 +270,7 @@ def process_timeseries_plot(plot, csv_content):
                 current_file = None
                 
                 # Process each row
-                for _, row in group_df.iterrows():
+                for _, row in df.iterrows():
                     if current_file != row['file_path']:
                         # New file started
                         current_file = row['file_path']
@@ -248,17 +278,11 @@ def process_timeseries_plot(plot, csv_content):
                             last_value = accumulated_data[-1]  # Use last accumulated value
                     
                     # Add to accumulated value
-                    accumulated_value = last_value + row[y_data]
-                    accumulated_data.append(accumulated_value)
-                    last_value = accumulated_value
+                    new_value = last_value + row[y_data]
+                    accumulated_data.append(new_value)
                 
-                # Update the group's data
-                group_df[y_data] = accumulated_data
-                groups.append(group_df)
-            
-            # Combine all groups back
-            if groups:
-                df = pd.concat(groups)
+                # Update the data with accumulated values
+                df[y_data] = accumulated_data
         
         # Create figure using go.Figure for more control
         fig = go.Figure()
@@ -376,6 +400,8 @@ def process_bar_plot(plot, csv_content):
         logger.info(f"Processing bar plot {plot.id}")
         config = json.loads(plot.config)
         y_data = config['y_data']
+        advanced_options = json.loads(plot.advanced) if plot.advanced else []
+        take_last_value = 'last_value' in advanced_options
         
         df = pd.read_csv(StringIO(csv_content))
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
@@ -387,33 +413,53 @@ def process_bar_plot(plot, csv_content):
         # Apply grouping if needed
         if plot.group_by:
             df = prepare_grouped_df(df, plot)
-            # Calculate statistics by group
-            stats = (df.groupby('group', observed=True)[y_data]
-                    .agg(['mean', 'std', 'count'])
-                    .round(2))
+            if take_last_value:
+                # Get the last value for each group
+                stats = (df.groupby('group', observed=True)[y_data]
+                        .last()  # Take last value
+                        .to_frame()  # Convert Series to DataFrame
+                        .rename(columns={y_data: 'value'}))  # Rename column for consistency
+            else:
+                # Calculate statistics by group as before
+                stats = (df.groupby('group', observed=True)[y_data]
+                        .agg(['mean', 'std', 'count'])
+                        .round(2))
         else:
-            # Calculate overall statistics
-            stats = pd.DataFrame({
-                'mean': [df[y_data].mean()],
-                'std': [df[y_data].std()],
-                'count': [len(df)]
-            }, index=['all']).round(2)
+            if take_last_value:
+                # Get the last value overall
+                stats = pd.DataFrame({
+                    'value': [df[y_data].iloc[-1]]  # Take last value
+                }, index=['all'])
+            else:
+                # Calculate overall statistics as before
+                stats = pd.DataFrame({
+                    'mean': [df[y_data].mean()],
+                    'std': [df[y_data].std()],
+                    'count': [len(df)]
+                }, index=['all']).round(2)
         
         # Create figure
         fig = go.Figure()
         colors = px.colors.qualitative.Plotly
         
-        # Add bars with error bars
-        fig.add_trace(go.Bar(
-            x=stats.index,
-            y=stats['mean'],
-            error_y=dict(
-                type='data',
-                array=stats['std'],
-                visible=True
-            ),
-            marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))]
-        ))
+        # Add bars with or without error bars based on mode
+        if take_last_value:
+            fig.add_trace(go.Bar(
+                x=stats.index,
+                y=stats['value'],
+                marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))]
+            ))
+        else:
+            fig.add_trace(go.Bar(
+                x=stats.index,
+                y=stats['mean'],
+                error_y=dict(
+                    type='data',
+                    array=stats['std'],
+                    visible=True
+                ),
+                marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))]
+            ))
         
         # Update layout
         layout = get_default_layout(get_plot_title(plot))
@@ -448,24 +494,28 @@ def process_table_plot(plot, csv_content):
         # Apply grouping if needed
         if plot.group_by:
             df = prepare_grouped_df(df, plot)
-            # Calculate statistics by group
+            # Calculate statistics by group, including last value
             stats = (df.groupby('group', observed=True)[y_data]
-                    .agg(['count', 'mean', 'std', 'min', 'max'])
+                    .agg(['count', 'mean', 'std', 'min', 'max', ('last', 'last')])
                     .round(2))
         else:
-            # Calculate overall statistics
+            # Calculate overall statistics, including last value
             stats = pd.DataFrame({
                 'count': [len(df)],
                 'mean': [df[y_data].mean()],
                 'std': [df[y_data].std()],
                 'min': [df[y_data].min()],
-                'max': [df[y_data].max()]
-            }, index=['all']).round(2)
+                'max': [df[y_data].max()],
+                'last': [df[y_data].iloc[-1]]
+            }, index=['all']).round(3)
+        
+        # Reorder columns to put 'last' after 'count'
+        stats = stats.reindex(columns=['count', 'last', 'mean', 'std', 'min', 'max'])
         
         # Create figure
         fig = go.Figure(data=[go.Table(
             header=dict(
-                values=['Group' if plot.group_by else 'Metric'] + list(stats.columns),
+                values=['Group'] + list(stats.columns),
                 fill_color='#f0f0f0',  # Light gray
                 align='left',
                 font=dict(color='black', size=12)

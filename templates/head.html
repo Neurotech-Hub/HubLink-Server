@@ -5,7 +5,6 @@
 
 <!-- Preload critical resources -->
 <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" as="style">
-<link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
 
 <!-- Font Awesome -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
@@ -19,7 +18,6 @@
 </title>
 
 <!-- Favicons -->
-<link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32x32.png') }}">
 <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='img/favicon-16x16.png') }}">
 <link rel="manifest" href="{{ url_for('static', filename='img/site.webmanifest') }}">
@@ -38,9 +36,3 @@
 <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 <!-- HTMX Debug Extension -->
 <script src="https://unpkg.com/htmx.org/dist/ext/debug.js"></script>
-<!-- Moment.js for time formatting -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-<script>
-    // Initialize moment.js
-    moment.locale('en');
-</script>

@@ -72,6 +72,7 @@ class Setting(db.Model):
     device_name_includes = db.Column(db.String(100), nullable=True, server_default='HUBLINK')
     alert_email = db.Column(db.String(100), nullable=True, server_default='')
     gateway_manages_memory = db.Column(db.Boolean, nullable=False, server_default='1')
+    timezone = db.Column(db.String(50), nullable=False, server_default='America/Chicago')
 
     def __repr__(self):
         return f"<Setting for Account {self.account_id}>"
@@ -85,7 +86,8 @@ class Setting(db.Model):
             'use_cloud': self.use_cloud,
             'device_name_includes': self.device_name_includes,
             'alert_email': self.alert_email,
-            'gateway_manages_memory': self.gateway_manages_memory
+            'gateway_manages_memory': self.gateway_manages_memory,
+            'timezone': self.timezone
         }
 
 # Define the files model
@@ -124,6 +126,9 @@ class Gateway(db.Model):
     name = db.Column(db.String(100), nullable=True, server_default='')
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
 
+    # Add relationship with nodes
+    nodes = db.relationship('Node', backref='gateway', cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<Gateway {self.name} with IP {self.ip_address}>"
 
@@ -134,6 +139,24 @@ class Gateway(db.Model):
             'ip_address': self.ip_address,
             'name': self.name,
             'created_at': self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None
+        }
+
+# Define the node model
+class Node(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    gateway_id = db.Column(db.Integer, db.ForeignKey('gateway.id', ondelete='CASCADE'), nullable=False)
+    uuid = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=func.now(), nullable=False)
+
+    def __repr__(self):
+        return f'<Node {self.uuid}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'gateway_id': self.gateway_id,
+            'uuid': self.uuid,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
 # Define the source model

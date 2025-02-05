@@ -39,7 +39,7 @@
                 '<extra></extra>',
             customdata: dirNames.map(name => [
                 formatFileSize(dirDetails[name].size),
-                dirDetails[name].latest_date ? moment(dirDetails[name].latest_date).format('MMM D, YYYY') : 'Never',
+                dirDetails[name].latest_date || 'Never',
                 dirDetails[name].subdir_count
             ])
         };

@@ -316,6 +316,12 @@ table td a {
 /* Adjust for mobile */
 @media (max-width: 768px) {
 
+    /* Hide first column in responsive tables */
+    .table-responsive table td:first-child,
+    .table-responsive table th:first-child {
+        display: none;
+    }
+
     .table th,
     .table td {
         font-size: 0.75rem;
@@ -1527,6 +1533,10 @@ table td code {
         display: none;
     }
 
+    .selection-tools {
+        display: none;
+    }
+
     /* Adjust column widths for mobile */
     .table-responsive .data-table th:first-child,
     .table-responsive .data-table td:first-child {
@@ -1583,6 +1593,18 @@ table td code {
     .table-responsive .data-table td:first-child .form-check {
         display: flex;
         justify-content: center;
+    }
+
+    /* Scale down all buttons */
+    .btn {
+        font-size: 0.7rem !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+
+    /* Preserve icon sizes in buttons if needed */
+    .btn i,
+    .btn .bi {
+        font-size: 0.8rem !important;
     }
 }
 
@@ -1750,4 +1772,38 @@ table td code {
 
 .single-pricing-white h5 {
     color: #fff;
+}
+
+.has-sidebar .container-fluid {
+    /* padding-right: var(--bs-gutter-x, .9rem);
+    padding-left: var(--bs-gutter-x, .9rem); */
+    padding-right: 0.7rem;
+    padding-left: 0.7rem;
+}
+
+@media (max-width: 768px) {
+
+    /* Pricing button mobile styling */
+    .single-pricing a {
+        font-size: 14px;
+        padding: 8px 30px;
+    }
+}
+
+/* Activity Indicator Animation */
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.95);
+        opacity: 0.5;
+    }
 }

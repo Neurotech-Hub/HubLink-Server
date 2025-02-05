@@ -90,7 +90,7 @@
                                         <option value="true" {% if settings.gateway_manages_memory %}selected{% endif %}>True</option>
                                         <option value="false" {% if not settings.gateway_manages_memory %}selected{% endif %}>False</option>
                                     </select>
-                                    <div class="form-text">Allow the gateway to delete the oldest files if storage is limited</div>
+                                    <div class="form-text">Allow the gateway to delete the oldest files</div>
                                 </div>
                             </div>
                             
@@ -121,13 +121,43 @@
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label for="device_name_includes" class="form-label">Device Filter by Name:</label>
-                            <input type="text" id="device_name_includes" name="device_name_includes"
-                                class="form-control" value="{{ settings.device_name_includes }}"
-                                required minlength="1">
-                            <div class="form-text">Device name must include this string (can not be blank)</div>
-                            <div class="invalid-feedback">Device filter cannot be empty</div>
+                        <div class="row g-4">
+                            <div class="col-12 col-md-6">
+                                <div class="mb-4">
+                                    <label for="device_name_includes" class="form-label">Device Filter by Name:</label>
+                                    <input type="text" id="device_name_includes" name="device_name_includes"
+                                        class="form-control" value="{{ settings.device_name_includes }}"
+                                        required minlength="1">
+                                    <div class="form-text">Device name must include this string (can not be blank)</div>
+                                    <div class="invalid-feedback">Device filter cannot be empty</div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-6">
+                                <div class="mb-4">
+                                    <label for="timezone" class="form-label">Gateway Timezone:</label>
+                                    <select id="timezone" name="timezone" class="form-select">
+                                        {% set america_timezones = [
+                                            'America/Chicago',
+                                            'America/New_York',
+                                            'America/Los_Angeles',
+                                            'America/Denver',
+                                            'America/Phoenix',
+                                            'America/Anchorage',
+                                            'America/Halifax',
+                                            'America/Toronto',
+                                            'America/Vancouver',
+                                            'America/Mexico_City'
+                                        ] %}
+                                        {% for tz in america_timezones %}
+                                            <option value="{{ tz }}" {% if settings.timezone == tz %}selected{% endif %}>
+                                                {{ tz }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">Timezone for gateway synchronization</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- <div class="mb-4">

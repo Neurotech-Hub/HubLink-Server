@@ -14,6 +14,7 @@
     </div>
 
     <!-- Selection Info and Buttons -->
+    <div class="selection-tools">
     <div class="d-flex flex-column flex-md-row align-items-end gap-2">
         <div class="d-flex gap-2 w-100">
             <span class="text-muted text-nowrap">
@@ -26,7 +27,8 @@
             <button type="button" class="btn btn-sm btn-outline-primary" id="downloadSelectedBtn" disabled>Download</button>
             {% if g.user and g.user.is_admin %}
             <button type="button" class="btn btn-sm btn-outline-danger" id="deleteSelectedBtn" disabled>Delete</button>
-            {% endif %}
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
@@ -84,9 +86,9 @@
                                 '{{ file.id }}',
                                 '{{ file.key | replace("'", "\\'") }}',
                                 '{{ file.size | filesizeformat }}',
-                                '{{ file.last_modified }}',
+                                '{{ file.last_modified|datetime if file.last_modified else "Never" }}',
                                 '{{ file.version }}',
-                                '{{ file.last_checked }}')"
+                                '{{ file.last_checked|datetime("absolute") if file.last_checked else "Never" }}')"
                             style="cursor: pointer;">
                             v{{ file.version }}
                         </span>
@@ -94,9 +96,7 @@
                 </td>
                 <td>{{ file.size|filesizeformat }}</td>
                 <td>
-                    <script>
-                        document.currentScript.parentElement.textContent = moment("{{ file.last_modified }}").fromNow();
-                    </script>
+                    {{ file.last_modified|datetime if file.last_modified else 'Never' }}
                 </td>
             </tr>
             {% endfor %}

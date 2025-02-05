@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
+{% block head %}
+<!-- Tagify -->
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.17.9/dist/tagify.css" rel="stylesheet" type="text/css" />
+{% endblock head %}
+
 {% block content %}
 <div class="container-fluid">
     <!-- Flash Messages -->
@@ -68,7 +74,14 @@
                 {% for layout in account.layouts|sort(attribute='name') %}
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="mb-0">{{ layout.name }}</h5>
+                        <h5 class="mb-0">
+                            {{ layout.name }}
+                            {% for source in sources %}
+                                {% if source.name == layout.name %}
+                                    <i class="fa fa-link text-muted small ms-1" title="Layout name matches source: {{ source.name }}"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </h5>
                         <div class="text-muted small mt-1">
                             {% if layout_plot_names[layout.id] %}
                                 {% for plot_name in layout_plot_names[layout.id] %}
@@ -254,13 +267,38 @@
 
                     <!-- Plot Type -->
                     <div class="mb-3">
-                        <label for="plotType" class="form-label">Plot Type <span class="text-danger">*</span></label>
-                        <select class="form-select" id="plotType" name="type" onchange="updatePlotName()">
-                            <option value="timeline" id="timelineOption">Timeline</option>
-                            <option value="box">Box Plot</option>
-                            <option value="bar">Bar Chart</option>
-                            <option value="table">Table</option>
-                        </select>
+                        <label class="form-label">Plot Type <span class="text-danger">*</span></label>
+                        <input type="hidden" id="plotType" name="type" value="timeline" required>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn active" 
+                                        data-type="timeline" onclick="selectPlotType(this)">
+                                    <i class="bi bi-graph-up fs-5"></i>
+                                    <div class="small mt-1">Timeline</div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
+                                        data-type="box" onclick="selectPlotType(this)">
+                                    <i class="bi bi-box fs-5"></i>
+                                    <div class="small mt-1">Box Plot</div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
+                                        data-type="bar" onclick="selectPlotType(this)">
+                                    <i class="bi bi-bar-chart fs-5"></i>
+                                    <div class="small mt-1">Bar Chart</div>
+                                </button>
+                            </div>
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
+                                        data-type="table" onclick="selectPlotType(this)">
+                                    <i class="bi bi-table fs-5"></i>
+                                    <div class="small mt-1">Table</div>
+                                </button>
+                            </div>
+                        </div>
                         <div id="plotTypeFeedback" class="alert alert-secondary mt-2 small">
                             <i class="bi bi-exclamation-triangle"></i>
                             Timelines are disabled for sources without a datetime column
@@ -284,17 +322,14 @@
 
                         <!-- Advanced Options -->
                         <div class="mb-3">
-                            <a href="#" class="text-secondary text-decoration-none small" onclick="toggleAdvancedOptions(event)">
-                                Advanced <i class="fa fa-chevron-right ms-1 advanced-icon"></i>
-                            </a>
-                            <div id="advancedOptions" style="display: none;" class="mt-2">
-                                <div class="form-check">
+                            <div id="advancedOptions" class="mt-2">
+                                <div class="form-check timeline-only" style="display: none;">
                                     <input class="form-check-input" type="checkbox" id="accumulateValues" name="accumulate">
                                     <label class="form-check-label" for="accumulateValues">
                                         Accumulate across files
                                     </label>
                                 </div>
-                                <div class="form-check mt-2">
+                                <div class="form-check mt-2 bar-only" style="display: none;">
                                     <input class="form-check-input" type="checkbox" id="lastValue" name="last_value">
                                     <label class="form-check-label" for="lastValue">
                                         Only use last value
@@ -358,8 +393,22 @@
                         <label for="layoutName" class="form-label">Layout Name <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="layoutName" name="name" required>
                         <div class="invalid-feedback">Please provide a layout name.</div>
+                        
+                        <!-- Source Name Pills -->
+                        <div class="mt-3">
+                            {% for source in sources|sort(attribute='name') %}
+                            <button type="button" 
+                                    class="btn btn-outline-secondary btn-sm rounded-pill py-1 px-2 mb-1 me-1" 
+                                    onclick="setLayoutName('{{ source.name }}')">
+                                <i class="fa fa-link small me-1"></i><span class="small">{{ source.name }}</span>
+                            </button>
+                            {% endfor %}
+                            <div class="form-text text-muted mt-1">
+                                *Setting layout name to source name limits to source plots.
+                            </div>
+                        </div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-3 mt-2">
                         <div class="form-check">
                             <input type="checkbox" class="form-check-input" id="showNav" name="show_nav" checked>
                             <label class="form-check-label" for="showNav">Assign to Sidebar</label>
@@ -382,11 +431,151 @@
 
 <!-- Page-specific scripts -->
 <script>
-    // Initialize all popovers
+    // Initialize all functionality when DOM is ready
+    let tagify;  // Make tagify globally accessible
+    
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Tagify first
+        const includeColumnsInput = document.getElementById('includeColumns');
+        if (includeColumnsInput && !includeColumnsInput._tagify) {
+            tagify = new Tagify(includeColumnsInput, {
+                delimiters: ",",
+                pattern: /^[^,*]+$/,
+                dropdown: { enabled: 0 },
+                callbacks: {
+                    add: validateTags,
+                    remove: function(e) {
+                        validateTags();
+                        // Check if removed tag was the datetime column
+                        const datetimeSelect = document.getElementById('datetime_column');
+                        const datetimeFeedback = document.getElementById('datetime_feedback');
+                        if (datetimeSelect.value === e.detail.data.value) {
+                            // Reset datetime column state
+                            datetimeSelect.value = '';
+                            datetimeSelect.style.display = 'none';
+                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                        }
+                    }
+                },
+                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
+            });
+        }
+
+        // Initialize all popovers
         var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
         var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
             return new bootstrap.Popover(popoverTriggerEl);
+        });
+
+        // Initialize source modal
+        document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function() {
+            // Reset form
+            document.getElementById('sourceForm').reset();
+            document.getElementById('sourceId').value = '';
+            document.getElementById('sourceModalLabel').textContent = 'Add Source';
+            
+            // Reset datetime column UI
+            const datetimeColumn = document.getElementById('datetime_column');
+            if (datetimeColumn) {
+                datetimeColumn.innerHTML = '<option value="">Select a column...</option>';
+                datetimeColumn.style.display = 'none';
+            }
+            const datetimeFeedback = document.getElementById('datetime_feedback');
+            if (datetimeFeedback) {
+                datetimeFeedback.style.display = 'block';
+            }
+            const datetimeSuccess = document.getElementById('datetime_success');
+            if (datetimeSuccess) {
+                datetimeSuccess.style.display = 'none';
+            }
+            const dataPointsContainer = document.getElementById('dataPointsContainer');
+            if (dataPointsContainer) {
+                dataPointsContainer.style.display = 'none';
+            }
+        });
+
+        // Remove any existing show classes or inline styles that might interfere with Bootstrap
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.classList.remove('show');
+            modal.removeAttribute('style');
+            modal.removeAttribute('aria-modal');
+            modal.setAttribute('aria-hidden', 'true');
+        });
+
+        // Enable Bootstrap form validation
+        const forms = document.querySelectorAll('.needs-validation');
+        Array.from(forms).forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            });
+        });
+
+        // Initialize file size display
+        document.querySelectorAll('.recent-file-item').forEach(item => {
+            const fileSize = parseInt(item.dataset.fileSize);
+            const fileSizeElement = item.querySelector('.file-size');
+            if (fileSizeElement && fileSize) {
+                fileSizeElement.textContent = formatFileSize(fileSize);
+            }
+        });
+
+        // Handle file selection with Tagify
+        document.querySelectorAll('.recent-file-item').forEach(item => {
+            item.addEventListener('click', async function() {
+                const fileId = this.dataset.fileId;
+                
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                    
+                    const response = await fetch(`/{{ account.url }}/file/${fileId}/header`, {
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        tagify.removeAllTags();
+                        tagify.addTags(data.columns);
+
+                        const datetimeSelect = document.getElementById('datetime_column');
+                        const datetimeFeedback = document.getElementById('datetime_feedback');
+                        datetimeSelect.innerHTML = '';
+                        
+                        if (data.datetime_columns?.length > 0) {
+                            data.datetime_columns.forEach(col => {
+                                const option = document.createElement('option');
+                                option.value = col;
+                                option.textContent = col;
+                                datetimeSelect.appendChild(option);
+                            });
+
+                            datetimeSelect.value = data.datetime_columns[0];
+                            datetimeFeedback.textContent = 'Column containing datetime values';
+                            datetimeSelect.style.display = 'block';
+                        } else {
+                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                            datetimeSelect.style.display = 'none';
+                        }
+                    } else {
+                        throw new Error(data.error);
+                    }
+                } catch (e) {
+                    console.error('Error fetching header:', e);
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
+                    alertDiv.innerHTML = `
+                        Failed to fetch header: ${e.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
+                }
+            });
         });
     });
 
@@ -469,235 +658,6 @@
         }
     }
 
-    // Initialize all functionality when DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize source modal
-        document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function() {
-            // Reset form
-            document.getElementById('sourceForm').reset();
-            document.getElementById('sourceId').value = '';
-            document.getElementById('sourceModalLabel').textContent = 'Add Source';
-            
-            // Reset datetime column UI
-            const datetimeColumn = document.getElementById('datetime_column');
-            if (datetimeColumn) {
-                datetimeColumn.innerHTML = '<option value="">Select a column...</option>';
-                datetimeColumn.style.display = 'none';
-            }
-            const datetimeFeedback = document.getElementById('datetime_feedback');
-            if (datetimeFeedback) {
-                datetimeFeedback.style.display = 'block';
-            }
-            const datetimeSuccess = document.getElementById('datetime_success');
-            if (datetimeSuccess) {
-                datetimeSuccess.style.display = 'none';
-            }
-            const dataPointsContainer = document.getElementById('dataPointsContainer');
-            if (dataPointsContainer) {
-                dataPointsContainer.style.display = 'none';
-            }
-        });
-
-        // Remove any existing show classes or inline styles that might interfere with Bootstrap
-        const modals = document.querySelectorAll('.modal');
-        modals.forEach(modal => {
-            modal.classList.remove('show');
-            modal.removeAttribute('style');
-            modal.removeAttribute('aria-modal');
-            modal.setAttribute('aria-hidden', 'true');
-        });
-
-        // Enable Bootstrap form validation
-        const forms = document.querySelectorAll('.needs-validation');
-        Array.from(forms).forEach(function(form) {
-            form.addEventListener('submit', function(event) {
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-                form.classList.add('was-validated');
-            });
-        });
-
-        // Initialize file size display
-        const recentFileItems = document.querySelectorAll('.recent-file-item');
-        recentFileItems.forEach(item => {
-            const fileSize = parseInt(item.dataset.fileSize);
-            const fileSizeElement = item.querySelector('.file-size');
-            if (fileSizeElement && fileSize) {
-                fileSizeElement.textContent = formatFileSize(fileSize);
-            }
-        });
-
-        // Function to format file size
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        }
-
-        // Function to detect datetime columns
-        function detectColumns(sourceId) {
-            if (!sourceId) {
-                alert('Please select a source first');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('source_id', sourceId);
-
-            fetch('/detect_columns', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-
-                // Update datetime column select
-                const datetimeSelect = document.getElementById('datetime_column');
-                const datetimeFeedback = document.getElementById('datetime_feedback');
-                
-                if (datetimeSelect && data.datetime_columns?.length > 0) {
-                    datetimeSelect.innerHTML = '<option value="">Select a column...</option>';
-                    data.datetime_columns.forEach(col => {
-                        const option = document.createElement('option');
-                        option.value = col;
-                        option.textContent = col;
-                        datetimeSelect.appendChild(option);
-                    });
-
-                    if (data.datetime_columns.length === 1) {
-                        datetimeSelect.value = data.datetime_columns[0];
-                    }
-                    
-                    datetimeSelect.style.display = 'block';
-                    if (datetimeFeedback) {
-                        datetimeFeedback.textContent = 'Column containing datetime values';
-                    }
-                } else if (datetimeFeedback) {
-                    datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                    if (datetimeSelect) {
-                        datetimeSelect.style.display = 'none';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error detecting columns:', error);
-                alert('Error detecting columns: ' + error.message);
-            });
-        }
-
-        // Add click handler for detect columns button
-        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
-        if (detectButton) {
-            detectButton.onclick = function() {
-                const sourceId = document.getElementById('source_id')?.value;
-                detectColumns(sourceId);
-            };
-        }
-
-        // Initialize Tagify
-        const includeColumnsInput = document.getElementById('includeColumns');
-        if (includeColumnsInput && !includeColumnsInput._tagify) {
-            const tagify = new Tagify(includeColumnsInput, {
-                delimiters: ",",
-                pattern: /^[^,*]+$/,
-                dropdown: { enabled: 0 },
-                callbacks: {
-                    add: validateTags,
-                    remove: function(e) {
-                        validateTags();
-                        // Check if removed tag was the datetime column
-                        const datetimeSelect = document.getElementById('datetime_column');
-                        const datetimeFeedback = document.getElementById('datetime_feedback');
-                        if (datetimeSelect.value === e.detail.data.value) {
-                            // Reset datetime column state
-                            datetimeSelect.value = '';
-                            datetimeSelect.style.display = 'none';
-                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                        }
-                    }
-                },
-                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
-            });
-
-            // Handle file selection with Tagify
-            const recentFileItems = document.querySelectorAll('.recent-file-item');
-            recentFileItems.forEach(item => {
-                item.addEventListener('click', async function() {
-                    const fileId = this.dataset.fileId;
-                    
-                    try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-                        
-                        const response = await fetch(`/{{ account.url }}/file/${fileId}/header`, {
-                            signal: controller.signal
-                        });
-                        clearTimeout(timeoutId);
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            tagify.removeAllTags();
-                            tagify.addTags(data.columns);
-
-                            const datetimeSelect = document.getElementById('datetime_column');
-                            const datetimeFeedback = document.getElementById('datetime_feedback');
-                            datetimeSelect.innerHTML = '';
-                            
-                            if (data.datetime_columns?.length > 0) {
-                                data.datetime_columns.forEach(col => {
-                                    const option = document.createElement('option');
-                                    option.value = col;
-                                    option.textContent = col;
-                                    datetimeSelect.appendChild(option);
-                                });
-
-                                datetimeSelect.value = data.datetime_columns[0];
-                                datetimeFeedback.textContent = 'Column containing datetime values';
-                                datetimeSelect.style.display = 'block';
-                            } else {
-                                datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                                datetimeSelect.style.display = 'none';
-                            }
-                        } else {
-                            throw new Error(data.error);
-                        }
-                    } catch (e) {
-                        console.error('Error fetching header:', e);
-                        const alertDiv = document.createElement('div');
-                        alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
-                        alertDiv.innerHTML = `
-                            Failed to fetch header: ${e.message}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        `;
-                        includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
-                    }
-                });
-            });
-        }
-
-        // Add validateTags utility function
-        function validateTags() {
-            const form = document.getElementById('sourceForm');
-            if (form.classList.contains('was-validated')) {
-                form.checkValidity();
-            }
-        }
-
-        // Add toggleDataPoints function
-        function toggleDataPoints() {
-            const tailOnly = document.getElementById('tailOnly');
-            const dataPointsContainer = document.getElementById('dataPointsContainer');
-            dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
-        }
-    });
-
     // Function to edit an existing source
     function editSource(source) {
         document.getElementById('sourceId').value = source.id;
@@ -752,6 +712,16 @@
         // Show modal
         const bsModal = new bootstrap.Modal(modal);
         bsModal.show();
+    }
+
+    function setLayoutName(sourceName) {
+        const layoutNameInput = document.getElementById('layoutName');
+        layoutNameInput.value = sourceName;
+        // Add visual feedback
+        layoutNameInput.classList.add('border-primary');
+        setTimeout(() => {
+            layoutNameInput.classList.remove('border-primary');
+        }, 500);
     }
 
     // Add button click handler
@@ -855,12 +825,63 @@
         });
     });
 
+    // Function to create a new plot
     function createPlot(source) {
         // Reset form
         document.getElementById('plotForm').reset();
         document.getElementById('plotSourceId').value = source.id;
         document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot`;
-
+        
+        // Reset plot type buttons to default state (timeline)
+        document.querySelectorAll('.plot-type-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-type') === 'timeline') {
+                btn.classList.add('active');
+            }
+        });
+        document.getElementById('plotType').value = 'timeline';
+        
+        // Show/hide timeline option based on datetime column
+        const timelineButtons = document.querySelectorAll('.plot-type-btn[data-type="timeline"]');
+        if (!source.datetime_column) {
+            timelineButtons.forEach(btn => {
+                btn.classList.add('disabled');
+                btn.setAttribute('disabled', 'disabled');
+            });
+            document.getElementById('plotTypeFeedback').style.display = 'block';
+            document.getElementById('plotTypeSuccess').style.display = 'none';
+            
+            // Select bar chart as default if timeline is disabled
+            const barButton = document.querySelector('.plot-type-btn[data-type="bar"]');
+            if (barButton) {
+                barButton.click();
+            }
+        } else {
+            timelineButtons.forEach(btn => {
+                btn.classList.remove('disabled');
+                btn.removeAttribute('disabled');
+            });
+            document.getElementById('plotTypeFeedback').style.display = 'none';
+            document.getElementById('plotTypeSuccess').style.display = 'block';
+            document.getElementById('datetimeColumnName').textContent = source.datetime_column;
+        }
+        
+        // Update y-axis data options
+        const yDataSelect = document.getElementById('yData');
+        yDataSelect.innerHTML = '<option value="">Select column...</option>';
+        
+        if (source.include_columns) {
+            source.include_columns.split(',').forEach(column => {
+                column = column.trim();
+                if (column && column !== source.datetime_column) {
+                    const option = document.createElement('option');
+                    option.value = column;
+                    option.textContent = column;
+                    yDataSelect.appendChild(option);
+                }
+            });
+        }
+        
         // Handle group options visibility
         const groupByPathLevel = document.querySelector('#groupPills .text-muted');
         const groupByLink = document.querySelector('#groupPills a');
@@ -873,44 +894,15 @@
             // Update group options
             updateGroupOptions(source);
         }
-
-        // Clear existing options
-        const yDataSelect = document.getElementById('yData');
-        yDataSelect.innerHTML = '<option value="">Select column...</option>';
-
-        // Add column options from source
-        const columns = source.include_columns.split(',').map(col => col.trim());
-        columns.forEach(column => {
-            // Only add to y-axis if it's not exactly matching the datetime column
-            if (source.datetime_column !== column) {
-                const option = new Option(column, column);
-                yDataSelect.add(option);
-            }
-        });
-
-        // Check if source has datetime column
-        const hasDatetime = source.datetime_column && source.datetime_column !== '';
-        const timelineOption = document.getElementById('timelineOption');
-        const plotTypeFeedback = document.getElementById('plotTypeFeedback');
-        const plotTypeSuccess = document.getElementById('plotTypeSuccess');
-        const datetimeColumnName = document.getElementById('datetimeColumnName');
         
-        if (hasDatetime) {
-            // Enable timeline option
-            timelineOption.disabled = false;
-            // Show success message with datetime column name
-            plotTypeFeedback.style.display = 'none';
-            plotTypeSuccess.style.display = 'block';
-            datetimeColumnName.textContent = source.datetime_column;
-        } else {
-            // Disable timeline option and select box plot as default
-            timelineOption.disabled = true;
-            document.getElementById('plotType').value = 'box';
-            // Show warning message
-            plotTypeFeedback.style.display = 'block';
-            plotTypeSuccess.style.display = 'none';
-        }
-        // Show modal
+        // Reset modal title
+        document.getElementById('plotModalLabel').textContent = 'New Plot';
+        
+        // Reset submit button text
+        const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
+        submitButton.textContent = 'Create';
+        
+        // Show the modal
         const plotModal = new bootstrap.Modal(document.getElementById('plotModal'));
         plotModal.show();
     }
@@ -949,7 +941,17 @@
         
         // Then populate the form with plot data
         document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot/${plot.id}/edit`;
+        
+        // Update plot type selection
+        document.querySelectorAll('.plot-type-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.getAttribute('data-type') === plot.type) {
+                btn.classList.add('active');
+            }
+        });
         document.getElementById('plotType').value = plot.type;
+        
+        // Update other form fields
         document.getElementById('yData').value = plot.config.y_data;
         document.getElementById('plotName').value = plot.name;
         document.getElementById('groupBy').value = plot.group_by || '';
@@ -958,6 +960,7 @@
         const advancedOptions = plot.advanced || [];
         document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate');
         document.getElementById('lastValue').checked = advancedOptions.includes('last_value');
+        updateAdvancedOptions(plot.type);
         
         // Handle group selection
         const groupByPathLevel = document.querySelector('#groupPills .text-muted');
@@ -990,27 +993,10 @@
             noGroupingBtn.classList.add('active');
         }
         
-        // Update modal title
+        // Update modal title and submit button
         document.getElementById('plotModalLabel').textContent = 'Edit Plot';
-        
-        // Update submit button text
         const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
         submitButton.textContent = 'Update';
-    }
-
-    function toggleAdvancedOptions(event) {
-        event.preventDefault();
-        const advancedOptions = document.getElementById('advancedOptions');
-        const icon = event.currentTarget.querySelector('.advanced-icon');
-        if (advancedOptions.style.display === 'none') {
-            advancedOptions.style.display = 'block';
-            icon.classList.remove('fa-chevron-right');
-            icon.classList.add('fa-chevron-down');
-        } else {
-            advancedOptions.style.display = 'none';
-            icon.classList.remove('fa-chevron-down');
-            icon.classList.add('fa-chevron-right');
-        }
     }
 
     // Function to toggle HTMX polling for source list
@@ -1029,9 +1015,126 @@
             toggleSourceListPolling(true);
         }
     });
-</script>
 
-<!-- Add this in the head section or before closing body -->
-<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
-<link href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css" rel="stylesheet" type="text/css" />
-{% endblock %}
+    function updateAdvancedOptions(plotType) {
+        // Hide all plot-specific options first
+        document.querySelectorAll('.timeline-only, .bar-only').forEach(el => {
+            el.style.display = 'none';
+        });
+        
+        // Show options based on plot type
+        if (plotType === 'timeline') {
+            document.querySelectorAll('.timeline-only').forEach(el => {
+                el.style.display = 'block';
+            });
+        } else if (plotType === 'bar') {
+            document.querySelectorAll('.bar-only').forEach(el => {
+                el.style.display = 'block';
+            });
+        }
+    }
+
+    // Update the existing plot type change handler
+    document.getElementById('plotType').addEventListener('change', function() {
+        const plotType = this.value;
+        updateAdvancedOptions(plotType);
+        // ... any existing plot type change handling ...
+    });
+
+    function selectPlotType(button) {
+        // Remove active class from all buttons
+        document.querySelectorAll('.plot-type-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to clicked button
+        button.classList.add('active');
+        
+        // Update hidden input
+        const plotType = button.getAttribute('data-type');
+        document.getElementById('plotType').value = plotType;
+        
+        // Call existing plot type change handlers
+        updatePlotName();
+        updateAdvancedOptions(plotType);
+    }
+
+    // Function to detect datetime columns
+    function detectColumns(sourceId) {
+        if (!sourceId) {
+            alert('Please select a source first');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('source_id', sourceId);
+
+        fetch('/detect_columns', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            // Update datetime column select
+            const datetimeSelect = document.getElementById('datetime_column');
+            const datetimeFeedback = document.getElementById('datetime_feedback');
+            
+            if (datetimeSelect && data.datetime_columns?.length > 0) {
+                datetimeSelect.innerHTML = '<option value="">Select a column...</option>';
+                data.datetime_columns.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    datetimeSelect.appendChild(option);
+                });
+
+                if (data.datetime_columns.length === 1) {
+                    datetimeSelect.value = data.datetime_columns[0];
+                }
+                
+                datetimeSelect.style.display = 'block';
+                if (datetimeFeedback) {
+                    datetimeFeedback.textContent = 'Column containing datetime values';
+                }
+            } else if (datetimeFeedback) {
+                datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                if (datetimeSelect) {
+                    datetimeSelect.style.display = 'none';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error detecting columns:', error);
+            alert('Error detecting columns: ' + error.message);
+        });
+    }
+
+    // Add click handler for detect columns button
+    const detectButton = document.querySelector('button[onclick="detectColumns()"]');
+    if (detectButton) {
+        detectButton.onclick = function() {
+            const sourceId = document.getElementById('source_id')?.value;
+            detectColumns(sourceId);
+        };
+    }
+
+    // Add validateTags utility function
+    function validateTags() {
+        const form = document.getElementById('sourceForm');
+        if (form.classList.contains('was-validated')) {
+            form.checkValidity();
+        }
+    }
+
+    // Add toggleDataPoints function
+    function toggleDataPoints() {
+        const tailOnly = document.getElementById('tailOnly');
+        const dataPointsContainer = document.getElementById('dataPointsContainer');
+        dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
+    }
+</script>
+{% endblock scripts %}

@@ -91,18 +91,11 @@
                     {% if source.error %}
                         {{ source.error }}
                     {% else %}
-                        <script>
-                            (function() {
-                                const lastUpdated_{{ source.id }} = {{ source.last_updated.isoformat() | tojson if source.last_updated else 'null' }};
-                                if (lastUpdated_{{ source.id }}) {
-                                    const m = moment.utc(lastUpdated_{{ source.id }}).local();
-                                    document.currentScript.parentElement.textContent = 
-                                        "updated " + m.fromNow();
-                                } else {
-                                    document.currentScript.parentElement.textContent = "never updated";
-                                }
-                            })();
-                        </script>
+                        {% if source.last_updated %}
+                            updated {{ source.last_updated|datetime }}
+                        {% else %}
+                            never updated
+                        {% endif %}
                     {% endif %}
                 </small>
                 <form action="{{ url_for('accounts.refresh_source', account_url=account.url, source_id=source.id) }}" method="post"

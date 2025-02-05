@@ -16,9 +16,7 @@
                         <td>{{ gateway.ip_address }}</td>
                         <td>{{ gateway.name }}</td>
                         <td class="gateway-time" data-time="{{ gateway.created_at.isoformat() }}">
-                            <script>
-                                document.currentScript.parentElement.textContent = moment.utc("{{ gateway.created_at.isoformat() }}").local().fromNow();
-                            </script>
+                            {{ gateway.created_at|datetime }}
                         </td>
                     </tr>
                     {% endfor %}
@@ -31,8 +29,10 @@
 <script>
     // Update times every minute
     setInterval(function() {
-        document.querySelectorAll('.gateway-time').forEach(function(el) {
-            el.textContent = moment.utc(el.dataset.time).local().fromNow();
-        });
+        fetch(window.location.pathname + '/gateways')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('dashboardGateways').innerHTML = html;
+            });
     }, 60000);
 </script> 

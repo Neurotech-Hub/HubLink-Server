@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app, session, abort
-from models import db, Account, Setting, File, Gateway, Source, Plot, Layout
+from models import db, Account, Setting, File, Gateway, Source, Plot, Layout, Node
 from datetime import datetime, timedelta, timezone
 import logging
 from S3Manager import *
@@ -15,7 +15,7 @@ import zipfile
 from werkzeug.utils import secure_filename
 import io
 import shutil
-from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files
+from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files, format_datetime
 import dateutil.parser as parser
 import time
 
@@ -32,6 +32,11 @@ def load_blueprint_user():
         account = db.session.get(Account, session['admin_id'])
         if account and account.is_admin:
             g.user = account
+
+# Add template filter for datetime formatting
+@accounts_bp.app_template_filter('format_datetime')
+def _jinja2_filter_datetime(dt, tz_name='America/Chicago', format='relative'):
+    return format_datetime(dt, tz_name, format)
 
 # Route to view the account dashboard by its unique URL (page load)
 @accounts_bp.route('/<account_url>', methods=['GET'])
@@ -125,25 +130,32 @@ def update_settings(account_url):
         settings.aws_secret_access_key = request.form['aws_secret_access_key']
         settings.bucket_name = request.form['bucket_name']
         settings.max_file_size = max_file_size
-        settings.use_cloud = request.form['use_cloud'] == 'true'
-        settings.gateway_manages_memory = request.form['gateway_manages_memory'] == 'true'
+        settings.use_cloud = request.form.get('use_cloud') == 'true'
+        settings.gateway_manages_memory = request.form.get('gateway_manages_memory') == 'true'
         settings.device_name_includes = device_name_includes
+        settings.timezone = request.form.get('timezone', 'America/Chicago')  # Add timezone with default
 
-        # Check if any of the AWS settings were updated
-        if (original_access_key != settings.aws_access_key_id or
-                original_secret_key != settings.aws_secret_access_key or
-                original_bucket_name != settings.bucket_name):
-            rebuild_S3_files(settings)  # Call update_S3_files if any of the AWS settings changed
+        # Check if AWS settings have changed
+        aws_settings_changed = (
+            original_access_key != settings.aws_access_key_id or
+            original_secret_key != settings.aws_secret_access_key or
+            original_bucket_name != settings.bucket_name
+        )
 
         db.session.commit()
-        flash("Settings updated successfully.", "success")
-        logging.debug(f"Settings updated for account URL {account_url}")
+
+        if aws_settings_changed:
+            flash("AWS settings updated successfully!", "success")
+        else:
+            flash("Settings updated successfully!", "success")
+
         return redirect(url_for('accounts.account_settings', account_url=account_url))
+
     except Exception as e:
         db.session.rollback()
-        flash("There was an issue updating the settings.", "error")
-        logging.error(f"There was an issue updating the settings: {e}")
-        return "There was an issue updating the settings."
+        logging.error(f"Error updating settings for {account_url}: {e}")
+        flash("An error occurred while updating settings", "error")
+        return redirect(url_for('accounts.account_settings', account_url=account_url))
 
 def get_directory_paths(account_id):
     """Get unique directory paths that directly contain files for an account."""
@@ -857,20 +869,29 @@ def layout_edit(account_url, layout_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
         db.session.commit()
+        
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name
         
-        # Get all plots with their sources, ordered by source name and plot name
-        plots = Plot.query.join(Source)\
-            .filter(Source.account_id == account.id)\
-            .order_by(Source.name, Plot.name)\
-            .all()
+        # Get all plots for this account
+        plots = []
+        for source in account.sources:
+            for plot in source.plots:
+                plots.append(plot)
+                
+        # If layout name matches a source name, only show plots from that source
+        matching_source = next((source for source in account.sources if source.name == layout.name), None)
+        if matching_source:
+            plots = [plot for plot in plots if plot.source_id == matching_source.id]
         
-        return render_template('layout_edit.html',
-                           account=account,
-                           layout=layout,
-                           plots=plots)
-                           
+        # Sort plots by source name and plot name
+        plots.sort(key=lambda x: (x.source.name, x.name))
+        
+        return render_template('layout_edit.html', 
+                             account=account, 
+                             layout=layout, 
+                             plots=plots)
+                            
     except Exception as e:
         logging.error(f"Error loading layout edit for {account_url}: {e}")
         traceback.print_exc()
@@ -1168,6 +1189,7 @@ def delete_files(account_url):
 def account_data_content(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
+        g.account = account  # Make account available in global context
         
         # Get directory filter
         directory = request.args.get('directory')
@@ -1190,7 +1212,6 @@ def account_data_content(account_url):
                 # Remove leading slash if present for consistency
                 directory = directory.lstrip('/')
                 # Match files that are directly in this directory
-                # This means the key should have exactly one more forward slash than the directory
                 files_query = files_query.filter(
                     File.key.like(f"{directory}/%")  # Starts with directory/
                 ).filter(
@@ -1214,8 +1235,29 @@ def account_data_content(account_url):
             file_dict = file.to_dict()
             # Add any additional fields needed for the template
             file_dict['id'] = file.id
-            # Keep raw datetime objects for template comparisons
-            file_dict['raw_last_modified'] = file.last_modified.replace(tzinfo=timezone.utc) if file.last_modified else None
+            
+            # Ensure datetime objects have timezone info
+            if file.last_modified:
+                if file.last_modified.tzinfo is None:
+                    last_modified = file.last_modified.replace(tzinfo=timezone.utc)
+                else:
+                    last_modified = file.last_modified
+                file_dict['raw_last_modified'] = last_modified
+                file_dict['last_modified'] = last_modified  # Pass the datetime object directly
+            else:
+                file_dict['raw_last_modified'] = None
+                file_dict['last_modified'] = None
+                
+            # Handle last_checked similarly
+            if file.last_checked:
+                if file.last_checked.tzinfo is None:
+                    last_checked = file.last_checked.replace(tzinfo=timezone.utc)
+                else:
+                    last_checked = file.last_checked
+                file_dict['last_checked'] = last_checked
+            else:
+                file_dict['last_checked'] = None
+                
             files.append(file_dict)
         
         return render_template('components/data_content.html',
@@ -1229,9 +1271,9 @@ def account_data_content(account_url):
                              
     except Exception as e:
         logger.error(f"Error loading data content: {e}")
-        return "Error loading data", 500
+        return "Error loading data content", 500
     
-@accounts_bp.route('/<account_url>/dashboard/gateways', methods=['GET'])
+@accounts_bp.route('/<account_url>/gateways', methods=['GET'])
 def dashboard_gateways(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
@@ -1271,12 +1313,15 @@ def dashboard_stats(account_url):
 def dashboard_uploads(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        file_uploads = [f.last_modified.isoformat() for f in 
-                       File.query.filter_by(account_id=account.id)
-                       .filter(~File.key.like('.%'))
-                       .filter(~File.key.contains('/.'))
-                       .order_by(File.last_modified.desc())
-                       .all()]
+        # Get files and format dates with account's timezone
+        files = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.'))
+        
+        # Format dates in account's timezone, using absolute format for the chart
+        file_uploads = [format_datetime(f.last_modified, account.settings.timezone, 'absolute') 
+                       for f in files.order_by(File.last_modified.desc()).all()]
+        
         return render_template('components/dashboard_uploads.html',
                              account=account,
                              file_uploads=file_uploads)
@@ -1289,42 +1334,39 @@ def dashboard_dirs(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         
-        # Get all files for this account, excluding hidden files
+        # Get all files for this account
         files = File.query.filter_by(account_id=account.id)\
             .filter(~File.key.like('.%'))\
             .filter(~File.key.contains('/.')) \
             .all()
-            
-        dir_data = {}
         
-        # Process each file
+        # Process directory data
+        dir_data = {}
         for file in files:
             path_parts = file.key.split('/')
-            if len(path_parts) == 1:  # Root level file
-                dir_name = 'Root'
-            else:
-                dir_name = path_parts[0]  # First directory level
-                
-            if dir_name not in dir_data:
-                dir_data[dir_name] = {
-                    'count': 0,
-                    'size': 0,
-                    'latest_date': None,
-                    'subdirs': set()
-                }
-            
-            dir_data[dir_name]['count'] += 1
-            dir_data[dir_name]['size'] += file.size
-            
-            # Update latest modification date
-            if file.last_modified:
-                if not dir_data[dir_name]['latest_date'] or \
-                   file.last_modified > dir_data[dir_name]['latest_date']:
-                    dir_data[dir_name]['latest_date'] = file.last_modified
-            
-            # Count subdirectories
-            if len(path_parts) > 2:  # Has subdirectories
-                dir_data[dir_name]['subdirs'].update(path_parts[1:-1])
+            if len(path_parts) > 1:  # If file is in a directory
+                dir_path = '/'.join(path_parts[:-1])
+                if not any(part.startswith('.') for part in path_parts):
+                    if dir_path not in dir_data:
+                        dir_data[dir_path] = {
+                            'count': 0,
+                            'size': 0,
+                            'latest_date': None,
+                            'subdirs': set()
+                        }
+                    dir_data[dir_path]['count'] += 1
+                    dir_data[dir_path]['size'] += file.size
+                    
+                    # Update latest date if this file is newer
+                    if not dir_data[dir_path]['latest_date'] or \
+                       (file.last_modified and file.last_modified > dir_data[dir_path]['latest_date']):
+                        dir_data[dir_path]['latest_date'] = file.last_modified
+                    
+                    # Add subdirectories
+                    for i in range(1, len(path_parts)):
+                        subdir = '/'.join(path_parts[:i])
+                        if subdir != dir_path:
+                            dir_data[dir_path]['subdirs'].add(subdir)
         
         # Convert directory data for the template
         dir_names = sorted(dir_data.keys())
@@ -1332,11 +1374,11 @@ def dashboard_dirs(account_url):
         dir_details = {
             d: {
                 'size': dir_data[d]['size'],
-                'latest_date': dir_data[d]['latest_date'].isoformat() if dir_data[d]['latest_date'] else None,
+                'latest_date': format_datetime(dir_data[d]['latest_date'], account.settings.timezone, 'absolute') if dir_data[d]['latest_date'] else None,
                 'subdir_count': len(dir_data[d]['subdirs'])
             } for d in dir_names
         }
-
+        
         return render_template('components/dashboard_dirs.html',
                              account=account,
                              dir_names=dir_names,
@@ -1480,3 +1522,95 @@ def source_callback(account_url, source_id):
             'error': 'Internal server error',
             'status': 500
         }), 500
+
+"""
+Gateway POST endpoint documentation:
+
+Fields:
+    name: string (required) - Name of the gateway
+    nodes: array of strings (optional) - Array of node UUIDs associated with this gateway
+
+Example request body:
+    {
+        "name": "Gateway1",
+        "nodes": ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"]
+    }
+
+Example curl:
+    curl -X POST http://127.0.0.1:5000/<account_url>/gateway \
+        -H "Content-Type: application/json" \
+        -d '{"name": "Gateway1", "nodes": ["550e8400-e29b-41d4-a716-446655440000"]}'
+
+Response:
+    {
+        "message": "Gateway and nodes updated successfully",
+        "gateway_id": 1,
+        "node_count": 1
+    }
+"""
+
+# Route to create/update gateway and nodes
+@accounts_bp.route('/<account_url>/gateway', methods=['POST'])
+def create_gateway(account_url):
+    try:
+        # Get account and increment ping counter
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        account.count_gateway_pings += 1
+        
+        # Parse request data
+        data = request.get_json()
+        if not data or 'name' not in data:
+            return jsonify({'error': 'Gateway name is required'}), 400
+            
+        gateway_name = data.get('name')
+        node_uuids = data.get('nodes', [])
+        
+        # Extract client IP address
+        ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        
+        # Find existing gateway or create new one
+        gateway = Gateway.query.filter_by(
+            account_id=account.id,
+            name=gateway_name
+        ).first()
+        
+        if gateway:
+            # Update existing gateway
+            gateway.ip_address = ip_address
+            gateway.created_at = datetime.now(timezone.utc)
+        else:
+            # Create new gateway
+            gateway = Gateway(
+                account_id=account.id,
+                name=gateway_name,
+                ip_address=ip_address,
+                created_at=datetime.now(timezone.utc)
+            )
+            db.session.add(gateway)
+        
+        # Commit to get gateway ID if new
+        db.session.commit()
+        
+        # Create new node records for each UUID
+        for uuid in node_uuids:
+            # Create new node record
+            node = Node(
+                gateway_id=gateway.id,
+                uuid=uuid,
+                created_at=datetime.now(timezone.utc)
+            )
+            db.session.add(node)
+        
+        # Final commit for all changes
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Gateway and nodes updated successfully',
+            'gateway_id': gateway.id,
+            'node_count': len(node_uuids)
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error creating/updating gateway for {account_url}: {e}")
+        return jsonify({'error': str(e)}), 500
