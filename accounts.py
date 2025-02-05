@@ -1534,7 +1534,7 @@ Response:
     }
 """
 
-# Route to create/update gateway and nodes
+# Route to create gateway and nodes
 @accounts_bp.route('/<account_url>/gateway', methods=['POST'])
 def create_gateway(account_url):
     try:
@@ -1553,32 +1553,20 @@ def create_gateway(account_url):
         # Extract client IP address
         ip_address = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
         
-        # Find existing gateway or create new one
-        gateway = Gateway.query.filter_by(
+        # Create new gateway
+        gateway = Gateway(
             account_id=account.id,
-            name=gateway_name
-        ).first()
+            name=gateway_name,
+            ip_address=ip_address,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.session.add(gateway)
         
-        if gateway:
-            # Update existing gateway
-            gateway.ip_address = ip_address
-            gateway.created_at = datetime.now(timezone.utc)
-        else:
-            # Create new gateway
-            gateway = Gateway(
-                account_id=account.id,
-                name=gateway_name,
-                ip_address=ip_address,
-                created_at=datetime.now(timezone.utc)
-            )
-            db.session.add(gateway)
-        
-        # Commit to get gateway ID if new
+        # Commit to get gateway ID
         db.session.commit()
         
         # Create new node records for each UUID
         for uuid in node_uuids:
-            # Create new node record
             node = Node(
                 gateway_id=gateway.id,
                 uuid=uuid,
@@ -1590,12 +1578,12 @@ def create_gateway(account_url):
         db.session.commit()
         
         return jsonify({
-            'message': 'Gateway and nodes updated successfully',
+            'message': 'Gateway and nodes created successfully',
             'gateway_id': gateway.id,
             'node_count': len(node_uuids)
         }), 200
         
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Error creating/updating gateway for {account_url}: {e}")
+        logging.error(f"Error creating gateway for {account_url}: {e}")
         return jsonify({'error': str(e)}), 500
