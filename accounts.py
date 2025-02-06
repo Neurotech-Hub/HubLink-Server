@@ -333,6 +333,7 @@ def page_not_found(e):
 
 @accounts_bp.route('/<account_url>/plots', methods=['GET'])
 def account_plots(account_url):
+    g.title = "Plots"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         account.count_page_loads += 1
