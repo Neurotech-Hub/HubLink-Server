@@ -214,6 +214,33 @@ def decimate_timeseries(df, x_column, max_points=1000):
     
     return decimated
 
+def read_and_decimate_csv(csv_content, datetime_col, value_col, max_points=1000):
+    """Read CSV with early decimation to reduce memory usage."""
+    try:
+        # Count total lines first
+        total_lines = sum(1 for _ in StringIO(csv_content))
+        
+        # If file is small enough, read normally
+        if total_lines <= max_points:
+            df = pd.read_csv(StringIO(csv_content), low_memory=False)
+            return df
+            
+        # Calculate skip rate for decimation
+        skip_rows = max(1, total_lines // max_points)
+        
+        # Read only every nth row
+        df = pd.read_csv(
+            StringIO(csv_content),
+            skiprows=lambda x: x > 0 and x % skip_rows != 0,
+            low_memory=False
+        )
+        
+        return df
+    except Exception as e:
+        logger.error(f"Error in read_and_decimate_csv: {e}")
+        # Fallback to normal read if decimation fails
+        return pd.read_csv(StringIO(csv_content), low_memory=False)
+
 def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
@@ -226,9 +253,9 @@ def process_timeseries_plot(plot, csv_content):
         if not x_data:
             return {'error': 'No datetime column configured for this source'}
         
-        df = pd.read_csv(StringIO(csv_content), low_memory=False)
-        logger.debug(f"DataFrame shape: {df.shape}")
-        logger.debug(f"Available columns: {df.columns.tolist()}")
+        # Use early decimation during CSV reading
+        df = read_and_decimate_csv(csv_content, x_data, y_data)
+        logger.debug(f"DataFrame shape after early decimation: {df.shape}")
         
         try:
             df[x_data] = pd.to_datetime(df[x_data], errors='coerce')
@@ -289,46 +316,34 @@ def process_timeseries_plot(plot, csv_content):
                 df = pd.concat(groups)
             else:
                 # Handle accumulation without grouping
-                # Sort by datetime
                 df = df.sort_values(x_data)
-                
-                # Initialize accumulation
                 last_value = 0
                 accumulated_data = []
                 current_file = None
                 
-                # Process each row
                 for _, row in df.iterrows():
                     if current_file != row['file_path']:
-                        # New file started
                         current_file = row['file_path']
-                        if accumulated_data:  # If we have previous data
-                            last_value = accumulated_data[-1]  # Use last accumulated value
-                    
-                    # Add to accumulated value
+                        if accumulated_data:
+                            last_value = accumulated_data[-1]
                     new_value = last_value + row[y_data]
                     accumulated_data.append(new_value)
                 
-                # Update the data with accumulated values
                 df[y_data] = accumulated_data
         
         # Create figure using go.Figure for more control
         fig = go.Figure()
-        
-        # Define a color sequence using Plotly's default colors
         colors = px.colors.qualitative.Plotly
         
         if plot.group_by:
-            # Plot each group separately with decimation
+            # Plot each group separately
             for idx, group in enumerate(sorted(df['group'].unique())):
                 group_data = df[df['group'] == group]
-                # Decimate the group data
-                decimated_data = decimate_timeseries(group_data, x_data)
                 color = colors[idx % len(colors)]
                 
                 fig.add_trace(go.Scatter(
-                    x=decimated_data[x_data],
-                    y=decimated_data[y_data],
+                    x=group_data[x_data],
+                    y=group_data[y_data],
                     name=group,
                     mode='lines+markers',
                     marker=dict(size=6, opacity=0.7, color=color),
@@ -337,12 +352,11 @@ def process_timeseries_plot(plot, csv_content):
                     fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}'
                 ))
         else:
-            # Plot single line for non-grouped data with decimation
-            decimated_data = decimate_timeseries(df, x_data)
+            # Plot single line for non-grouped data
             color = colors[0]
             fig.add_trace(go.Scatter(
-                x=decimated_data[x_data],
-                y=decimated_data[y_data],
+                x=df[x_data],
+                y=df[y_data],
                 name=y_data,
                 mode='lines+markers',
                 marker=dict(size=6, opacity=0.7, color=color),
