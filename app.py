@@ -350,18 +350,27 @@ def cronjob():
         # Get SOURCE_INTERVAL_MINUTES from environment, default to 5
         interval_minutes = int(os.getenv('SOURCE_INTERVAL_MINUTES', '5'))
         current_time = datetime.now(timezone.utc)
+        cutoff_time = current_time - timedelta(minutes=interval_minutes)
+        
+        logger.info(f"Cronjob running at {current_time}, looking for sources not updated since {cutoff_time}")
         
         # Find sources that need updating
         sources = Source.query.filter(
             Source.do_update == True,
             (Source.last_updated == None) | 
-            (Source.last_updated <= current_time - timedelta(minutes=interval_minutes))
+            (Source.last_updated <= cutoff_time.replace(tzinfo=None))  # Remove timezone info for comparison
         ).all()
+        
+        logger.info(f"Found {len(sources)} sources that need updating")
+        for source in sources:
+            last_updated = source.last_updated.replace(tzinfo=timezone.utc) if source.last_updated else None
+            logger.info(f"Source {source.id}: last_updated={last_updated}, "
+                       f"needs_update={(last_updated is None) or (last_updated <= cutoff_time)}")
         
         updated_count = 0
         for source in sources:
             # Get the account for this source
-            account = Account.query.get(source.account_id)
+            account = db.session.get(Account, source.account_id)
             if account:
                 success, _ = initiate_source_refresh(account, source)
                 if success:

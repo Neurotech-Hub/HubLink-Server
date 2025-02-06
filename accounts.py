@@ -285,13 +285,13 @@ def rebuild(account_url):
                 try:
                     source.do_update = True
                     refresh_count += 1
-                    logging.info(f"Marked source {source.id} for update")
+                    logging.info(f"Marked {account.name}: {source.id}|{source.name} for update")
                 except Exception as e:
                     logging.error(f"Error marking source {source.id} for update: {e}")
                     continue
 
             db.session.commit()
-            logging.info(f"Added/updated {len(affected_files)} files and marked {refresh_count} sources for refresh for account {account.id}")
+            logging.info(f"Added/updated {len(affected_files)} files; marked {refresh_count} sources for refresh for {account.id}|{account.name}")
 
         return jsonify({
             "message": "Rebuild completed successfully",
