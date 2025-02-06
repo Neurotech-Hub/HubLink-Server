@@ -18,6 +18,7 @@ import shutil
 from utils import admin_required, get_analytics, initiate_source_refresh, list_source_files, format_datetime
 import dateutil.parser as parser
 import time
+from sqlalchemy import and_, not_
 
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
@@ -1206,26 +1207,39 @@ def account_data_content(account_url):
         page = request.args.get('page', 1, type=int)
         per_page = 50
         
-        # Get files query with directory filter if provided
-        files_query = File.query.filter_by(account_id=account.id)\
-            .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.'))\
-            .filter(~File.key.like('__MACOSX%'))  # Also exclude macOS metadata
+        # Combine base filters into a single expression
+        base_filters = and_(
+            File.account_id == account.id,
+            not_(File.key.like('.%')),
+            not_(File.key.contains('/.')),
+            not_(File.key.like('__MACOSX%'))
+        )
         
+        # Add directory-specific filters if needed
         if directory:
-            # For root directory
             if directory == '/':
-                files_query = files_query.filter(~File.key.contains('/'))
+                # For root directory, add filter for files without slashes
+                files_query = File.query.filter(
+                    and_(
+                        base_filters,
+                        not_(File.key.contains('/'))
+                    )
+                )
             else:
                 # Remove leading slash if present for consistency
                 directory = directory.lstrip('/')
                 # Match files that are directly in this directory
-                files_query = files_query.filter(
-                    File.key.like(f"{directory}/%")  # Starts with directory/
-                ).filter(
-                    ~File.key.like(f"{directory}/%/%")  # But doesn't have another slash after
+                files_query = File.query.filter(
+                    and_(
+                        base_filters,
+                        File.key.like(f"{directory}/%"),
+                        not_(File.key.like(f"{directory}/%/%"))
+                    )
                 )
-        
+        else:
+            # No directory filter, just use base filters
+            files_query = File.query.filter(base_filters)
+
         # Order by last modified and paginate
         pagination = files_query.order_by(File.last_modified.desc()).paginate(
             page=page, 
