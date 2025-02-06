@@ -477,9 +477,7 @@
     }
 
     // Function to edit an existing source
-    function editSource(source) {
-        console.log('Editing source:', source); // Debug log
-        
+    function editSource(source) { 
         // Set basic fields
         document.getElementById('sourceId').value = source.id;
         document.getElementById('sourceName').value = source.name;
@@ -546,24 +544,36 @@
 
     // Initialize file handlers
     function initializeFileHandlers() {
-        document.querySelectorAll('.recent-file-item').forEach(item => {
-            // Remove existing click listeners
-            const newItem = item.cloneNode(true);
-            item.parentNode.replaceChild(newItem, item);
+        console.log('Initializing file handlers...');
+        const fileItems = document.querySelectorAll('.recent-file-item');
+        console.log(`Found ${fileItems.length} file items`);
+        
+        fileItems.forEach(item => {
+            console.log('Setting up handler for:', item.dataset.fileKey);
             
-            newItem.addEventListener('click', async function() {
-                console.log('File item clicked:', this.dataset); // Debug log
+            item.addEventListener('click', async function(e) {
+                e.preventDefault();
+                console.log('File item clicked:', this.dataset.fileKey);
                 const fileId = this.dataset.fileId;
+                console.log('Fetching header for file ID:', fileId);
                 
                 try {
                     const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
                     const data = await response.json();
-                    console.log('Header data:', data); // Debug log
+                    console.log('Header data:', data);
                     
                     if (data.success) {
-                        if (tagify) {
-                            tagify.removeAllTags();
-                            tagify.addTags(data.columns);
+                        const currentTagify = initializeTagify();
+                        if (currentTagify) {
+                            console.log('Removing existing tags...');
+                            currentTagify.removeAllTags();
+                            console.log('Adding new tags:', data.columns);
+                            currentTagify.addTags(data.columns);
+                        } else {
+                            console.error('Tagify not initialized properly');
                         }
 
                         const datetimeSelect = document.getElementById('datetime_column');
@@ -603,19 +613,21 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Debug log for recent files
-        console.log('Recent files in dropdown:', document.querySelectorAll('.recent-file-item').length);
-        document.querySelectorAll('.recent-file-item').forEach(item => {
-            console.log('File item:', {
-                id: item.dataset.fileId,
-                key: item.dataset.fileKey,
-                size: item.dataset.fileSize
-            });
-        });
-
         // Initialize Tagify once at startup
+        console.log('DOMContentLoaded - initializing Tagify');
         initializeTagify();
         
+        // Initialize file handlers
+        console.log('DOMContentLoaded - initializing file handlers');
+        initializeFileHandlers();
+        
+        // Also initialize file handlers when the source modal is shown
+        const sourceModal = document.getElementById('sourceModal');
+        sourceModal.addEventListener('shown.bs.modal', function() {
+            console.log('Modal shown, initializing file handlers');
+            initializeFileHandlers();
+        });
+
         // Initialize all popovers
         var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
         var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
@@ -662,17 +674,6 @@
 
             // Initialize file handlers for the dropdown items
             initializeFileHandlers();
-        });
-
-        // Also initialize file handlers on modal shown event
-        const sourceModal = document.getElementById('sourceModal');
-        sourceModal.addEventListener('shown.bs.modal', function() {
-            console.log('Modal shown, checking file items');
-            const fileItems = document.querySelectorAll('.recent-file-item');
-            console.log('File items found:', fileItems.length);
-            fileItems.forEach(item => {
-                console.log('File item data:', item.dataset);
-            });
         });
 
         // Remove any existing show classes or inline styles that might interfere with Bootstrap
