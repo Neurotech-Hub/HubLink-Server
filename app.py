@@ -22,7 +22,7 @@ formatter = logging.Formatter('%(asctime)s [%(levelname)s] [%(name)s] %(message)
 handler = logging.StreamHandler()
 handler.setFormatter(formatter)
 
-# Configure root logger
+# Configure root logger first
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.INFO)
 # Remove any existing handlers to avoid duplicate logs
@@ -31,19 +31,19 @@ for h in root_logger.handlers:
 root_logger.addHandler(handler)
 
 # Create logger for the application
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)  # This creates the 'app' logger
 logger.setLevel(logging.INFO)
+logger.propagate = True  # Ensure propagation to root logger
 
-# Configure all loggers to propagate and set levels
-loggers = ['plot_utils', 'accounts', 'models', 'S3Manager', __name__]
+# Configure all module loggers
+loggers = ['plot_utils', 'accounts', 'models', 'S3Manager']  # Removed __name__ since we configured it above
 for logger_name in loggers:
     module_logger = logging.getLogger(logger_name)
     module_logger.setLevel(logging.INFO)
-    # Remove any existing handlers to avoid duplicate logs
+    # Remove any existing handlers
     for h in module_logger.handlers:
         module_logger.removeHandler(h)
-    # Don't add individual handlers, let them propagate to root
-    module_logger.propagate = True  # Allow logs to propagate to root logger
+    module_logger.propagate = True
 
 # Configure SQLAlchemy logging to be less verbose
 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
@@ -58,7 +58,7 @@ app = Flask(__name__, instance_relative_config=True)
 # Load environment configuration
 app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
 
-# Configure Flask app logger
+# Configure Flask app logger to use our configuration
 app.logger.setLevel(logging.INFO)
 # Remove default Flask handlers
 app.logger.handlers = []
