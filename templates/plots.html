@@ -805,6 +805,29 @@
         }, 500);
     }
 
+    // Function to edit layout - needs to be global for onclick
+    function editLayout(layoutId, layoutName) {
+        const modal = document.getElementById('layoutModal');
+        const form = document.getElementById('layoutForm');
+        const title = modal.querySelector('.modal-title');
+        
+        // Reset form
+        form.reset();
+        
+        // Set form values
+        document.getElementById('layoutName').value = layoutName;
+        
+        // Update modal title
+        title.textContent = 'Edit Layout';
+        
+        // Set form action for editing
+        form.action = `/{{ account.url }}/layout/${layoutId}/update`;
+        
+        // Show the modal
+        const layoutModal = new bootstrap.Modal(modal);
+        layoutModal.show();
+    }
+
     // Function to validate tags - needs to be global for Tagify callbacks
     function validateTags() {
         const form = document.getElementById('sourceForm');
