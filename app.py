@@ -32,17 +32,18 @@ root_logger.addHandler(handler)
 
 # Create logger for the application
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 # Configure all loggers to propagate and set levels
-loggers = ['plot_utils', 'accounts', 'models', 'S3Manager']
+loggers = ['plot_utils', 'accounts', 'models', 'S3Manager', __name__]
 for logger_name in loggers:
     module_logger = logging.getLogger(logger_name)
     module_logger.setLevel(logging.INFO)
     # Remove any existing handlers to avoid duplicate logs
     for h in module_logger.handlers:
         module_logger.removeHandler(h)
-    module_logger.addHandler(handler)
-    module_logger.propagate = False  # Prevent duplicate logs
+    # Don't add individual handlers, let them propagate to root
+    module_logger.propagate = True  # Allow logs to propagate to root logger
 
 # Configure SQLAlchemy logging to be less verbose
 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
@@ -61,9 +62,8 @@ app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
 app.logger.setLevel(logging.INFO)
 # Remove default Flask handlers
 app.logger.handlers = []
-app.logger.addHandler(handler)
-# Prevent propagation to avoid duplicate logs
-app.logger.propagate = False
+# Let Flask logger propagate to root
+app.logger.propagate = True
 
 # Essential Flask and SQLAlchemy configuration
 app.config['SECRET_KEY'] = os.urandom(24)
