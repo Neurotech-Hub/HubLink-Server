@@ -426,41 +426,196 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Plotly.js -->
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
 
 <!-- Page-specific scripts -->
 <script>
-    // Initialize all functionality when DOM is ready
-    let tagify;  // Make tagify globally accessible
+    let tagify; // Make tagify globally accessible
     
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize Tagify first
+    // Add validateTags utility function
+    function validateTags() {
+        const form = document.getElementById('sourceForm');
+        if (form.classList.contains('was-validated')) {
+            form.checkValidity();
+        }
+    }
+
+    // Function to initialize Tagify
+    function initializeTagify() {
         const includeColumnsInput = document.getElementById('includeColumns');
-        if (includeColumnsInput && !includeColumnsInput._tagify) {
-            tagify = new Tagify(includeColumnsInput, {
-                delimiters: ",",
-                pattern: /^[^,*]+$/,
-                dropdown: { enabled: 0 },
-                callbacks: {
-                    add: validateTags,
-                    remove: function(e) {
-                        validateTags();
-                        // Check if removed tag was the datetime column
-                        const datetimeSelect = document.getElementById('datetime_column');
-                        const datetimeFeedback = document.getElementById('datetime_feedback');
-                        if (datetimeSelect.value === e.detail.data.value) {
-                            // Reset datetime column state
-                            datetimeSelect.value = '';
-                            datetimeSelect.style.display = 'none';
-                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                        }
-                    }
-                },
-                originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
-            });
+        if (!includeColumnsInput) return;
+
+        // If Tagify is already initialized, just return the existing instance
+        if (tagify) {
+            return tagify;
         }
 
+        // Create new Tagify instance
+        tagify = new Tagify(includeColumnsInput, {
+            delimiters: ",",
+            pattern: /^[^,*]+$/,
+            dropdown: { enabled: 0 },
+            callbacks: {
+                add: validateTags,
+                remove: function(e) {
+                    validateTags();
+                    // Check if removed tag was the datetime column
+                    const datetimeSelect = document.getElementById('datetime_column');
+                    const datetimeFeedback = document.getElementById('datetime_feedback');
+                    if (datetimeSelect.value === e.detail.data.value) {
+                        // Reset datetime column state
+                        datetimeSelect.value = '';
+                        datetimeSelect.style.display = 'none';
+                        datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                    }
+                }
+            },
+            originalInputValueFormat: valuesArr => valuesArr.map(item => item.value).join(',')
+        });
+
+        return tagify;
+    }
+
+    // Function to edit an existing source
+    function editSource(source) {
+        console.log('Editing source:', source); // Debug log
+        
+        // Set basic fields
+        document.getElementById('sourceId').value = source.id;
+        document.getElementById('sourceName').value = source.name;
+        
+        // Handle directory filter
+        const directoryFilter = document.getElementById('directory_filter');
+        if (directoryFilter && source.directory_filter) {
+            let optionExists = Array.from(directoryFilter.options).some(opt => opt.value === source.directory_filter);
+            if (!optionExists) {
+                const option = new Option(source.directory_filter, source.directory_filter);
+                directoryFilter.add(option);
+            }
+            directoryFilter.value = source.directory_filter;
+        }
+        
+        document.getElementById('includeSubdirs').checked = source.include_subdirs;
+        
+        // Initialize Tagify if needed
+        if (!tagify) {
+            initializeTagify();
+        }
+        
+        // Handle include columns with Tagify
+        if (tagify) {
+            tagify.removeAllTags();
+            if (source.include_columns) {
+                const columns = source.include_columns.split(',').map(col => col.trim());
+                tagify.addTags(columns);
+            }
+        }
+        
+        document.getElementById('dataPoints').value = source.data_points || 1000;
+        document.getElementById('tailOnly').checked = source.tail_only;
+        
+        // Handle datetime column
+        const datetimeSelect = document.getElementById('datetime_column');
+        const datetimeFeedback = document.getElementById('datetime_feedback');
+        
+        if (source.datetime_column) {
+            datetimeSelect.innerHTML = `
+                <option value="">Select a column...</option>
+                <option value="${source.datetime_column}" selected>${source.datetime_column}</option>
+            `;
+            datetimeSelect.style.display = 'block';
+            datetimeFeedback.textContent = 'Column containing datetime values';
+        } else {
+            datetimeSelect.style.display = 'none';
+            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+        }
+
+        // Show data points if tail only is checked
+        const dataPointsContainer = document.getElementById('dataPointsContainer');
+        if (dataPointsContainer) {
+            dataPointsContainer.style.display = source.tail_only ? 'block' : 'none';
+        }
+        
+        // Update modal title
+        document.getElementById('sourceModalLabel').textContent = 'Edit Source';
+        
+        // Show the modal
+        const sourceModal = new bootstrap.Modal(document.getElementById('sourceModal'));
+        sourceModal.show();
+    }
+
+    // Initialize file handlers
+    function initializeFileHandlers() {
+        document.querySelectorAll('.recent-file-item').forEach(item => {
+            // Remove existing click listeners
+            const newItem = item.cloneNode(true);
+            item.parentNode.replaceChild(newItem, item);
+            
+            newItem.addEventListener('click', async function() {
+                console.log('File item clicked:', this.dataset); // Debug log
+                const fileId = this.dataset.fileId;
+                
+                try {
+                    const response = await fetch(`/{{ account.url }}/file/${fileId}/header`);
+                    const data = await response.json();
+                    console.log('Header data:', data); // Debug log
+                    
+                    if (data.success) {
+                        if (tagify) {
+                            tagify.removeAllTags();
+                            tagify.addTags(data.columns);
+                        }
+
+                        const datetimeSelect = document.getElementById('datetime_column');
+                        const datetimeFeedback = document.getElementById('datetime_feedback');
+                        datetimeSelect.innerHTML = '<option value="">Select a column...</option>';
+                        
+                        if (data.datetime_columns?.length > 0) {
+                            data.datetime_columns.forEach(col => {
+                                const option = document.createElement('option');
+                                option.value = col;
+                                option.textContent = col;
+                                datetimeSelect.appendChild(option);
+                            });
+
+                            datetimeSelect.value = data.datetime_columns[0];
+                            datetimeFeedback.textContent = 'Column containing datetime values';
+                            datetimeSelect.style.display = 'block';
+                        } else {
+                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                            datetimeSelect.style.display = 'none';
+                        }
+                    } else {
+                        throw new Error(data.error || 'Failed to fetch header data');
+                    }
+                } catch (e) {
+                    console.error('Error fetching header:', e);
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
+                    alertDiv.innerHTML = `
+                        Failed to fetch header: ${e.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.getElementById('includeColumns').parentNode.insertBefore(alertDiv, document.getElementById('includeColumns'));
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Debug log for recent files
+        console.log('Recent files in dropdown:', document.querySelectorAll('.recent-file-item').length);
+        document.querySelectorAll('.recent-file-item').forEach(item => {
+            console.log('File item:', {
+                id: item.dataset.fileId,
+                key: item.dataset.fileKey,
+                size: item.dataset.fileSize
+            });
+        });
+
+        // Initialize Tagify once at startup
+        initializeTagify();
+        
         // Initialize all popovers
         var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
         var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
@@ -469,6 +624,13 @@
 
         // Initialize source modal
         document.querySelector('[data-bs-target="#sourceModal"]').addEventListener('click', function() {
+            console.log('Opening source modal'); // Debug log
+            
+            // Debug log for dropdown content
+            const dropdown = document.querySelector('.dropdown-menu.dropdown-menu-end');
+            console.log('Dropdown element:', dropdown);
+            console.log('Dropdown items:', dropdown.querySelectorAll('.recent-file-item').length);
+            
             // Reset form
             document.getElementById('sourceForm').reset();
             document.getElementById('sourceId').value = '';
@@ -492,6 +654,25 @@
             if (dataPointsContainer) {
                 dataPointsContainer.style.display = 'none';
             }
+
+            // Reset Tagify
+            if (tagify) {
+                tagify.removeAllTags();
+            }
+
+            // Initialize file handlers for the dropdown items
+            initializeFileHandlers();
+        });
+
+        // Also initialize file handlers on modal shown event
+        const sourceModal = document.getElementById('sourceModal');
+        sourceModal.addEventListener('shown.bs.modal', function() {
+            console.log('Modal shown, checking file items');
+            const fileItems = document.querySelectorAll('.recent-file-item');
+            console.log('File items found:', fileItems.length);
+            fileItems.forEach(item => {
+                console.log('File item data:', item.dataset);
+            });
         });
 
         // Remove any existing show classes or inline styles that might interfere with Bootstrap
@@ -524,628 +705,507 @@
             }
         });
 
-        // Handle file selection with Tagify
-        document.querySelectorAll('.recent-file-item').forEach(item => {
-            item.addEventListener('click', async function() {
-                const fileId = this.dataset.fileId;
-                
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-                    
-                    const response = await fetch(`/{{ account.url }}/file/${fileId}/header`, {
-                        signal: controller.signal
-                    });
-                    clearTimeout(timeoutId);
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        tagify.removeAllTags();
-                        tagify.addTags(data.columns);
-
-                        const datetimeSelect = document.getElementById('datetime_column');
-                        const datetimeFeedback = document.getElementById('datetime_feedback');
-                        datetimeSelect.innerHTML = '';
-                        
-                        if (data.datetime_columns?.length > 0) {
-                            data.datetime_columns.forEach(col => {
-                                const option = document.createElement('option');
-                                option.value = col;
-                                option.textContent = col;
-                                datetimeSelect.appendChild(option);
-                            });
-
-                            datetimeSelect.value = data.datetime_columns[0];
-                            datetimeFeedback.textContent = 'Column containing datetime values';
-                            datetimeSelect.style.display = 'block';
-                        } else {
-                            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                            datetimeSelect.style.display = 'none';
-                        }
-                    } else {
-                        throw new Error(data.error);
-                    }
-                } catch (e) {
-                    console.error('Error fetching header:', e);
-                    const alertDiv = document.createElement('div');
-                    alertDiv.className = 'alert alert-danger alert-dismissible fade show py-2 mb-2';
-                    alertDiv.innerHTML = `
-                        Failed to fetch header: ${e.message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    `;
-                    includeColumnsInput.parentNode.insertBefore(alertDiv, includeColumnsInput);
+        // Group selection functionality
+        function togglePathLevels(event) {
+            event.preventDefault();
+            const pathLevels = document.querySelector('#groupPills .path-levels');
+            const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
+            
+            if (pathLevels.style.display === 'none') {
+                pathLevels.style.display = 'block';
+                noGroupingBtn.classList.remove('active');
+                // Select first available level if exists
+                const firstLevel = pathLevels.querySelector('button:not([disabled])');
+                if (firstLevel) {
+                    selectGroup(firstLevel);
+                } else {
+                    // If no enabled levels exist, revert to "No grouping"
+                    noGroupingBtn.classList.add('active');
+                    selectGroup(noGroupingBtn);
                 }
-            });
-        });
-    });
-
-    // Group selection functionality
-    function togglePathLevels(event) {
-        event.preventDefault();
-        const pathLevels = document.querySelector('#groupPills .path-levels');
-        const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
-        
-        if (pathLevels.style.display === 'none') {
-            pathLevels.style.display = 'block';
-            noGroupingBtn.classList.remove('active');
-            // Select first available level if exists
-            const firstLevel = pathLevels.querySelector('button:not([disabled])');
-            if (firstLevel) {
-                selectGroup(firstLevel);
             } else {
-                // If no enabled levels exist, revert to "No grouping"
+                pathLevels.style.display = 'none';
                 noGroupingBtn.classList.add('active');
                 selectGroup(noGroupingBtn);
             }
-        } else {
-            pathLevels.style.display = 'none';
-            noGroupingBtn.classList.add('active');
-            selectGroup(noGroupingBtn);
-        }
-    }
-
-    function selectGroup(element) {
-        // Remove active class from all pills
-        document.querySelectorAll('#groupPills .btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        // Add active class to selected pill
-        element.classList.add('active');
-        // Update hidden input
-        document.getElementById('groupBy').value = element.dataset.value;
-        
-        // Handle path levels visibility
-        const pathLevels = document.querySelector('#groupPills .path-levels');
-        if (element.dataset.value === '') {
-            pathLevels.style.display = 'none';
-        }
-    }
-
-    function updateGroupOptions(source) {
-        const pillsContainer = document.querySelector('#groupPills .path-levels');
-        // Clear existing path levels
-        pillsContainer.innerHTML = '';
-        
-        // If max_path_level is 0, grouping is disabled
-        if (source.max_path_level === 0) {
-            return;
-        }
-        
-        // Get path segments for this source
-        const sourcePaths = {{ source_paths | tojson | safe }};
-        const pathSegments = sourcePaths[source.id] || [];
-        
-        // Create pills from 0 to max_path_level
-        for (let i = 0; i <= source.max_path_level; i++) {
-            // Add separator before each pill except the first one
-            if (i > 0) {
-                const separator = document.createElement('span');
-                separator.className = 'separator';
-                separator.textContent = '/';
-                pillsContainer.appendChild(separator);
-            }
-
-            const pill = document.createElement('button');
-            pill.type = 'button';
-            if (i === 0) {
-                pill.className = 'btn btn-outline-secondary';
-                pill.disabled = true;
-                pill.title = 'Use "No grouping" for root level';
-                pill.textContent = 'Root';
-            } else {
-                pill.className = 'btn btn-outline-primary';
-                pill.onclick = () => selectGroup(pill);
-                
-                // Use path segment if available, otherwise fallback to Level X
-                if (pathSegments[i - 1]) {
-                    pill.textContent = pathSegments[i - 1].display;
-                    pill.title = pathSegments[i - 1].full;  // Full path as tooltip
-                } else {
-                    pill.textContent = `Level ${i}`;
-                }
-            }
-            pill.dataset.value = i;
-            pillsContainer.appendChild(pill);
-        }
-    }
-
-    // Function to edit an existing source
-    function editSource(source) {
-        document.getElementById('sourceId').value = source.id;
-        document.getElementById('sourceName').value = source.name;
-        document.getElementById('directory_filter').value = source.directory_filter;
-        document.getElementById('includeSubdirs').checked = source.include_subdirs;
-        document.getElementById('includeColumns').value = source.include_columns;
-        document.getElementById('dataPoints').value = source.data_points;
-        document.getElementById('tailOnly').checked = source.tail_only;
-        document.getElementById('sourceModalLabel').textContent = 'Edit Source';
-
-        // Handle datetime column
-        const datetimeSelect = document.getElementById('datetime_column');
-        const datetimeFeedback = document.getElementById('datetime_feedback');
-        
-        if (source.datetime_column) {
-            // Create option for existing datetime column
-            datetimeSelect.innerHTML = `<option value="${source.datetime_column}">${source.datetime_column}</option>`;
-            datetimeSelect.value = source.datetime_column;
-            datetimeSelect.style.display = 'block';
-            datetimeFeedback.textContent = 'Column containing datetime values';
-        } else {
-            datetimeSelect.style.display = 'none';
-            datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
         }
 
-        // Show data points if tail only is checked
-        const dataPointsContainer = document.getElementById('dataPointsContainer');
-        if (dataPointsContainer) {
-            dataPointsContainer.style.display = source.tail_only ? 'block' : 'none';
-        }
-        
-        // Show the modal
-        const sourceModal = new bootstrap.Modal(document.getElementById('sourceModal'));
-        sourceModal.show();
-    }
-
-    function editLayout(id, name) {
-        const modal = document.getElementById('layoutModal');
-        const form = document.getElementById('layoutForm');
-        const title = modal.querySelector('.modal-title');
-        
-        // Update modal title
-        title.textContent = 'Edit Layout';
-        
-        // Set form action
-        form.action = `/{{ account.url }}/layout/${id}/update`;
-        
-        // Populate form fields
-        document.getElementById('layoutName').value = name;
-        
-        // Show modal
-        const bsModal = new bootstrap.Modal(modal);
-        bsModal.show();
-    }
-
-    function setLayoutName(sourceName) {
-        const layoutNameInput = document.getElementById('layoutName');
-        layoutNameInput.value = sourceName;
-        // Add visual feedback
-        layoutNameInput.classList.add('border-primary');
-        setTimeout(() => {
-            layoutNameInput.classList.remove('border-primary');
-        }, 500);
-    }
-
-    // Add button click handler
-    document.querySelector('[data-bs-target="#layoutModal"]').addEventListener('click', function() {
-        const modal = document.getElementById('layoutModal');
-        const form = document.getElementById('layoutForm');
-        const title = modal.querySelector('.modal-title');
-        
-        // Reset form
-        form.reset();
-        
-        // Update modal title
-        title.textContent = 'Add Layout';
-        
-        // Set form action for creation
-        form.action = `/{{ account.url }}/layout`;
-    });
-
-    // Initialize all popovers
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize plot popovers
-        const popoverOptions = {
-            html: true,
-            trigger: 'manual',
-            content: '<div class="plot-preview" style="width: 400px; height: 300px;"></div>',
-            placement: 'auto',
-            container: 'body'
-        };
-
-        const plotTriggerList = document.querySelectorAll('.card-body[data-bs-toggle="popover"]');
-        const popovers = [...plotTriggerList].map(el => {
-            const popover = new bootstrap.Popover(el, popoverOptions);
-            
-            // Add click handler
-            el.addEventListener('click', function(e) {
-                if (!e.target.closest('.btn-close')) {
-                    // Hide any other shown popovers
-                    popovers.forEach(p => {
-                        if (p !== popover) {
-                            p.hide();
-                        }
-                    });
-                    
-                    // Toggle this popover
-                    const tip = popover.tip;
-                    if (!tip || !tip.classList.contains('show')) {
-                        popover.show();
-                    } else {
-                        popover.hide();
-                    }
-                }
+        function selectGroup(element) {
+            // Remove active class from all pills
+            document.querySelectorAll('#groupPills .btn').forEach(btn => {
+                btn.classList.remove('active');
             });
+            // Add active class to selected pill
+            element.classList.add('active');
+            // Update hidden input
+            document.getElementById('groupBy').value = element.dataset.value;
             
-            // Add show event listener for plot
-            el.addEventListener('shown.bs.popover', function () {
-                console.log('Raw data:', this.dataset.plotlyJson);  // Debug
-                try {
-                    // Parse the outer JSON structure
-                    const plotData = JSON.parse(this.dataset.plotlyJson);
-                    console.log('Parsed outer JSON:', plotData);  // Debug
-                    
-                    const popoverBody = popover.tip.querySelector('.plot-preview');
-                    
-                    if (plotData && plotData.plotly_json) {
-                        // Parse the inner plotly_json string
-                        const plotlyConfig = JSON.parse(plotData.plotly_json);
-                        console.log('Parsed plotly config:', plotlyConfig);  // Debug
-                        
-                        Plotly.newPlot(
-                            popoverBody,
-                            plotlyConfig.data,
-                            {
-                                ...plotlyConfig.layout,
-                                height: 250,
-                                width: 350,
-                                margin: { l: 30, r: 10, t: 30, b: 30 }
-                            },
-                            {
-                                responsive: true,
-                                displayModeBar: 'hover',
-                                displaylogo: false,
-                                modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
-                            }
-                        );
-                    }
-                } catch (error) {
-                    console.error('Error parsing plot data:', error);
-                    console.error('Raw data was:', this.dataset.plotlyJson);
-                }
-            });
-            
-            return popover;
-        });
-
-        // Close popovers when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.card-body[data-bs-toggle="popover"]') && 
-                !e.target.closest('.popover')) {
-                popovers.forEach(p => p.hide());
-            }
-        });
-    });
-
-    // Function to create a new plot
-    function createPlot(source) {
-        // Reset form
-        document.getElementById('plotForm').reset();
-        document.getElementById('plotSourceId').value = source.id;
-        document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot`;
-        
-        // Reset plot type buttons to default state (timeline)
-        document.querySelectorAll('.plot-type-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-type') === 'timeline') {
-                btn.classList.add('active');
-            }
-        });
-        document.getElementById('plotType').value = 'timeline';
-        
-        // Show/hide timeline option based on datetime column
-        const timelineButtons = document.querySelectorAll('.plot-type-btn[data-type="timeline"]');
-        if (!source.datetime_column) {
-            timelineButtons.forEach(btn => {
-                btn.classList.add('disabled');
-                btn.setAttribute('disabled', 'disabled');
-            });
-            document.getElementById('plotTypeFeedback').style.display = 'block';
-            document.getElementById('plotTypeSuccess').style.display = 'none';
-            
-            // Select bar chart as default if timeline is disabled
-            const barButton = document.querySelector('.plot-type-btn[data-type="bar"]');
-            if (barButton) {
-                barButton.click();
-            }
-        } else {
-            timelineButtons.forEach(btn => {
-                btn.classList.remove('disabled');
-                btn.removeAttribute('disabled');
-            });
-            document.getElementById('plotTypeFeedback').style.display = 'none';
-            document.getElementById('plotTypeSuccess').style.display = 'block';
-            document.getElementById('datetimeColumnName').textContent = source.datetime_column;
-        }
-        
-        // Update y-axis data options
-        const yDataSelect = document.getElementById('yData');
-        yDataSelect.innerHTML = '<option value="">Select column...</option>';
-        
-        if (source.include_columns) {
-            source.include_columns.split(',').forEach(column => {
-                column = column.trim();
-                if (column && column !== source.datetime_column) {
-                    const option = document.createElement('option');
-                    option.value = column;
-                    option.textContent = column;
-                    yDataSelect.appendChild(option);
-                }
-            });
-        }
-        
-        // Handle group options visibility
-        const groupByPathLevel = document.querySelector('#groupPills .text-muted');
-        const groupByLink = document.querySelector('#groupPills a');
-        if (source.max_path_level === 0) {
-            groupByPathLevel.style.display = 'none';
-            groupByLink.style.display = 'none';
-        } else {
-            groupByPathLevel.style.display = '';
-            groupByLink.style.display = '';
-            // Update group options
-            updateGroupOptions(source);
-        }
-        
-        // Reset modal title
-        document.getElementById('plotModalLabel').textContent = 'New Plot';
-        
-        // Reset submit button text
-        const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
-        submitButton.textContent = 'Create';
-        
-        // Show the modal
-        const plotModal = new bootstrap.Modal(document.getElementById('plotModal'));
-        plotModal.show();
-    }
-
-    let userEditedName = false;
-
-    function updatePlotName() {
-        if (userEditedName) return;  // Don't update if user has manually edited
-        
-        const dataColumn = document.getElementById('yData').value;
-        const plotName = document.getElementById('plotName');
-        
-        if (dataColumn) {
-            plotName.value = dataColumn;
-        }
-    }
-
-    // Add event listener for manual plot name edits
-    document.getElementById('plotName').addEventListener('input', function() {
-        userEditedName = true;
-    });
-
-    // Reset userEditedName when modal is hidden
-    document.getElementById('plotModal').addEventListener('hidden.bs.modal', function() {
-        userEditedName = false;
-    });
-
-    function clearPlotName() {
-        document.getElementById('plotName').value = '';
-        userEditedName = true;  // Prevent auto-population after clearing
-    }
-
-    function editPlot(source, plot) {
-        // First call createPlot to set up the modal with source data
-        createPlot(source);
-        
-        // Then populate the form with plot data
-        document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot/${plot.id}/edit`;
-        
-        // Update plot type selection
-        document.querySelectorAll('.plot-type-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('data-type') === plot.type) {
-                btn.classList.add('active');
-            }
-        });
-        document.getElementById('plotType').value = plot.type;
-        
-        // Update other form fields
-        document.getElementById('yData').value = plot.config.y_data;
-        document.getElementById('plotName').value = plot.name;
-        document.getElementById('groupBy').value = plot.group_by || '';
-        
-        // Handle advanced options
-        const advancedOptions = plot.advanced || [];
-        document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate');
-        document.getElementById('lastValue').checked = advancedOptions.includes('last_value');
-        updateAdvancedOptions(plot.type);
-        
-        // Handle group selection
-        const groupByPathLevel = document.querySelector('#groupPills .text-muted');
-        const groupByLink = document.querySelector('#groupPills a');
-        const pathLevels = document.querySelector('#groupPills .path-levels');
-        const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
-
-        if (source.max_path_level > 0) {
-            groupByPathLevel.style.display = '';
-            groupByLink.style.display = '';
-            
-            if (plot.group_by !== null) {
-                // Show path levels and select the correct level
-                pathLevels.style.display = 'block';
-                noGroupingBtn.classList.remove('active');
-                
-                // Find and activate the correct group button
-                const groupBtn = pathLevels.querySelector(`button[data-value="${plot.group_by}"]`);
-                if (groupBtn) {
-                    groupBtn.classList.add('active');
-                }
-            } else {
-                // No grouping selected
+            // Handle path levels visibility
+            const pathLevels = document.querySelector('#groupPills .path-levels');
+            if (element.dataset.value === '') {
                 pathLevels.style.display = 'none';
+            }
+        }
+
+        function updateGroupOptions(source) {
+            const pillsContainer = document.querySelector('#groupPills .path-levels');
+            // Clear existing path levels
+            pillsContainer.innerHTML = '';
+            
+            // If max_path_level is 0, grouping is disabled
+            if (source.max_path_level === 0) {
+                return;
+            }
+            
+            // Get path segments for this source
+            const sourcePaths = {{ source_paths | tojson | safe }};
+            const pathSegments = sourcePaths[source.id] || [];
+            
+            // Create pills from 0 to max_path_level
+            for (let i = 0; i <= source.max_path_level; i++) {
+                // Add separator before each pill except the first one
+                if (i > 0) {
+                    const separator = document.createElement('span');
+                    separator.className = 'separator';
+                    separator.textContent = '/';
+                    pillsContainer.appendChild(separator);
+                }
+
+                const pill = document.createElement('button');
+                pill.type = 'button';
+                if (i === 0) {
+                    pill.className = 'btn btn-outline-secondary';
+                    pill.disabled = true;
+                    pill.title = 'Use "No grouping" for root level';
+                    pill.textContent = 'Root';
+                } else {
+                    pill.className = 'btn btn-outline-primary';
+                    pill.onclick = () => selectGroup(pill);
+                    
+                    // Use path segment if available, otherwise fallback to Level X
+                    if (pathSegments[i - 1]) {
+                        pill.textContent = pathSegments[i - 1].display;
+                        pill.title = pathSegments[i - 1].full;  // Full path as tooltip
+                    } else {
+                        pill.textContent = `Level ${i}`;
+                    }
+                }
+                pill.dataset.value = i;
+                pillsContainer.appendChild(pill);
+            }
+        }
+
+        function setLayoutName(sourceName) {
+            const layoutNameInput = document.getElementById('layoutName');
+            layoutNameInput.value = sourceName;
+            // Add visual feedback
+            layoutNameInput.classList.add('border-primary');
+            setTimeout(() => {
+                layoutNameInput.classList.remove('border-primary');
+            }, 500);
+        }
+
+        // Add button click handler
+        document.querySelector('[data-bs-target="#layoutModal"]').addEventListener('click', function() {
+            const modal = document.getElementById('layoutModal');
+            const form = document.getElementById('layoutForm');
+            const title = modal.querySelector('.modal-title');
+            
+            // Reset form
+            form.reset();
+            
+            // Update modal title
+            title.textContent = 'Add Layout';
+            
+            // Set form action for creation
+            form.action = `/{{ account.url }}/layout`;
+        });
+
+        // Initialize all popovers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize plot popovers
+            const popoverOptions = {
+                html: true,
+                trigger: 'manual',
+                content: '<div class="plot-preview" style="width: 400px; height: 300px;"></div>',
+                placement: 'auto',
+                container: 'body'
+            };
+
+            const plotTriggerList = document.querySelectorAll('.card-body[data-bs-toggle="popover"]');
+            const popovers = [...plotTriggerList].map(el => {
+                const popover = new bootstrap.Popover(el, popoverOptions);
+                
+                // Add click handler
+                el.addEventListener('click', function(e) {
+                    if (!e.target.closest('.btn-close')) {
+                        // Hide any other shown popovers
+                        popovers.forEach(p => {
+                            if (p !== popover) {
+                                p.hide();
+                            }
+                        });
+                        
+                        // Toggle this popover
+                        const tip = popover.tip;
+                        if (!tip || !tip.classList.contains('show')) {
+                            popover.show();
+                        } else {
+                            popover.hide();
+                        }
+                    }
+                });
+                
+                // Add show event listener for plot
+                el.addEventListener('shown.bs.popover', function () {
+                    try {
+                        // Parse the outer JSON structure
+                        const plotData = JSON.parse(this.dataset.plotlyJson);
+                        
+                        const popoverBody = popover.tip.querySelector('.plot-preview');
+                        
+                        if (plotData && plotData.plotly_json) {
+                            // Parse the inner plotly_json string
+                            const plotlyConfig = JSON.parse(plotData.plotly_json);
+                            
+                            Plotly.newPlot(
+                                popoverBody,
+                                plotlyConfig.data,
+                                {
+                                    ...plotlyConfig.layout,
+                                    height: 250,
+                                    width: 350,
+                                    margin: { l: 30, r: 10, t: 30, b: 30 }
+                                },
+                                {
+                                    responsive: true,
+                                    displayModeBar: 'hover',
+                                    displaylogo: false,
+                                    modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d']
+                                }
+                            );
+                        }
+                    } catch (error) {
+                        console.error('Error parsing plot data:', error);
+                        console.error('Raw data was:', this.dataset.plotlyJson);
+                    }
+                });
+                
+                return popover;
+            });
+
+            // Close popovers when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.card-body[data-bs-toggle="popover"]') && 
+                    !e.target.closest('.popover')) {
+                    popovers.forEach(p => p.hide());
+                }
+            });
+        });
+
+        // Function to create a new plot
+        function createPlot(source) {
+            // Reset form
+            document.getElementById('plotForm').reset();
+            document.getElementById('plotSourceId').value = source.id;
+            document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot`;
+            
+            // Reset plot type buttons to default state (timeline)
+            document.querySelectorAll('.plot-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-type') === 'timeline') {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('plotType').value = 'timeline';
+            
+            // Show/hide timeline option based on datetime column
+            const timelineButtons = document.querySelectorAll('.plot-type-btn[data-type="timeline"]');
+            if (!source.datetime_column) {
+                timelineButtons.forEach(btn => {
+                    btn.classList.add('disabled');
+                    btn.setAttribute('disabled', 'disabled');
+                });
+                document.getElementById('plotTypeFeedback').style.display = 'block';
+                document.getElementById('plotTypeSuccess').style.display = 'none';
+                
+                // Select bar chart as default if timeline is disabled
+                const barButton = document.querySelector('.plot-type-btn[data-type="bar"]');
+                if (barButton) {
+                    barButton.click();
+                }
+            } else {
+                timelineButtons.forEach(btn => {
+                    btn.classList.remove('disabled');
+                    btn.removeAttribute('disabled');
+                });
+                document.getElementById('plotTypeFeedback').style.display = 'none';
+                document.getElementById('plotTypeSuccess').style.display = 'block';
+                document.getElementById('datetimeColumnName').textContent = source.datetime_column;
+            }
+            
+            // Update y-axis data options
+            const yDataSelect = document.getElementById('yData');
+            yDataSelect.innerHTML = '<option value="">Select column...</option>';
+            
+            if (source.include_columns) {
+                source.include_columns.split(',').forEach(column => {
+                    column = column.trim();
+                    if (column && column !== source.datetime_column) {
+                        const option = document.createElement('option');
+                        option.value = column;
+                        option.textContent = column;
+                        yDataSelect.appendChild(option);
+                    }
+                });
+            }
+            
+            // Handle group options visibility
+            const groupByPathLevel = document.querySelector('#groupPills .text-muted');
+            const groupByLink = document.querySelector('#groupPills a');
+            if (source.max_path_level === 0) {
+                groupByPathLevel.style.display = 'none';
+                groupByLink.style.display = 'none';
+            } else {
+                groupByPathLevel.style.display = '';
+                groupByLink.style.display = '';
+                // Update group options
+                updateGroupOptions(source);
+            }
+            
+            // Reset modal title
+            document.getElementById('plotModalLabel').textContent = 'New Plot';
+            
+            // Reset submit button text
+            const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
+            submitButton.textContent = 'Create';
+            
+            // Show the modal
+            const plotModal = new bootstrap.Modal(document.getElementById('plotModal'));
+            plotModal.show();
+        }
+
+        let userEditedName = false;
+
+        function updatePlotName() {
+            if (userEditedName) return;  // Don't update if user has manually edited
+            
+            const dataColumn = document.getElementById('yData').value;
+            const plotName = document.getElementById('plotName');
+            
+            if (dataColumn) {
+                plotName.value = dataColumn;
+            }
+        }
+
+        // Add event listener for manual plot name edits
+        document.getElementById('plotName').addEventListener('input', function() {
+            userEditedName = true;
+        });
+
+        // Reset userEditedName when modal is hidden
+        document.getElementById('plotModal').addEventListener('hidden.bs.modal', function() {
+            userEditedName = false;
+        });
+
+        function clearPlotName() {
+            document.getElementById('plotName').value = '';
+            userEditedName = true;  // Prevent auto-population after clearing
+        }
+
+        function editPlot(source, plot) {
+            // First call createPlot to set up the modal with source data
+            createPlot(source);
+            
+            // Then populate the form with plot data
+            document.getElementById('plotForm').action = `/{{ account.url }}/source/${source.id}/plot/${plot.id}/edit`;
+            
+            // Update plot type selection
+            document.querySelectorAll('.plot-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.getAttribute('data-type') === plot.type) {
+                    btn.classList.add('active');
+                }
+            });
+            document.getElementById('plotType').value = plot.type;
+            
+            // Update other form fields
+            document.getElementById('yData').value = plot.config.y_data;
+            document.getElementById('plotName').value = plot.name;
+            document.getElementById('groupBy').value = plot.group_by || '';
+            
+            // Handle advanced options
+            const advancedOptions = plot.advanced || [];
+            document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate');
+            document.getElementById('lastValue').checked = advancedOptions.includes('last_value');
+            updateAdvancedOptions(plot.type);
+            
+            // Handle group selection
+            const groupByPathLevel = document.querySelector('#groupPills .text-muted');
+            const groupByLink = document.querySelector('#groupPills a');
+            const pathLevels = document.querySelector('#groupPills .path-levels');
+            const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
+
+            if (source.max_path_level > 0) {
+                groupByPathLevel.style.display = '';
+                groupByLink.style.display = '';
+                
+                if (plot.group_by !== null) {
+                    // Show path levels and select the correct level
+                    pathLevels.style.display = 'block';
+                    noGroupingBtn.classList.remove('active');
+                    
+                    // Find and activate the correct group button
+                    const groupBtn = pathLevels.querySelector(`button[data-value="${plot.group_by}"]`);
+                    if (groupBtn) {
+                        groupBtn.classList.add('active');
+                    }
+                } else {
+                    // No grouping selected
+                    pathLevels.style.display = 'none';
+                    noGroupingBtn.classList.add('active');
+                }
+            } else {
+                groupByPathLevel.style.display = 'none';
+                groupByLink.style.display = 'none';
                 noGroupingBtn.classList.add('active');
             }
-        } else {
-            groupByPathLevel.style.display = 'none';
-            groupByLink.style.display = 'none';
-            noGroupingBtn.classList.add('active');
-        }
-        
-        // Update modal title and submit button
-        document.getElementById('plotModalLabel').textContent = 'Edit Plot';
-        const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
-        submitButton.textContent = 'Update';
-    }
-
-    // Function to toggle HTMX polling for source list
-    function toggleSourceListPolling(enable) {
-        window.toggleHtmxPolling('sourceListContent', enable);
-    }
-
-    // Disable polling when modal is open
-    document.addEventListener('show.bs.modal', function() {
-        toggleSourceListPolling(false);
-    });
-
-    // Re-enable polling when all modals are closed
-    document.addEventListener('hidden.bs.modal', function() {
-        if (!document.querySelector('.modal.show')) {
-            toggleSourceListPolling(true);
-        }
-    });
-
-    function updateAdvancedOptions(plotType) {
-        // Hide all plot-specific options first
-        document.querySelectorAll('.timeline-only, .bar-only').forEach(el => {
-            el.style.display = 'none';
-        });
-        
-        // Show options based on plot type
-        if (plotType === 'timeline') {
-            document.querySelectorAll('.timeline-only').forEach(el => {
-                el.style.display = 'block';
-            });
-        } else if (plotType === 'bar') {
-            document.querySelectorAll('.bar-only').forEach(el => {
-                el.style.display = 'block';
-            });
-        }
-    }
-
-    // Update the existing plot type change handler
-    document.getElementById('plotType').addEventListener('change', function() {
-        const plotType = this.value;
-        updateAdvancedOptions(plotType);
-        // ... any existing plot type change handling ...
-    });
-
-    function selectPlotType(button) {
-        // Remove active class from all buttons
-        document.querySelectorAll('.plot-type-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Add active class to clicked button
-        button.classList.add('active');
-        
-        // Update hidden input
-        const plotType = button.getAttribute('data-type');
-        document.getElementById('plotType').value = plotType;
-        
-        // Call existing plot type change handlers
-        updatePlotName();
-        updateAdvancedOptions(plotType);
-    }
-
-    // Function to detect datetime columns
-    function detectColumns(sourceId) {
-        if (!sourceId) {
-            alert('Please select a source first');
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('source_id', sourceId);
-
-        fetch('/detect_columns', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            // Update datetime column select
-            const datetimeSelect = document.getElementById('datetime_column');
-            const datetimeFeedback = document.getElementById('datetime_feedback');
             
-            if (datetimeSelect && data.datetime_columns?.length > 0) {
-                datetimeSelect.innerHTML = '<option value="">Select a column...</option>';
-                data.datetime_columns.forEach(col => {
-                    const option = document.createElement('option');
-                    option.value = col;
-                    option.textContent = col;
-                    datetimeSelect.appendChild(option);
-                });
-
-                if (data.datetime_columns.length === 1) {
-                    datetimeSelect.value = data.datetime_columns[0];
-                }
-                
-                datetimeSelect.style.display = 'block';
-                if (datetimeFeedback) {
-                    datetimeFeedback.textContent = 'Column containing datetime values';
-                }
-            } else if (datetimeFeedback) {
-                datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
-                if (datetimeSelect) {
-                    datetimeSelect.style.display = 'none';
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error detecting columns:', error);
-            alert('Error detecting columns: ' + error.message);
-        });
-    }
-
-    // Add click handler for detect columns button
-    const detectButton = document.querySelector('button[onclick="detectColumns()"]');
-    if (detectButton) {
-        detectButton.onclick = function() {
-            const sourceId = document.getElementById('source_id')?.value;
-            detectColumns(sourceId);
-        };
-    }
-
-    // Add validateTags utility function
-    function validateTags() {
-        const form = document.getElementById('sourceForm');
-        if (form.classList.contains('was-validated')) {
-            form.checkValidity();
+            // Update modal title and submit button
+            document.getElementById('plotModalLabel').textContent = 'Edit Plot';
+            const submitButton = document.querySelector('#plotModal .modal-footer .btn-primary');
+            submitButton.textContent = 'Update';
         }
-    }
 
-    // Add toggleDataPoints function
-    function toggleDataPoints() {
-        const tailOnly = document.getElementById('tailOnly');
-        const dataPointsContainer = document.getElementById('dataPointsContainer');
-        dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
-    }
+        // Function to toggle HTMX polling for source list
+        function toggleSourceListPolling(enable) {
+            window.toggleHtmxPolling('sourceListContent', enable);
+        }
+
+        // Disable polling when modal is open
+        document.addEventListener('show.bs.modal', function() {
+            toggleSourceListPolling(false);
+        });
+
+        // Re-enable polling when all modals are closed
+        document.addEventListener('hidden.bs.modal', function() {
+            if (!document.querySelector('.modal.show')) {
+                toggleSourceListPolling(true);
+            }
+        });
+
+        function updateAdvancedOptions(plotType) {
+            // Hide all plot-specific options first
+            document.querySelectorAll('.timeline-only, .bar-only').forEach(el => {
+                el.style.display = 'none';
+            });
+            
+            // Show options based on plot type
+            if (plotType === 'timeline') {
+                document.querySelectorAll('.timeline-only').forEach(el => {
+                    el.style.display = 'block';
+                });
+            } else if (plotType === 'bar') {
+                document.querySelectorAll('.bar-only').forEach(el => {
+                    el.style.display = 'block';
+                });
+            }
+        }
+
+        // Update the existing plot type change handler
+        document.getElementById('plotType').addEventListener('change', function() {
+            const plotType = this.value;
+            updateAdvancedOptions(plotType);
+            // ... any existing plot type change handling ...
+        });
+
+        function selectPlotType(button) {
+            // Remove active class from all buttons
+            document.querySelectorAll('.plot-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            button.classList.add('active');
+            
+            // Update hidden input
+            const plotType = button.getAttribute('data-type');
+            document.getElementById('plotType').value = plotType;
+            
+            // Call existing plot type change handlers
+            updatePlotName();
+            updateAdvancedOptions(plotType);
+        }
+
+        // Function to detect datetime columns
+        function detectColumns(sourceId) {
+            if (!sourceId) {
+                alert('Please select a source first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('source_id', sourceId);
+
+            fetch('/detect_columns', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Update datetime column select
+                const datetimeSelect = document.getElementById('datetime_column');
+                const datetimeFeedback = document.getElementById('datetime_feedback');
+                
+                if (datetimeSelect && data.datetime_columns?.length > 0) {
+                    datetimeSelect.innerHTML = '<option value="">Select a column...</option>';
+                    data.datetime_columns.forEach(col => {
+                        const option = document.createElement('option');
+                        option.value = col;
+                        option.textContent = col;
+                        datetimeSelect.appendChild(option);
+                    });
+
+                    if (data.datetime_columns.length === 1) {
+                        datetimeSelect.value = data.datetime_columns[0];
+                    }
+                    
+                    datetimeSelect.style.display = 'block';
+                    if (datetimeFeedback) {
+                        datetimeFeedback.textContent = 'Column containing datetime values';
+                    }
+                } else if (datetimeFeedback) {
+                    datetimeFeedback.textContent = 'No datetime fields were found in the selected file.';
+                    if (datetimeSelect) {
+                        datetimeSelect.style.display = 'none';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error detecting columns:', error);
+                alert('Error detecting columns: ' + error.message);
+            });
+        }
+
+        // Add click handler for detect columns button
+        const detectButton = document.querySelector('button[onclick="detectColumns()"]');
+        if (detectButton) {
+            detectButton.onclick = function() {
+                const sourceId = document.getElementById('source_id')?.value;
+                detectColumns(sourceId);
+            };
+        }
+
+        // Add toggleDataPoints function
+        function toggleDataPoints() {
+            const tailOnly = document.getElementById('tailOnly');
+            const dataPointsContainer = document.getElementById('dataPointsContainer');
+            dataPointsContainer.style.display = tailOnly.checked ? 'block' : 'none';
+        }
+    });
 </script>
 {% endblock scripts %}

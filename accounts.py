@@ -378,13 +378,22 @@ def account_plots(account_url):
         
         # Get directories for source creation
         directories = get_directory_paths(account.id)
+
+        # Get recent files for the dropdown
+        recent_files = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.')) \
+            .order_by(File.last_modified.desc())\
+            .limit(50)\
+            .all()
         
         return render_template('plots.html', 
                              account=account, 
                              sources=sources,
                              source_paths=source_paths,
                              layout_plot_names=layout_plot_names,
-                             directories=directories)
+                             directories=directories,
+                             recent_files=recent_files)
                              
     except Exception as e:
         logging.error(f"Error loading plots for {account_url}: {e}")
