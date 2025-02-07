@@ -1360,9 +1360,10 @@ def dashboard_dirs(account_url):
         files = File.query.filter_by(account_id=account.id)\
             .filter(~File.key.like('.%'))\
             .filter(~File.key.contains('/.')) \
+            .order_by(File.last_modified.desc()) \
             .all()
         
-        # Process directory data
+        # Process directory data with timestamps
         dir_data = {}
         for file in files:
             path_parts = file.key.split('/')
@@ -1374,7 +1375,7 @@ def dashboard_dirs(account_url):
                             'count': 0,
                             'size': 0,
                             'latest_date': None,
-                            'subdirs': set()
+                            'latest_file': None
                         }
                     dir_data[dir_path]['count'] += 1
                     dir_data[dir_path]['size'] += file.size
@@ -1383,30 +1384,31 @@ def dashboard_dirs(account_url):
                     if not dir_data[dir_path]['latest_date'] or \
                        (file.last_modified and file.last_modified > dir_data[dir_path]['latest_date']):
                         dir_data[dir_path]['latest_date'] = file.last_modified
-                    
-                    # Add subdirectories
-                    for i in range(1, len(path_parts)):
-                        subdir = '/'.join(path_parts[:i])
-                        if subdir != dir_path:
-                            dir_data[dir_path]['subdirs'].add(subdir)
+                        dir_data[dir_path]['latest_file'] = file.key.split('/')[-1]
         
-        # Convert directory data for the template
-        dir_names = sorted(dir_data.keys())
-        dir_counts = [dir_data[d]['count'] for d in dir_names]
+        # Sort directories by latest_date and take top 10
+        sorted_dirs = sorted(
+            [(dir_name, data) for dir_name, data in dir_data.items()],
+            key=lambda x: x[1]['latest_date'] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True
+        )[:10]
+        
+        # Prepare data for template
+        dir_names = [d[0] for d in sorted_dirs]
+        dir_counts = [d[1]['count'] for d in sorted_dirs]
         dir_details = {
-            d: {
-                'size': dir_data[d]['size'],
-                'latest_date': format_datetime(dir_data[d]['latest_date'], account.settings.timezone, 'absolute') if dir_data[d]['latest_date'] else None,
-                'subdir_count': len(dir_data[d]['subdirs'])
-            } for d in dir_names
+            d[0]: {
+                'size': d[1]['size'],
+                'latest_date': format_datetime(d[1]['latest_date'], account.settings.timezone, 'absolute') if d[1]['latest_date'] else None,
+                'latest_file': d[1]['latest_file']
+            } for d in sorted_dirs
         }
         
         return render_template('components/dashboard_dirs.html',
                              account=account,
                              dir_names=dir_names,
                              dir_counts=dir_counts,
-                             dir_details=dir_details,
-                             common_prefix=None)
+                             dir_details=dir_details)
     except Exception as e:
         logging.error(f"Error loading dashboard directories for {account_url}: {e}")
         return "Error loading directory chart", 500

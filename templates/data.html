@@ -33,7 +33,7 @@
 {% block modals %}
 <!-- File Details Modal -->
 <div class="modal fade" id="fileDetailsModal" tabindex="-1" aria-labelledby="fileDetailsModalLabel" aria-hidden="true" data-bs-backdrop="static">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="fileDetailsModalLabel">File Details</h5>
@@ -352,9 +352,9 @@
         
         document.getElementById('modalFileName').textContent = key;
         document.getElementById('modalFileSize').textContent = size;
-        document.getElementById('modalLastModified').textContent = lastModified && lastModified !== 'Never' ? new Date(lastModified).toLocaleString() : 'Never';
+        document.getElementById('modalLastModified').textContent = lastModified || 'Never';
         document.getElementById('modalVersion').textContent = version || 'N/A';
-        document.getElementById('modalLastChecked').textContent = lastChecked && lastChecked !== 'Never' ? new Date(lastChecked).toLocaleString() : 'Never';
+        document.getElementById('modalLastChecked').textContent = lastChecked || 'Never';
         
         const modal = bootstrap.Modal.getOrCreateInstance(fileDetailsModal);
         modal.show();

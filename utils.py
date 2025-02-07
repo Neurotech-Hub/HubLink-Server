@@ -14,7 +14,7 @@ def format_datetime(dt, tz_name='America/Chicago', format='relative'):
     Format a datetime object according to the specified timezone and format.
     
     Args:
-        dt: datetime object (assumed to be UTC)
+        dt: datetime object (if naive, assumed to be in local time already)
         tz_name: timezone name (from account settings)
         format: 'relative' for "X time ago" or 'absolute' for "YYYY-MM-DD HH:MM"
     
@@ -23,25 +23,30 @@ def format_datetime(dt, tz_name='America/Chicago', format='relative'):
     """
     if not dt:
         return "Never"
-        
-    # Ensure datetime is UTC
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
     
-    # Convert to account timezone
     try:
         tz = pytz.timezone(tz_name)
-        local_dt = dt.astimezone(tz)
+        
+        # Get current time in the target timezone
+        now = datetime.now(tz)
+        
+        # If datetime is naive (from SQLite), localize it directly
+        if dt.tzinfo is None:
+            local_dt = tz.localize(dt)
+        else:
+            # If datetime has timezone info, convert it
+            local_dt = dt.astimezone(tz)
+            
     except pytz.exceptions.UnknownTimeZoneError:
         # Fallback to UTC if timezone is invalid
-        local_dt = dt
+        tz = timezone.utc
+        now = datetime.now(tz)
+        local_dt = dt if dt.tzinfo else dt.replace(tzinfo=tz)
         logging.warning(f"Unknown timezone: {tz_name}, falling back to UTC")
     
-    now = datetime.now(timezone.utc)
-    
     if format == 'relative':
-        # Calculate time difference
-        diff = now - dt
+        # Calculate time difference - ensure both are timezone-aware
+        diff = now - local_dt
         
         if diff.total_seconds() < 60:
             return 'just now'
