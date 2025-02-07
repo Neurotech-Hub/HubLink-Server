@@ -30,21 +30,15 @@ def format_datetime(dt, tz_name='America/Chicago', format='relative'):
         # Get current time in UTC first, then convert to target timezone
         now = datetime.now(timezone.utc)
         now = now.astimezone(tz)
-        logging.info(f"[format_datetime] Input dt: {dt} (tzinfo: {dt.tzinfo})")
         
         # If datetime is naive (from SQLite), assume it's UTC
         if dt.tzinfo is None:
             utc_dt = dt.replace(tzinfo=timezone.utc)  # First make it UTC
             local_dt = utc_dt.astimezone(tz)  # Then convert to local
-            logging.info(f"[format_datetime] Converted naive UTC dt to local: {local_dt}")
         else:
             # If datetime has timezone info, convert it
             local_dt = dt.astimezone(tz)
-            logging.info(f"[format_datetime] Converted aware dt to: {local_dt}")
             
-        logging.info(f"[format_datetime] Now: {now}")
-        logging.info(f"[format_datetime] Local dt: {local_dt}")
-        
     except pytz.exceptions.UnknownTimeZoneError:
         # Fallback to UTC if timezone is invalid
         tz = timezone.utc
@@ -55,7 +49,6 @@ def format_datetime(dt, tz_name='America/Chicago', format='relative'):
     if format == 'relative':
         # Calculate time difference - ensure both are timezone-aware
         diff = now - local_dt
-        logging.info(f"[format_datetime] Time difference: {diff} ({diff.total_seconds()} seconds)")
         
         if diff.total_seconds() < 60:
             return 'just now'
