@@ -186,35 +186,7 @@ def get_plot_title(plot):
         return f"{plot.name} ({plot.source.name})"
     return plot.name
 
-def decimate_timeseries(df, x_column, max_points=1000):
-    """
-    Decimate a timeseries DataFrame to a maximum number of points while preserving
-    the overall shape of the data.
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame
-        x_column (str): Name of the datetime column
-        max_points (int): Maximum number of points to return
-        
-    Returns:
-        pd.DataFrame: Decimated DataFrame
-    """
-    if len(df) <= max_points:
-        return df
-        
-    # Calculate the number of points to skip
-    skip = len(df) // max_points
-    
-    # Always include first and last points
-    decimated = pd.concat([
-        df.iloc[[0]],  # First point
-        df.iloc[1:-1:skip],  # Decimated middle points
-        df.iloc[[-1]]  # Last point
-    ])
-    
-    return decimated
-
-def read_and_decimate_csv(csv_content, datetime_col, value_col, max_points=1000):
+def read_and_decimate_csv(csv_content, datetime_col, value_col, max_points=2000):
     """Read CSV with early decimation to reduce memory usage."""
     try:
         # Count total lines first

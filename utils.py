@@ -14,7 +14,7 @@ def format_datetime(dt, tz_name='America/Chicago', format='relative'):
     Format a datetime object according to the specified timezone and format.
     
     Args:
-        dt: datetime object (if naive, assumed to be in local time already)
+        dt: datetime object (if naive, assumed to be UTC)
         tz_name: timezone name (from account settings)
         format: 'relative' for "X time ago" or 'absolute' for "YYYY-MM-DD HH:MM"
     
@@ -27,26 +27,35 @@ def format_datetime(dt, tz_name='America/Chicago', format='relative'):
     try:
         tz = pytz.timezone(tz_name)
         
-        # Get current time in the target timezone
-        now = datetime.now(tz)
+        # Get current time in UTC first, then convert to target timezone
+        now = datetime.now(timezone.utc)
+        now = now.astimezone(tz)
+        logging.info(f"[format_datetime] Input dt: {dt} (tzinfo: {dt.tzinfo})")
         
-        # If datetime is naive (from SQLite), localize it directly
+        # If datetime is naive (from SQLite), assume it's UTC
         if dt.tzinfo is None:
-            local_dt = tz.localize(dt)
+            utc_dt = dt.replace(tzinfo=timezone.utc)  # First make it UTC
+            local_dt = utc_dt.astimezone(tz)  # Then convert to local
+            logging.info(f"[format_datetime] Converted naive UTC dt to local: {local_dt}")
         else:
             # If datetime has timezone info, convert it
             local_dt = dt.astimezone(tz)
+            logging.info(f"[format_datetime] Converted aware dt to: {local_dt}")
             
+        logging.info(f"[format_datetime] Now: {now}")
+        logging.info(f"[format_datetime] Local dt: {local_dt}")
+        
     except pytz.exceptions.UnknownTimeZoneError:
         # Fallback to UTC if timezone is invalid
         tz = timezone.utc
-        now = datetime.now(tz)
+        now = datetime.now(timezone.utc)
         local_dt = dt if dt.tzinfo else dt.replace(tzinfo=tz)
         logging.warning(f"Unknown timezone: {tz_name}, falling back to UTC")
     
     if format == 'relative':
         # Calculate time difference - ensure both are timezone-aware
         diff = now - local_dt
+        logging.info(f"[format_datetime] Time difference: {diff} ({diff.total_seconds()} seconds)")
         
         if diff.total_seconds() < 60:
             return 'just now'
