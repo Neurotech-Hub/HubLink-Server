@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import json
 from plot_utils import get_plot_data
 from sqlalchemy import text
+from sqlalchemy.pool import QueuePool
 from functools import wraps
 from utils import admin_required, get_analytics, initiate_source_refresh, format_datetime
 
@@ -71,6 +72,17 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL', 
     f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
 )
+
+# Configure SQLAlchemy connection pooling
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'poolclass': QueuePool,
+    'pool_size': 5,  # Start with 5 connections in the pool
+    'max_overflow': 10,  # Allow up to 10 additional connections when pool is full
+    'pool_timeout': 30,  # Wait up to 30 seconds for a connection
+    'pool_recycle': 1800,  # Recycle connections after 30 minutes
+    'pool_pre_ping': True  # Enable connection health checks
+}
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
