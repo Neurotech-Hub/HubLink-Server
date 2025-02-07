@@ -76,11 +76,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 # Configure SQLAlchemy connection pooling
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'poolclass': QueuePool,
-    'pool_size': 5,  # Start with 5 connections in the pool
-    'max_overflow': 10,  # Allow up to 10 additional connections when pool is full
-    'pool_timeout': 30,  # Wait up to 30 seconds for a connection
-    'pool_recycle': 1800,  # Recycle connections after 30 minutes
-    'pool_pre_ping': True  # Enable connection health checks
+    'pool_size': 2,  # Reduced from 5
+    'max_overflow': 3,  # Reduced from 10
+    'pool_timeout': 20,  # Reduced from 30
+    'pool_recycle': 1800,
+    'pool_pre_ping': True
 }
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
