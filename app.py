@@ -102,22 +102,14 @@ with app.app_context():
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
 
-# Clean up temporary migration tables and run migrations
+# Note: Database migrations are handled by the pre-deploy command:
+# flask db upgrade
 with app.app_context():
     try:
-        # Clean up any temporary migration tables first
-        with db.engine.connect() as conn:
-            # Get all table names
-            tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '_alembic_tmp_%'"))
-            # Drop each temporary table
-            for table in tables:
-                conn.execute(text(f"DROP TABLE IF EXISTS {table[0]}"))
-                logger.info(f"Dropped temporary table: {table[0]}")
-            conn.commit()
-        
-        # flask db upgrade on server as pre-deploy command
+        # Initialize any required application state
+        pass
     except Exception as e:
-        logger.error(f"Error during database cleanup/migration: {e}")
+        logger.error(f"Error during application initialization: {e}")
 
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)
