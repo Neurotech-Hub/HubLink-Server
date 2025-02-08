@@ -42,12 +42,12 @@
                             {% set storage_width = 1 if storage_bytes > 0 and storage_percent < 1 else (storage_percent if storage_percent <= 100 else 100) %}
                             <label class="form-label d-flex justify-content-between">
                                 <span>Storage Usage</span>
-                                <span>{{ storage_display }}{{ storage_unit }} / {{ account.plan_storage_gb }}GB ({{ storage_percent }}%, width: {{ storage_width }}%)</span>
+                                <span>{{ storage_display }}{{ storage_unit }} / {{ account.plan_storage_gb }}GB</span>
                             </label>
                             <div class="progress" style="height: 20px">
                                 <div class="progress-bar {% if storage_percent >= 100 %}bg-danger{% elif storage_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 
                                      role="progressbar" 
-                                     style="width: {{ storage_width }}%; min-width: 3px;" 
+                                     style="width: {{ storage_width }}%;" 
                                      aria-valuenow="{{ storage_percent }}" 
                                      aria-valuemin="0" 
                                      aria-valuemax="100"></div>

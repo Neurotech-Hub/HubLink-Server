@@ -825,7 +825,7 @@ def get_storage_usage(account_settings):
     Returns:
         Dictionary containing:
             current_size: Total size of current (latest) files
-            versioned_size: Total size including all versions
+            versioned_size: Total size of non-current versions only
         Returns None if error occurs
     """
     try:
@@ -851,11 +851,13 @@ def get_storage_usage(account_settings):
         for page in paginator.paginate(Bucket=account_settings.bucket_name):
             if 'Versions' in page:
                 for version in page['Versions']:
-                    versioned_size += version['Size']
+                    # Only count non-current versions for versioned_size
+                    if not version.get('IsLatest', False):
+                        versioned_size += version['Size']
         
         return {
             'current_size': current_size,
-            'versioned_size': versioned_size
+            'versioned_size': versioned_size  # Now only includes non-current versions
         }
         
     except Exception as e:
