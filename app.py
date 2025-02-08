@@ -115,10 +115,7 @@ with app.app_context():
                 logger.info(f"Dropped temporary table: {table[0]}")
             conn.commit()
         
-        # Only run migrations in production
-        if os.getenv('ENVIRONMENT', 'development') == 'production':
-            upgrade()
-            logger.info("Database migrations completed successfully")
+        # flask db upgrade on server as pre-deploy command
     except Exception as e:
         logger.error(f"Error during database cleanup/migration: {e}")
 
