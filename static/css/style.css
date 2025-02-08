@@ -1787,3 +1787,7 @@ table td code {
         margin: 1.75rem auto;
     }
 }
+
+.progress-bar-2rem {
+    height: 2rem;
+}

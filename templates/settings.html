@@ -44,7 +44,7 @@
                                 <span>Storage Usage</span>
                                 <span>{{ storage_display }}{{ storage_unit }} / {{ account.plan_storage_gb }}GB</span>
                             </label>
-                            <div class="progress" style="height: 20px">
+                            <div class="progress progress-bar-2rem">
                                 <div class="progress-bar {% if storage_percent >= 100 %}bg-danger{% elif storage_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 
                                      role="progressbar" 
                                      style="width: {{ storage_width }}%;" 
@@ -74,7 +74,7 @@
                                 <span>Monthly Uploads</span>
                                 <span>{{ account.count_uploaded_files_mo }} / {{ account.plan_uploads_mo }}</span>
                             </label>
-                            <div class="progress">
+                            <div class="progress progress-bar-2rem">
                                 <div class="progress-bar {% if uploads_percent >= 100 %}bg-danger{% elif uploads_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 
                                      role="progressbar" 
                                      style="width: {{ uploads_width }}%" 
