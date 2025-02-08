@@ -100,8 +100,17 @@ def run_migrations_online():
             **current_app.extensions['migrate'].configure_args
         )
 
-        with context.begin_transaction():
-            context.run_migrations()
+        # Add this block before running migrations
+        connection = config.get_bind()
+        if connection.dialect.name == 'sqlite':
+            connection.execute('PRAGMA foreign_keys=OFF')
+        
+        try:
+            with context.begin_transaction():
+                context.run_migrations()
+        finally:
+            if connection.dialect.name == 'sqlite':
+                connection.execute('PRAGMA foreign_keys=ON')
 
 
 if context.is_offline_mode():
