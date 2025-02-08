@@ -154,10 +154,7 @@ def get_analytics(account_id=None):
             'total_accounts': len(accounts),
             'total_gateways': total_gateways,
             'total_gateway_pings': sum(account.count_gateway_pings for account in accounts),
-            'total_page_loads': sum(account.count_page_loads for account in accounts),
-            'active_accounts': len([acc for acc in accounts if acc.count_page_loads > 0]),
             'total_file_downloads': sum(account.count_file_downloads for account in accounts),
-            'total_settings_updated': sum(account.count_settings_updated for account in accounts),
             'total_uploaded_files': sum(account.count_uploaded_files for account in accounts),
             'total_nodes': total_nodes,
             # Add 24h metrics

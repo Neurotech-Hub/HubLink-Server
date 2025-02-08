@@ -1,7 +1,7 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for, session, flash
 from flask_migrate import Migrate, upgrade
-from models import db, Account, Setting, File, Gateway, Source # db locations
-from S3Manager import generate_s3_url, setup_aws_resources, cleanup_aws_resources
+from models import db, Account, Setting, File, Gateway, Source, Admin # db locations
+from S3Manager import setup_aws_resources, cleanup_aws_resources, get_storage_usage
 import os
 import logging
 import random
@@ -87,6 +87,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
 db.init_app(app)
+
+# Enable SQLite foreign key support
+with app.app_context():
+    if db.engine.url.drivername == 'sqlite':
+        from sqlalchemy import event
+        from sqlalchemy.engine import Engine
+        @event.listens_for(Engine, "connect")
+        def set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
@@ -359,12 +370,52 @@ def favicon():
 @app.route('/cronjob')
 def cronjob():
     try:
+        current_time = datetime.now(timezone.utc)
+        logger.info(f"Cronjob running at {current_time}")
+        
+        # Check for daily tasks
+        admin = Admin.query.first()
+        if not admin:
+            admin = Admin()
+            db.session.add(admin)
+            db.session.commit()
+            
+        last_cron = admin.last_daily_cron.replace(tzinfo=timezone.utc) if admin.last_daily_cron else None
+        if not last_cron or (
+            current_time.year != last_cron.year or 
+            current_time.month != last_cron.month or 
+            current_time.day != last_cron.day
+        ):
+            logger.info(f"Running daily tasks at {current_time}")
+            # check if sum of file.size > account.storage_current_bytes for each account
+            # if so, use S3Manager > get_storage_usage() to update account.storage_current_bytes
+            for account in Account.query.all():
+                total_size = sum(file.size for file in File.query.filter_by(account_id=account.id).all())
+                if total_size > account.storage_current_bytes:
+                    storage_usage = get_storage_usage(account.settings)
+                    account.storage_current_bytes = storage_usage['current_size']
+                    account.storage_versioned_bytes = storage_usage['versioned_size']
+                    db.session.commit()
+
+                # Check if it's time for monthly reset
+                current_time = current_time.replace(tzinfo=timezone.utc)  # Ensure timezone aware
+                plan_anniversary = account.plan_start_date.replace(tzinfo=timezone.utc) - timedelta(days=1)
+                new_month = current_time.day == plan_anniversary.day
+
+                if new_month:
+                    logger.info(f"Monthly reset for account {account.name} (ID: {account.id})")
+                    account.count_uploaded_files_mo = 0
+                    db.session.commit()
+
+            # Update last cron run time
+            admin.last_daily_cron = current_time
+            db.session.commit()
+        
         # Get SOURCE_INTERVAL_MINUTES from environment, default to 5
         interval_minutes = int(os.getenv('SOURCE_INTERVAL_MINUTES', '5'))
-        current_time = datetime.now(timezone.utc)
         cutoff_time = current_time - timedelta(minutes=interval_minutes)
         
-        logger.info(f"Cronjob running at {current_time}, looking for sources not updated since {cutoff_time}")
+        logger.info(f"Looking for sources not updated since {cutoff_time}")
         
         # Find sources that need updating
         sources = Source.query.filter(
@@ -446,6 +497,11 @@ def edit_account(account_id):
         account.is_admin = request.form.get('is_admin') == 'on'
         account.use_password = request.form.get('use_password') == 'on'
         
+        # Update plan fields
+        account.plan_storage_gb = int(request.form.get('plan_storage_gb', account.plan_storage_gb))
+        account.plan_uploads_mo = int(request.form.get('plan_uploads_mo', account.plan_uploads_mo))
+        account.plan_versioned_backups = request.form.get('plan_versioned_backups') == 'on'
+        
         # Handle password update
         new_password = request.form.get('password', '').strip()
         if new_password or (account.use_password and not account.password_hash):
@@ -520,9 +576,8 @@ def reset_account_stats(account_id):
         # Reset all statistics
         account.count_gateway_pings = 0
         account.count_uploaded_files = 0
-        account.count_page_loads = 0
+        account.count_uploaded_files_mo = 0
         account.count_file_downloads = 0
-        account.count_settings_updated = 0
         
         # Delete all gateway entries
         Gateway.query.filter_by(account_id=account_id).delete()

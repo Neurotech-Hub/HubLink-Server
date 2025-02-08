@@ -19,6 +19,54 @@
                 <span id="copySuccess" class="text-success ms-2" style="display: none;">Copied!</span>
             </div>
 
+            <!-- Plan Details Card -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Plan Details</h5>
+                    <p class="text-muted">🎉 Your account was started <strong>{{ account.plan_start_date.strftime('%B %-d, %Y') }}</strong>.</p>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {% set storage_gb = (account.storage_current_bytes / (1024 * 1024 * 1024))|round(2) %}
+                            {% set storage_percent = ((storage_gb / account.plan_storage_gb) * 100)|round(1) %}
+                            {% set storage_width = storage_percent if storage_percent <= 100 else 100 %}
+                            <label class="form-label d-flex justify-content-between">
+                                <span>Storage Usage</span>
+                                <span>{{ storage_gb }}GB / {{ account.plan_storage_gb }}GB</span>
+                            </label>
+                            <div class="progress">
+                                <div class="progress-bar {% if storage_percent >= 100 %}bg-danger{% elif storage_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ storage_width }}%" 
+                                     aria-valuenow="{{ storage_percent }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
+                            </div>
+                            {% if account.plan_versioned_backups %}
+                                {% set versioned_gb = (account.storage_versioned_bytes / (1024 * 1024 * 1024))|round(2) %}
+                                <small class="text-muted">Version backups occupy {{ versioned_gb }}GB</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {% set uploads_percent = ((account.count_uploaded_files_mo / account.plan_uploads_mo) * 100)|round(1) %}
+                            {% set uploads_width = uploads_percent if uploads_percent <= 100 else 100 %}
+                            <label class="form-label d-flex justify-content-between">
+                                <span>Monthly Uploads</span>
+                                <span>{{ account.count_uploaded_files_mo }} / {{ account.plan_uploads_mo }}</span>
+                            </label>
+                            <div class="progress">
+                                <div class="progress-bar {% if uploads_percent >= 100 %}bg-danger{% elif uploads_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ uploads_width }}%" 
+                                     aria-valuenow="{{ uploads_percent }}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Flash Messages -->
             {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}

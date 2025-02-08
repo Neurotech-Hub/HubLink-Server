@@ -316,12 +316,6 @@ table td a {
 /* Adjust for mobile */
 @media (max-width: 768px) {
 
-    /* Hide first column in responsive tables */
-    .table-responsive table td:first-child,
-    .table-responsive table th:first-child {
-        display: none;
-    }
-
     .table th,
     .table td {
         font-size: 0.75rem;
@@ -1492,119 +1486,98 @@ table td code {
 }
 
 /* Data Content Table Responsive Styling */
-.table-responsive .data-table {
+#dataContent .table-responsive .data-table {
     table-layout: fixed;
     width: 100%;
 }
 
-.table-responsive .data-table th,
-.table-responsive .data-table td {
+#dataContent .table-responsive .data-table th,
+#dataContent .table-responsive .data-table td {
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 /* Column widths for desktop */
-.table-responsive .data-table th:first-child,
-.table-responsive .data-table td:first-child {
+#dataContent .table-responsive .data-table th:first-child,
+#dataContent .table-responsive .data-table td:first-child {
     width: 5%;
     padding-right: 0;
 }
 
-.table-responsive .data-table th:nth-child(2),
-.table-responsive .data-table td:nth-child(2) {
+#dataContent .table-responsive .data-table th:nth-child(2),
+#dataContent .table-responsive .data-table td:nth-child(2) {
     width: 65%;
 }
 
-.table-responsive .data-table th:nth-child(3),
-.table-responsive .data-table td:nth-child(3) {
+#dataContent .table-responsive .data-table th:nth-child(3),
+#dataContent .table-responsive .data-table td:nth-child(3) {
     width: 15%;
 }
 
-.table-responsive .data-table th:nth-child(4),
-.table-responsive .data-table td:nth-child(4) {
+#dataContent .table-responsive .data-table th:nth-child(4),
+#dataContent .table-responsive .data-table td:nth-child(4) {
     width: 15%;
 }
 
 /* Mobile styling */
 @media (max-width: 768px) {
 
-    /* Hide version tag */
-    .table-responsive .data-table .version-tag {
+    /* Hide first column and version tag */
+    #dataContent .data-table th:first-child,
+    #dataContent .data-table td:first-child,
+    #dataContent .data-table .version-tag {
         display: none;
     }
 
-    .selection-tools {
+    #dataContent .selection-tools {
         display: none;
     }
 
     /* Adjust column widths for mobile */
-    .table-responsive .data-table th:first-child,
-    .table-responsive .data-table td:first-child {
-        width: 7%;
-        padding: 0.4rem 0.1rem;
+    #dataContent .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
-    .table-responsive .data-table th:nth-child(2),
-    .table-responsive .data-table td:nth-child(2) {
-        width: 53%;
+    #dataContent .data-table {
+        min-width: 100%;
+        table-layout: auto;
     }
 
-    .table-responsive .data-table th:nth-child(3),
-    .table-responsive .data-table td:nth-child(3),
-    .table-responsive .data-table th:nth-child(4),
-    .table-responsive .data-table td:nth-child(4) {
-        width: 20%;
+    #dataContent .data-table th:nth-child(2),
+    #dataContent .data-table td:nth-child(2) {
+        min-width: 200px;
+    }
+
+    #dataContent .data-table th:nth-child(3),
+    #dataContent .data-table td:nth-child(3),
+    #dataContent .data-table th:nth-child(4),
+    #dataContent .data-table td:nth-child(4) {
+        min-width: 100px;
     }
 
     /* Improve text handling on mobile */
-    .table-responsive .data-table th {
+    #dataContent .data-table th {
         font-size: 0.75rem;
-        padding: 0.4rem 0.25rem;
+        padding: 0.4rem;
+        white-space: nowrap;
     }
 
-    .table-responsive .data-table td {
+    #dataContent .data-table td {
         font-size: 0.7rem;
-        padding: 0.4rem 0.25rem;
-        white-space: normal;
-        word-wrap: break-word;
+        padding: 0.4rem;
         line-height: 1.2;
     }
 
     /* Make filename column wrap nicely */
-    .table-responsive .data-table td:nth-child(2) {
+    #dataContent .data-table td:nth-child(2) {
         word-break: break-all;
     }
 
     /* Keep size and date columns from wrapping */
-    .table-responsive .data-table td:nth-child(3),
-    .table-responsive .data-table td:nth-child(4) {
+    #dataContent .data-table td:nth-child(3),
+    #dataContent .data-table td:nth-child(4) {
         white-space: nowrap;
-    }
-
-    /* Reduce checkbox size on mobile */
-    .table-responsive .data-table .form-check-input {
-        width: 0.8rem;
-        height: 0.8rem;
-        margin: 0;
-        padding: 0;
-    }
-
-    /* Center the checkbox in its column */
-    .table-responsive .data-table td:first-child .form-check {
-        display: flex;
-        justify-content: center;
-    }
-
-    /* Scale down all buttons */
-    .btn {
-        font-size: 0.7rem !important;
-        padding: 0.2rem 0.4rem !important;
-    }
-
-    /* Preserve icon sizes in buttons if needed */
-    .btn i,
-    .btn .bi {
-        font-size: 0.8rem !important;
     }
 }
 

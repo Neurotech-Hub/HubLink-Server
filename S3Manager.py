@@ -814,3 +814,50 @@ def delete_files_from_s3(account_settings, files):
         logging.error(f"Error in delete_files_from_s3: {str(e)}")
         db.session.rollback()
         return False, str(e)
+
+def get_storage_usage(account_settings):
+    """
+    Get both current total size and versioned total size of an S3 bucket.
+    
+    Args:
+        account_settings: Setting object containing AWS credentials and bucket name
+        
+    Returns:
+        Dictionary containing:
+            current_size: Total size of current (latest) files
+            versioned_size: Total size including all versions
+        Returns None if error occurs
+    """
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        
+        current_size = 0
+        versioned_size = 0
+        
+        # Get all current objects first
+        paginator = s3_client.get_paginator('list_objects_v2')
+        for page in paginator.paginate(Bucket=account_settings.bucket_name):
+            if 'Contents' in page:
+                for obj in page['Contents']:
+                    current_size += obj['Size']
+        
+        # Get all versions of all objects
+        paginator = s3_client.get_paginator('list_object_versions')
+        for page in paginator.paginate(Bucket=account_settings.bucket_name):
+            if 'Versions' in page:
+                for version in page['Versions']:
+                    versioned_size += version['Size']
+        
+        return {
+            'current_size': current_size,
+            'versioned_size': versioned_size
+        }
+        
+    except Exception as e:
+        logging.error(f"Error calculating bucket sizes: {e}")
+        return None

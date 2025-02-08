@@ -45,8 +45,6 @@ def account_dashboard(account_url):
     g.title = "Dashboard"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
         
         return render_template('dashboard.html', account=account)
     except Exception as e:
@@ -91,8 +89,6 @@ def account_settings(account_url):
     g.title = "Settings"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         return render_template('settings.html', account=account, settings=settings)
     except Exception as e:
@@ -104,7 +100,6 @@ def account_settings(account_url):
 def update_settings(account_url):
     account = Account.query.filter_by(url=account_url).first_or_404()
     try:
-        account.count_settings_updated += 1
         settings = Setting.query.filter_by(account_id=account.id).first_or_404()
         
         # Validate device_name_includes is not empty
@@ -182,8 +177,6 @@ def account_data(account_url, directory=None):
     g.title = "Data"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
         return render_template('data.html', account=account, directory=directory)
     except Exception as e:
         logging.error(f"Error loading data for {account_url}: {e}")
@@ -262,6 +255,7 @@ def rebuild(account_url):
         if affected_files:
             # Update account counter
             account.count_uploaded_files += len(affected_files)
+            account.count_uploaded_files_mo += len(affected_files)
             
             # Get all sources for this account
             sources = Source.query.filter_by(account_id=account.id).all()
@@ -337,8 +331,6 @@ def account_plots(account_url):
     g.title = "Plots"
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
         
         # Get all sources and their path levels
         sources = account.sources
@@ -826,8 +818,6 @@ def layout_view(account_url, layout_id):
     logger.info(f"Starting layout_view for account {account_url}, layout {layout_id}")
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
         
         # Get the layout
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
@@ -876,8 +866,6 @@ def layout_grid(account_url, layout_id):
 def layout_edit(account_url, layout_id):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        account.count_page_loads += 1
-        db.session.commit()
         
         layout = Layout.query.filter_by(id=layout_id, account_id=account.id).first_or_404()
         g.title = layout.name

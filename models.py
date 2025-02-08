@@ -13,17 +13,27 @@ logger.info("Models module initialized")
 
 # Define the accounts model
 class Account(db.Model):
+    __tablename__ = 'account'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, server_default='')
     url = db.Column(db.String(200), nullable=False, unique=True, server_default='')
     updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
 
+    # Plan and storage tracking fields
+    plan_uploads_mo = db.Column(db.Integer, nullable=False, server_default='500')
+    plan_storage_gb = db.Column(db.Integer, nullable=False, server_default='10')
+    plan_versioned_backups = db.Column(db.Boolean, nullable=False, server_default='1')
+    plan_start_date = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    # we should set storage_current_bytes using S3Manager.get_storage_usage()
+    # we can then compare it to sum(file.size) to determine if we need to re-run
+    storage_current_bytes = db.Column(db.Integer, nullable=False, server_default='0')
+    storage_versioned_bytes = db.Column(db.Integer, nullable=False, server_default='0')
+
     # Add new tracking columns with default value of 0
     count_gateway_pings = db.Column(db.Integer, nullable=False, server_default='0')
     count_uploaded_files = db.Column(db.Integer, nullable=False, server_default='0')
-    count_page_loads = db.Column(db.Integer, nullable=False, server_default='0')
+    count_uploaded_files_mo = db.Column(db.Integer, nullable=False, server_default='0')
     count_file_downloads = db.Column(db.Integer, nullable=False, server_default='0')
-    count_settings_updated = db.Column(db.Integer, nullable=False, server_default='0')
     is_admin = db.Column(db.Boolean, nullable=False, server_default='0')
     password_hash = db.Column(db.String(256), nullable=True, server_default=None)
     use_password = db.Column(db.Boolean, nullable=False, server_default='0')
@@ -60,8 +70,19 @@ class Account(db.Model):
             return False
         return check_password_hash(self.password_hash, password)
 
+# Define the admin model
+class Admin(db.Model):
+    __tablename__ = 'admin'
+    id = db.Column(db.Integer, primary_key=True)
+    last_daily_cron = db.Column(db.DateTime, nullable=False, 
+                               server_default=func.datetime('2024-01-01 00:00:00'))
+
+    def __repr__(self):
+        return f"<Admin {self.id}>"
+
 # Define the settings model
 class Setting(db.Model):
+    __tablename__ = 'setting'
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     aws_access_key_id = db.Column(db.String(200), nullable=True, server_default='')
@@ -92,6 +113,7 @@ class Setting(db.Model):
 
 # Define the files model
 class File(db.Model):
+    __tablename__ = 'file'
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     key = db.Column(db.String(200), nullable=False, server_default='')
@@ -120,6 +142,7 @@ class File(db.Model):
 
 # Define the device model with ip_address instead of mac_address
 class Gateway(db.Model):
+    __tablename__ = 'gateway'
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     ip_address = db.Column(db.String(45), nullable=False, server_default='')  # IPv4 is 15 characters max, IPv6 is up to 45 characters
@@ -143,6 +166,7 @@ class Gateway(db.Model):
 
 # Define the node model
 class Node(db.Model):
+    __tablename__ = 'node'
     id = db.Column(db.Integer, primary_key=True)
     gateway_id = db.Column(db.Integer, db.ForeignKey('gateway.id', ondelete='CASCADE'), nullable=False)
     uuid = db.Column(db.String(100), nullable=False)
@@ -161,6 +185,7 @@ class Node(db.Model):
 
 # Define the source model
 class Source(db.Model):
+    __tablename__ = 'source'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, server_default='')
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
@@ -210,6 +235,7 @@ class Source(db.Model):
 
 # Define the plot model
 class Plot(db.Model):
+    __tablename__ = 'plot'
     id = db.Column(db.Integer, primary_key=True)
     source_id = db.Column(db.Integer, db.ForeignKey('source.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100), nullable=False, server_default='')
@@ -237,6 +263,7 @@ class Plot(db.Model):
 
 # Define the layout model
 class Layout(db.Model):
+    __tablename__ = 'layout'
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False, server_default='')
