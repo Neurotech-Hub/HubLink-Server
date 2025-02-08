@@ -89,15 +89,15 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
 # Enable SQLite foreign key support
-with app.app_context():
-    if db.engine.url.drivername == 'sqlite':
-        from sqlalchemy import event
-        from sqlalchemy.engine import Engine
-        @event.listens_for(Engine, "connect")
-        def set_sqlite_pragma(dbapi_connection, connection_record):
-            cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
+# with app.app_context():
+#     if db.engine.url.drivername == 'sqlite':
+#         from sqlalchemy import event
+#         from sqlalchemy.engine import Engine
+#         @event.listens_for(Engine, "connect")
+#         def set_sqlite_pragma(dbapi_connection, connection_record):
+#             cursor = dbapi_connection.cursor()
+#             cursor.execute("PRAGMA foreign_keys=ON")
+#             cursor.close()
 
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)

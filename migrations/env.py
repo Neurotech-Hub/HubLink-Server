@@ -93,24 +93,15 @@ def run_migrations_online():
     connectable = get_engine()
 
     with connectable.connect() as connection:
-        # Disable foreign keys before configuring
-        if connectable.dialect.name == 'sqlite':
-            connection.execute('PRAGMA foreign_keys=OFF')
+        context.configure(
+            connection=connection,
+            target_metadata=get_metadata(),
+            process_revision_directives=process_revision_directives,
+            **current_app.extensions['migrate'].configure_args
+        )
 
-        try:
-            context.configure(
-                connection=connection,
-                target_metadata=get_metadata(),
-                process_revision_directives=process_revision_directives,
-                **current_app.extensions['migrate'].configure_args
-            )
-
-            with context.begin_transaction():
-                context.run_migrations()
-        finally:
-            # Re-enable foreign keys after migrations
-            if connectable.dialect.name == 'sqlite':
-                connection.execute('PRAGMA foreign_keys=ON')
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
