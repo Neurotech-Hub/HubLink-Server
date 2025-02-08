@@ -27,24 +27,44 @@
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            {% set storage_gb = (account.storage_current_bytes / (1024 * 1024 * 1024))|round(2) %}
-                            {% set storage_percent = ((storage_gb / account.plan_storage_gb) * 100)|round(1) %}
-                            {% set storage_width = storage_percent if storage_percent <= 100 else 100 %}
+                            {% set storage_bytes = account.storage_current_bytes %}
+                            {% if storage_bytes < 1024 * 1024 %}
+                                {% set storage_display = (storage_bytes / 1024)|round(2) %}
+                                {% set storage_unit = "KB" %}
+                            {% elif storage_bytes < 1024 * 1024 * 1024 %}
+                                {% set storage_display = (storage_bytes / (1024 * 1024))|round(2) %}
+                                {% set storage_unit = "MB" %}
+                            {% else %}
+                                {% set storage_display = (storage_bytes / (1024 * 1024 * 1024))|round(2) %}
+                                {% set storage_unit = "GB" %}
+                            {% endif %}
+                            {% set storage_percent = ((storage_bytes / (account.plan_storage_gb * 1024 * 1024 * 1024)) * 100)|round(3) %}
+                            {% set storage_width = 1 if storage_bytes > 0 and storage_percent < 1 else (storage_percent if storage_percent <= 100 else 100) %}
                             <label class="form-label d-flex justify-content-between">
                                 <span>Storage Usage</span>
-                                <span>{{ storage_gb }}GB / {{ account.plan_storage_gb }}GB</span>
+                                <span>{{ storage_display }}{{ storage_unit }} / {{ account.plan_storage_gb }}GB ({{ storage_percent }}%, width: {{ storage_width }}%)</span>
                             </label>
-                            <div class="progress">
+                            <div class="progress" style="height: 20px">
                                 <div class="progress-bar {% if storage_percent >= 100 %}bg-danger{% elif storage_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 
                                      role="progressbar" 
-                                     style="width: {{ storage_width }}%" 
+                                     style="width: {{ storage_width }}%; min-width: 3px;" 
                                      aria-valuenow="{{ storage_percent }}" 
                                      aria-valuemin="0" 
                                      aria-valuemax="100"></div>
                             </div>
                             {% if account.plan_versioned_backups %}
-                                {% set versioned_gb = (account.storage_versioned_bytes / (1024 * 1024 * 1024))|round(2) %}
-                                <small class="text-muted">Version backups occupy {{ versioned_gb }}GB</small>
+                                {% set versioned_bytes = account.storage_versioned_bytes %}
+                                {% if versioned_bytes < 1024 * 1024 %}
+                                    {% set versioned_display = (versioned_bytes / 1024)|round(2) %}
+                                    {% set versioned_unit = "KB" %}
+                                {% elif versioned_bytes < 1024 * 1024 * 1024 %}
+                                    {% set versioned_display = (versioned_bytes / (1024 * 1024))|round(2) %}
+                                    {% set versioned_unit = "MB" %}
+                                {% else %}
+                                    {% set versioned_display = (versioned_bytes / (1024 * 1024 * 1024))|round(2) %}
+                                    {% set versioned_unit = "GB" %}
+                                {% endif %}
+                                <small class="text-muted">Version backups occupy {{ versioned_display }}{{ versioned_unit }}</small>
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">

@@ -102,10 +102,35 @@ db.init_app(app)
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
 
-# Note: Database migrations are handled by the pre-deploy command:
-# flask db upgrade
+def cleanup_alembic_tables():
+    """Clean up any temporary tables left behind from failed migrations."""
+    try:
+        with db.engine.connect() as conn:
+            tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '_alembic_tmp_%'"))
+            for table in tables:
+                logger.info(f"Dropping temporary table: {table[0]}")
+                conn.execute(text(f"DROP TABLE IF EXISTS {table[0]}"))
+    except Exception as e:
+        logger.error(f"Error cleaning up temporary tables: {e}")
+
+# Note: Database migrations are now handled during app initialization
 with app.app_context():
     try:
+        # Clean up any temporary tables first
+        cleanup_alembic_tables()
+        
+        # Run migrations
+        logger.info("Running database migrations...")
+        try:
+            upgrade()
+            logger.info("Database migrations completed successfully")
+        except Exception as e:
+            logger.error(f"Error during migrations: {e}")
+            
+        # Re-enable foreign keys after migrations
+        # with db.engine.connect() as conn:
+        #     conn.execute(text("PRAGMA foreign_keys=ON"))
+            
         # Initialize any required application state
         pass
     except Exception as e:
@@ -490,6 +515,16 @@ def edit_account(account_id):
         account.plan_storage_gb = int(request.form.get('plan_storage_gb', account.plan_storage_gb))
         account.plan_uploads_mo = int(request.form.get('plan_uploads_mo', account.plan_uploads_mo))
         account.plan_versioned_backups = request.form.get('plan_versioned_backups') == 'on'
+        
+        # Update plan start date if provided
+        plan_start_date = request.form.get('plan_start_date')
+        if plan_start_date:
+            try:
+                account.plan_start_date = datetime.strptime(plan_start_date, '%Y-%m-%d')
+            except ValueError as e:
+                logger.error(f"Invalid date format for plan_start_date: {e}")
+                flash('Invalid date format for plan start date', 'error')
+                return redirect(url_for('admin'))
         
         # Handle password update
         new_password = request.form.get('password', '').strip()
