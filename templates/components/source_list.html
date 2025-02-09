@@ -6,7 +6,7 @@
             <h5 class="mb-0">
                 {{ source.name }}
                 {% if source.file %}
-                    <small class="text-muted">({{ (source.file.size / 1024)|round|int }} KB)</small>
+                    <small class="text-muted">({{ source.file.size|filesize }})</small>
                 {% endif %}
             </h5>
             <div>

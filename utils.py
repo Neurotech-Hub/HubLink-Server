@@ -263,3 +263,23 @@ def initiate_source_refresh(account, source):
             source.state = 'error'
             db.session.commit()
         return False, error_msg 
+
+def format_file_size(size_in_bytes):
+    """Format file size to human readable format (B, KB, MB, GB).
+    
+    Args:
+        size_in_bytes: Integer representing file size in bytes
+        
+    Returns:
+        String representation of the file size with appropriate unit
+    """
+    if size_in_bytes is None:
+        return '0 B'
+        
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_in_bytes < 1024:
+            if unit == 'B':
+                return f"{int(size_in_bytes)} {unit}"
+            return f"{size_in_bytes:.1f} {unit}"
+        size_in_bytes /= 1024
+    return f"{size_in_bytes:.1f} GB" 

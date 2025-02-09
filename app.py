@@ -14,7 +14,7 @@ from plot_utils import get_plot_data
 from sqlalchemy import text
 from sqlalchemy.pool import QueuePool
 from functools import wraps
-from utils import admin_required, get_analytics, initiate_source_refresh, format_datetime
+from utils import admin_required, get_analytics, initiate_source_refresh, format_datetime, format_file_size, format_datetime
 
 load_dotenv(override=True)
 
@@ -154,6 +154,11 @@ def format_datetime_filter(value, format='relative'):
     timezone = account.settings.timezone if account and hasattr(account, 'settings') else 'America/Chicago'
     
     return format_datetime(value, timezone, format)
+
+@app.template_filter('filesize')
+def format_file_size_filter(size_in_bytes):
+    """Template filter wrapper for format_file_size utility function."""
+    return format_file_size(size_in_bytes)
 
 # Function to generate random URL strings
 def generate_random_string(length=24):

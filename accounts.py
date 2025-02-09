@@ -20,10 +20,13 @@ import dateutil.parser as parser
 import time
 from sqlalchemy import and_, not_
 
+# Create logger for this module
+logger = logging.getLogger(__name__)
+
 # Create the Blueprint for account-related routes
 accounts_bp = Blueprint('accounts', __name__)
 
-logger = logging.getLogger(__name__)
+# Log module initialization
 logger.info("Accounts module initialized")
 
 @accounts_bp.before_request
