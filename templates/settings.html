@@ -267,8 +267,10 @@
         this.classList.add('was-validated');
     }, false);
 
+    const API_CREDENTIALS_WARNING = "You have the ability to delete files when accessing your files via API. You should not share these credentials with anyone.";
+
     function toggleSecretKey() {
-        if (confirm("You have the ability to delete files when accessing your files via API. Be cautious when performing destructive actions.")) {
+        if (confirm(API_CREDENTIALS_WARNING)) {
             const input = document.getElementById('aws_secret_access_key');
             const icon = document.getElementById('secretKeyToggleIcon');
             
@@ -285,7 +287,7 @@
     }
 
     function downloadAWSCredentials() {
-        if (confirm("You have the ability to delete files when accessing your files via API. You should not share these credentials with anyone.")) {
+        if (confirm(API_CREDENTIALS_WARNING)) {
             const credentials = {
                 aws_access_key_id: document.getElementById('aws_access_key_id').value,
                 aws_secret_access_key: document.getElementById('aws_secret_access_key').value,
