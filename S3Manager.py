@@ -335,10 +335,17 @@ def get_source_file_header(account_settings, source, num_lines=2):
         logging.error(f"Error downloading header for source {source.name}: {e}")
         return {'header': None, 'first_row': None, 'error': str(e)}
 
-def setup_aws_resources(admin_settings, new_bucket_name, new_user_name):
+def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_files=True, version_days=7):
     """
     Creates AWS resources (S3 bucket and IAM user) for a new account.
     Uses admin credentials to create these resources.
+    
+    Args:
+        admin_settings: Setting object containing admin AWS credentials
+        new_bucket_name: Name of the S3 bucket to create
+        new_user_name: Name of the IAM user to create
+        version_files: Whether to enable versioning (default: True)
+        version_days: Number of days to keep old versions (default: 7)
     """
     try:
         logging.info(f"Setting up AWS resources with admin credentials")
@@ -420,10 +427,29 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name):
             s3_client.put_bucket_versioning(
                 Bucket=new_bucket_name,
                 VersioningConfiguration={
-                    'Status': 'Enabled'
+                    'Status': 'Enabled' if version_files else 'Suspended'
                 }
             )
-            logging.info(f"Enabled versioning for bucket: {new_bucket_name}")
+            logging.info(f"{'Enabled' if version_files else 'Disabled'} versioning for bucket: {new_bucket_name}")
+
+            # Set lifecycle configuration if versioning is enabled
+            if version_files:
+                lifecycle_config = {
+                    'Rules': [
+                        {
+                            'ID': 'DeleteOldVersions',
+                            'Status': 'Enabled',
+                            'NoncurrentVersionExpiration': {
+                                'NoncurrentDays': version_days
+                            }
+                        }
+                    ]
+                }
+                s3_client.put_bucket_lifecycle_configuration(
+                    Bucket=new_bucket_name,
+                    LifecycleConfiguration=lifecycle_config
+                )
+                logging.info(f"Set lifecycle configuration to delete old versions after {version_days} days")
 
             # Disable block public access settings for the bucket
             s3_client.put_public_access_block(
@@ -497,7 +523,9 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name):
                         "Effect": "Allow",
                         "Action": [
                             "s3:ListBucket",
-                            "s3:ListBucketVersions"
+                            "s3:ListBucketVersions",
+                            "s3:PutLifecycleConfiguration",
+                            "s3:GetLifecycleConfiguration"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}"
                     },

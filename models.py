@@ -23,6 +23,7 @@ class Account(db.Model):
     plan_uploads_mo = db.Column(db.Integer, nullable=False, server_default='500')
     plan_storage_gb = db.Column(db.Integer, nullable=False, server_default='10')
     plan_versioned_backups = db.Column(db.Boolean, nullable=False, server_default='1')
+    plan_version_days = db.Column(db.Integer, nullable=False, server_default='7')
     plan_start_date = db.Column(db.DateTime, nullable=False, server_default=func.now())
     # we should set storage_current_bytes using S3Manager.get_storage_usage()
     # we can then compare it to sum(file.size) to determine if we need to re-run

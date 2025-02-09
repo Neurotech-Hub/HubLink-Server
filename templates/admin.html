@@ -137,6 +137,22 @@
                                 Optional: Pre-configure S3 bucket for this account
                             </div>
                         </div>
+                        <div class="form-group mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <div class="form-check">
+                                        <input type="checkbox" id="version_files" name="version_files" class="form-check-input" checked>
+                                        <label class="form-check-label" for="version_files">Enable File Versioning</label>
+                                    </div>
+                                </div>
+                                <div class="col-auto" id="version_days_group">
+                                    <div class="input-group">
+                                        <input type="number" id="version_days" name="version_days" class="form-control" value="7" min="1" style="width: 100px;">
+                                        <span class="input-group-text">Days to Keep Versions</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="text-center">
                             <button type="submit" class="btn btn-primary mt-3 shadow-sm px-4">
                                 Create Account
@@ -182,6 +198,7 @@
                                                                        {{ account.plan_storage_gb }},
                                                                        {{ account.plan_uploads_mo }},
                                                                        {{ account.plan_versioned_backups|tojson }},
+                                                                       {{ account.plan_version_days }},
                                                                        '{{ account.plan_start_date.strftime("%B %-d, %Y") }}')">
                                                 Edit
                                             </button>
@@ -229,7 +246,7 @@
                                                                 <td>
                                                                     {{ account.plan_storage_gb }}GB
                                                                     {% if account.plan_versioned_backups %}
-                                                                        <span class="badge rounded-pill border border-success text-success bg-transparent ms-1">Versioned</span>
+                                                                        <span class="badge rounded-pill border border-success text-success bg-transparent ms-1">Versioned ({{ account.plan_version_days }} days)</span>
                                                                     {% endif %}
                                                                 </td>
                                                             </tr>
@@ -377,12 +394,6 @@
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
-                                <input type="checkbox" name="is_admin" class="form-check-input" id="isAdmin">
-                                <label class="form-check-label" for="isAdmin">Admin Access</label>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="form-check">
                                 <input type="checkbox" name="use_password" class="form-check-input" id="usePassword">
                                 <label class="form-check-label" for="usePassword">Password Protected</label>
                             </div>
@@ -391,6 +402,11 @@
                             <label class="form-label">Password</label>
                             <input type="password" name="password" class="form-control">
                             <div class="form-text">Leave blank to keep existing password</div>
+                        </div>
+                        <div class="mb-3" id="versionDaysField">
+                            <label class="form-label">Version Retention Days</label>
+                            <input type="number" name="plan_version_days" class="form-control" min="1">
+                            <div class="form-text">Number of days to keep old versions before deletion</div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -447,7 +463,23 @@
             document.getElementById('bucket_name').value = bucketName;
         }
 
-        function editAccount(id, name, url, isAdmin, usePassword, plan_storage_gb, plan_uploads_mo, plan_versioned_backups, plan_start_date) {
+        function toggleVersionDays() {
+            const versionFilesCheckbox = document.getElementById('version_files');
+            const versionDaysGroup = document.getElementById('version_days_group');
+            if (versionFilesCheckbox) {
+                versionDaysGroup.style.visibility = versionFilesCheckbox.checked ? 'visible' : 'hidden';
+            }
+        }
+
+        function toggleEditVersionDays() {
+            const versionedBackupsCheckbox = document.getElementById('versionedBackups');
+            const versionDaysField = document.getElementById('versionDaysField');
+            if (versionedBackupsCheckbox) {
+                versionDaysField.style.display = versionedBackupsCheckbox.checked ? 'block' : 'none';
+            }
+        }
+
+        function editAccount(id, name, url, isAdmin, usePassword, plan_storage_gb, plan_uploads_mo, plan_versioned_backups, plan_version_days, plan_start_date) {
             const form = document.getElementById('editAccountForm');
             form.action = `/admin/account/${id}/edit`;
             
@@ -459,6 +491,7 @@
             form.querySelector('[name="plan_storage_gb"]').value = plan_storage_gb;
             form.querySelector('[name="plan_uploads_mo"]').value = plan_uploads_mo;
             form.querySelector('[name="plan_versioned_backups"]').checked = plan_versioned_backups;
+            form.querySelector('[name="plan_version_days"]').value = plan_version_days;
             form.querySelector('[name="plan_start_date"]').value = plan_start_date;
             
             // Show/hide password field based on usePassword
@@ -473,6 +506,22 @@
         document.getElementById('usePassword').addEventListener('change', function() {
             document.getElementById('passwordField').style.display = 
                 this.checked ? 'block' : 'none';
+        });
+
+        // Add event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            const versionFilesCheckbox = document.getElementById('version_files');
+            const versionedBackupsCheckbox = document.getElementById('versionedBackups');
+            
+            if (versionFilesCheckbox) {
+                versionFilesCheckbox.addEventListener('change', toggleVersionDays);
+                toggleVersionDays();
+            }
+            
+            if (versionedBackupsCheckbox) {
+                versionedBackupsCheckbox.addEventListener('change', toggleEditVersionDays);
+                toggleEditVersionDays();
+            }
         });
     </script>
 </body>

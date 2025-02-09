@@ -299,11 +299,17 @@ def submit():
             flash('Error: Admin AWS credentials are incomplete. Both Access Key ID and Secret Access Key are required.', 'danger')
             return redirect(url_for('admin'))
 
+        # Get versioning settings
+        version_files = request.form.get('version_files', 'on') == 'on'
+        version_days = int(request.form.get('version_days', '7'))
+
         # Setup AWS resources
         success, credentials, error = setup_aws_resources(
             admin_account.settings,
             bucket_name,
-            aws_user_name
+            aws_user_name,
+            version_files=version_files,
+            version_days=version_days
         )
 
         if not success:
@@ -313,7 +319,12 @@ def submit():
             return redirect(url_for('admin'))
 
         try:
-            new_account = Account(name=user_name, url=unique_path)
+            new_account = Account(
+                name=user_name, 
+                url=unique_path,
+                plan_versioned_backups=version_files,
+                plan_version_days=version_days
+            )
             db.session.add(new_account)
             db.session.flush()  # Get the new account ID
 
@@ -515,6 +526,7 @@ def edit_account(account_id):
         account.plan_storage_gb = int(request.form.get('plan_storage_gb', account.plan_storage_gb))
         account.plan_uploads_mo = int(request.form.get('plan_uploads_mo', account.plan_uploads_mo))
         account.plan_versioned_backups = request.form.get('plan_versioned_backups') == 'on'
+        account.plan_version_days = int(request.form.get('plan_version_days', account.plan_version_days))
         
         # Update plan start date if provided
         plan_start_date = request.form.get('plan_start_date')
