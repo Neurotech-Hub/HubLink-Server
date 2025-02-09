@@ -1238,37 +1238,14 @@ def account_data_content(account_url):
         # Get directories for dropdown
         directories = get_directory_paths(account.id)
         
-        # Convert files to dicts to ensure proper timezone handling
+        # Ensure datetime objects have timezone info for comparison
         now = datetime.now(timezone.utc)
         files = []
         for file in pagination.items:
-            file_dict = file.to_dict()
-            # Add any additional fields needed for the template
-            file_dict['id'] = file.id
-            
-            # Ensure datetime objects have timezone info
-            if file.last_modified:
-                if file.last_modified.tzinfo is None:
-                    last_modified = file.last_modified.replace(tzinfo=timezone.utc)
-                else:
-                    last_modified = file.last_modified
-                file_dict['raw_last_modified'] = last_modified
-                file_dict['last_modified'] = last_modified  # Pass the datetime object directly
-            else:
-                file_dict['raw_last_modified'] = None
-                file_dict['last_modified'] = None
-                
-            # Handle last_checked similarly
-            if file.last_checked:
-                if file.last_checked.tzinfo is None:
-                    last_checked = file.last_checked.replace(tzinfo=timezone.utc)
-                else:
-                    last_checked = file.last_checked
-                file_dict['last_checked'] = last_checked
-            else:
-                file_dict['last_checked'] = None
-                
-            files.append(file_dict)
+            # Ensure last_checked has timezone info for comparison
+            if file.last_checked and file.last_checked.tzinfo is None:
+                file.last_checked = file.last_checked.replace(tzinfo=timezone.utc)
+            files.append(file)
         
         return render_template('components/data_content.html',
                              account=account,
@@ -1280,8 +1257,9 @@ def account_data_content(account_url):
                              directories=directories)
                              
     except Exception as e:
-        logger.error(f"Error loading data content: {e}")
-        return "Error loading data content", 500
+        logger.error(f"Error loading data content: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        return f"Error loading data content: {str(e)}", 500
     
 @accounts_bp.route('/<account_url>/gateways', methods=['GET'])
 def dashboard_gateways(account_url):

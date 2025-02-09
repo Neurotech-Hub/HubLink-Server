@@ -67,7 +67,7 @@
         </thead>
         <tbody>
             {% for file in recent_files %}
-            <tr class="{% if file.raw_last_modified and (now - file.raw_last_modified).total_seconds() < 1800 %}fileActive{% endif %}">
+            <tr class="{% if file.last_checked and (now - file.last_checked).total_seconds() < 1800 %}fileActive{% endif %}">
                 <td>
                     <div class="form-check">
                         <input class="form-check-input file-select" type="checkbox" 
@@ -86,7 +86,7 @@
                                 '{{ file.id }}',
                                 '{{ file.key | replace("'", "\\'") }}',
                                 '{{ file.size | filesizeformat }}',
-                                '{{ file.last_modified|datetime if file.last_modified else "Never" }}',
+                                '{{ file.last_modified|datetime("absolute") if file.last_modified else "Never" }}',
                                 '{{ file.version }}',
                                 '{{ file.last_checked|datetime("absolute") if file.last_checked else "Never" }}')"
                             style="cursor: pointer;">

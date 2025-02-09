@@ -268,41 +268,45 @@
     }, false);
 
     function toggleSecretKey() {
-        const input = document.getElementById('aws_secret_access_key');
-        const icon = document.getElementById('secretKeyToggleIcon');
-        
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.classList.remove('bi-eye');
-            icon.classList.add('bi-eye-slash');
-        } else {
-            input.type = 'password';
-            icon.classList.remove('bi-eye-slash');
-            icon.classList.add('bi-eye');
+        if (confirm("You have the ability to delete files when accessing your files via API. Be cautious when performing destructive actions.")) {
+            const input = document.getElementById('aws_secret_access_key');
+            const icon = document.getElementById('secretKeyToggleIcon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
         }
     }
 
     function downloadAWSCredentials() {
-        const credentials = {
-            aws_access_key_id: document.getElementById('aws_access_key_id').value,
-            aws_secret_access_key: document.getElementById('aws_secret_access_key').value,
-            bucket_name: document.getElementById('bucket_name').value
-        };
+        if (confirm("You have the ability to delete files when accessing your files via API. You should not share these credentials with anyone.")) {
+            const credentials = {
+                aws_access_key_id: document.getElementById('aws_access_key_id').value,
+                aws_secret_access_key: document.getElementById('aws_secret_access_key').value,
+                bucket_name: document.getElementById('bucket_name').value
+            };
 
-        // Create a Blob with the JSON data
-        const blob = new Blob([JSON.stringify(credentials, null, 2)], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Create a temporary link and trigger download
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'aws_credentials.json';
-        document.body.appendChild(a);
-        a.click();
-        
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+            // Create a Blob with the JSON data
+            const blob = new Blob([JSON.stringify(credentials, null, 2)], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            
+            // Create a temporary link and trigger download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'aws_credentials.json';
+            document.body.appendChild(a);
+            a.click();
+            
+            // Cleanup
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }
     }
 </script>
 {% endblock %}
