@@ -17,14 +17,13 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <ol>
-                        <li>Obtain an account, Hublink hardware, and a <code>&lt;secret_url&gt;</code>.</li>
-                        <li>Integrate the <a href="https://github.com/Neurotech-Hub/Hublink-Node"
-                                target="_blank">Hublink Node Library <i
-                                    class="fa-solid fa-up-right-from-square"></i></a> into your existing firmware.</li>
-                        <li>Start uploading files from your nodes.</li>
-                        <li>Use <a href="https://hublink.cloud">hublink.cloud</a> or the <a
+                        <li>Obtain a Hublink account and hardware (see <a href="https://hublink.cloud/pricing">pricing</a>).</li>
+                        <li>Integrate the Hublink firmware (see <a href="https://github.com/Neurotech-Hub/Hublink-Node"
+                                target="_blank">Hublink Node Library <i class="fa-solid fa-up-right-from-square"></i></a>)</li>
+                        <li>Start uploading files and view the progress on your Hublink Dashboard.</li>
+                        <li>Batch download data or use the <a
                                 href="https://github.com/Neurotech-Hub/HubLink-Client" target="_blank">Hublink Client
-                                Library <i class="fa-solid fa-up-right-from-square"></i></a> to view and analyze data.
+                                Library <i class="fa-solid fa-up-right-from-square"></i></a> for syncing.
                         </li>
                     </ol>
                 </div>
@@ -36,23 +35,24 @@
             <h2 class="border-bottom pb-2 mb-4">Dashboard Settings</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <h3 class="h5">Storage Settings</h3>
+                    <h5>Storage Settings</h5>
                     <ul>
                         <li><strong>AWS Access Key ID:</strong> AWS credential for S3 access</li>
                         <li><strong>AWS Secret Access Key:</strong> AWS credential for S3 access</li>
                         <li><strong>S3 Bucket Name:</strong> Destination bucket for file storage</li>
                     </ul>
 
-                    <h3 class="h5 mt-4">Gateway Settings</h3>
+                    <h5 class="mt-4">Gateway Settings</h5>
                     <ul>
                         <li><strong>Max File Size:</strong> Maximum allowed file size in bytes</li>
                         <li><strong>Use/Upload to Cloud:</strong> Enable or disable cloud storage</li>
                         <li><strong>Delete Scans from Gateway:</strong> Free up storage space on gateway</li>
                         <li><strong>Delete Scans Older Than:</strong> Age threshold for deletion (use -1 to ignore)</li>
                         <li><strong>Delete Scans Percent Remaining:</strong> Storage threshold percentage (use -1 to ignore)</li>
+                        <li><strong>Timezone:</strong> Timezone (e.g., America/New_York)</li>
                     </ul>
 
-                    <h3 class="h5 mt-4">Device Settings</h3>
+                    <h5 class="mt-4">Device Settings</h5>
                     <ul>
                         <li><strong>Device Filter by Name:</strong> Device name should include this string, cannot be blank</li>
                     </ul>
@@ -67,11 +67,11 @@
                 <div class="card-body">
                     <p>All gateways should be pre-configured — it is unlikely you will need to make any changes. The following information is provided for reference or troubleshooting purposes.</p>
 
-                    <p>Gateway settings can be updated or data can be retrieved using a USB drive. The system automatically recognizes drives labeled "HUBLINK":</p>
+                    <p>Gateway settings can be updated or data can be retrieved using a USB drive. If you need to replace the removeable media drive, follow these steps:</p>
                     
                     <ol>
                         <li>Format the drive with a compatible filesystem (e.g., ext4, FAT32)</li>
-                        <li>Label the drive as "HUBLINK"</li>
+                        <li>Rename the drive to "HUBLINK"</li>
                         <li>Create a <code>hublink.json</code> file in the root of the drive with the configuration:</li>
                     </ol>
 
@@ -85,7 +85,7 @@
                     <p>The secret URL is used to authenticate the gateway with the cloud service. The gateway name will automatically have a unique identifier appended to it based on the device's MAC address to make
                         it easier to identify on the dashboard.</p>
 
-                    <div class="bg-purple-light p-4 rounded-3 shadow-sm mb-3 mt-5">
+                    <div class="bg-purple-light p-4 rounded-3 shadow-sm mb-3 mt-3">
                         <div class="row align-items-center">
                             <div class="col-auto">
                                 <i class="fa-solid fa-tools fa-2x"></i>
@@ -93,11 +93,13 @@
                             <div class="col">
                                 <h5 class="mb-2">Need Help Formatting?</h5>
                                 <p class="mb-0 text-secondary">
-                                    Use our <a href="https://github.com/Neurotech-Hub/HublinkCardFormatter" class="text-purple fw-bold" target="_blank">HublinkCardFormatter <i class="fa-solid fa-up-right-from-square"></i></a> tool to safely format SD cards for both nodes and gateways. Includes safety checks and automatic configuration.
+                                    Use our <a href="https://github.com/Neurotech-Hub/HublinkCardFormatter" class="text-purple fw-bold" target="_blank">Hublink Card Formatter <i class="fa-solid fa-up-right-from-square"></i></a> tool to safely format SD cards for both nodes and gateways. Includes safety checks and automatic configuration.
                                 </p>
                             </div>
                         </div>
                     </div>
+                    <h5 class="mt-4">Offline Mode</h5>
+                    <p>Gateways will automatically enter offline mode if they are unable to connect to the cloud service. This is useful for situations where the gateway is in a remote location or behind a firewall. Data will be stored on the gateway until it is able to reconnect to the cloud service.</p>
                 </div>
             </div>
         </section>
@@ -107,7 +109,7 @@
             <h2 class="border-bottom pb-2 mb-4">Node Configuration</h2>
             <div class="card mb-4">
                 <div class="card-body">
-                    <p>Create a file named <code>meta.json</code> on your SD card to configure node behavior and store metadata. The file uses JSON format:</p>
+                    <p>The Hublink node uses a <code>meta.json</code> file on the SD card to configure node behavior and store metadata. The file uses JSON format:</p>
                     <div class="bg-light p-3 rounded mb-3 position-relative">
                         <button class="btn btn-sm btn-primary position-absolute top-0 end-0 m-3" onclick="downloadMetaJson()">
                             <i class="fa-solid fa-download"></i> Download meta.json
@@ -170,6 +172,7 @@
                     </script>
 
                     <h5 class="mt-4">Hublink Settings</h5>
+                    <p>The settings below modify the Hublink node behavior. These settings take effect at <code>hublink.begin()</code> but can be overridden at runtime (refer to the <a href="https://github.com/Neurotech-Hub/Hublink-Node/blob/main/examples/HublinkAdvanced/HublinkAdvanced.ino" target="_blank">HublinkAdvanced.ino</a> sketch).</p>
                     <table class="table table-bordered">
                         <thead>
                             <tr>

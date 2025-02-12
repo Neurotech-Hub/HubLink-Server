@@ -8,22 +8,18 @@
 <script>
     // Function to create/update the chart
     function createFileUploadsChart() {
-        var uploadDates = {{ file_uploads | tojson | safe }};
+        var dates = {{ file_uploads | tojson | safe }};
+        var counts = {{ daily_counts | tojson | safe }};
         
-        // Process dates into daily counts
-        var dateCounts = {};
-        uploadDates.forEach(function(date) {
-            var day = date.split(' ')[0];  // Get just the date part
-            dateCounts[day] = (dateCounts[day] || 0) + 1;
-        });
+        console.log('[DEBUG RAW JS] dates:', dates);
+        console.log('[DEBUG RAW JS] counts:', counts);
         
-        // Convert to arrays for plotting
-        var dates = Object.keys(dateCounts).sort();
-        var counts = dates.map(date => dateCounts[date]);
+        var yValues = dates.map(date => counts[date] || 0);
+        console.log('[DEBUG RAW JS] final yValues:', yValues);
         
         var trace = {
             x: dates,
-            y: counts,
+            y: yValues,
             type: 'scatter',
             mode: 'lines+markers',
             fill: 'tozeroy',
@@ -45,14 +41,22 @@
         
         var layout = {
             height: 400,
-            margin: { t: 10, r: 10, b: 50, l: 40 },
+            margin: { t: 10, r: 10, b: 70, l: 40 },
             xaxis: {
                 showgrid: true,
                 gridcolor: 'rgba(0,0,0,0.1)',
                 title: {
                     text: 'Date',
-                    standoff: 15
-                }
+                    standoff: 25
+                },
+                tickangle: -45,
+                tickformat: '%b %d',
+                tickmode: 'array',
+                ticktext: dates.map(date => {
+                    const d = new Date(date + 'T12:00:00');
+                    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }),
+                tickvals: dates
             },
             yaxis: {
                 showgrid: true,

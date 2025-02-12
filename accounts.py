@@ -19,6 +19,7 @@ from utils import admin_required, get_analytics, initiate_source_refresh, list_s
 import dateutil.parser as parser
 import time
 from sqlalchemy import and_, not_
+import pytz
 
 # Create logger for this module
 logger = logging.getLogger(__name__)
@@ -1304,18 +1305,50 @@ def dashboard_stats(account_url):
 def dashboard_uploads(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
-        # Get files and format dates with account's timezone
+        
+        # Get account's timezone
+        account_tz = account.settings.timezone
+        
+        # Calculate date range in account's timezone
+        end_date = datetime.now(pytz.timezone(account_tz))
+        start_date = end_date - timedelta(days=14)  # 15 days ago
+        
+        # Create a list of all dates in range (including today)
+        date_range = [(start_date + timedelta(days=x)).date() for x in range(15)]
+        
+        # Get files modified in the last 14 days
+        # Ensure we get all of today's files by extending to end of current day
+        end_of_today = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        # Convert timestamps to UTC for database query
+        start_date_utc = start_date.astimezone(timezone.utc)
+        end_date_utc = end_of_today.astimezone(timezone.utc)
+        
         files = File.query.filter_by(account_id=account.id)\
             .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.'))
+            .filter(~File.key.contains('/.')) \
+            .filter(File.last_modified >= start_date_utc) \
+            .filter(File.last_modified <= end_date_utc) \
+            .order_by(File.last_modified.desc()).all()
         
-        # Format dates in account's timezone, using absolute format for the chart
-        file_uploads = [format_datetime(f.last_modified, account.settings.timezone, 'absolute') 
-                       for f in files.order_by(File.last_modified.desc()).all()]
+        # Initialize counts for all days using string dates as keys
+        daily_counts = {date.strftime('%Y-%m-%d'): 0 for date in date_range}
+        
+        # Count files per day in account's timezone
+        for file in files:
+            file_date = file.last_modified.astimezone(pytz.timezone(account_tz)).date()
+            date_str = file_date.strftime('%Y-%m-%d')
+            if date_str in daily_counts:
+                daily_counts[date_str] += 1
+        
+        # Format dates for the template
+        file_uploads = [date.strftime('%Y-%m-%d') for date in date_range]
         
         return render_template('components/dashboard_uploads.html',
                              account=account,
-                             file_uploads=file_uploads)
+                             file_uploads=file_uploads,
+                             daily_counts=daily_counts)
+                             
     except Exception as e:
         logging.error(f"Error loading dashboard uploads for {account_url}: {e}")
         return "Error loading uploads chart", 500
@@ -1595,3 +1628,42 @@ def create_gateway(account_url):
         db.session.rollback()
         logging.error(f"Error creating gateway for {account_url}: {e}")
         return jsonify({'error': str(e)}), 500
+
+@accounts_bp.route('/<account_url>/files.json', methods=['GET'])
+@accounts_bp.route('/<account_url>/files.json/<since_datetime>', methods=['GET'])
+def list_files_json(account_url, since_datetime=None):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Start with base query including non-hidden file filter
+        query = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.'))\
+            .filter(~File.key.like('__MACOSX%'))
+            
+        # Add datetime filter if provided
+        if since_datetime:
+            try:
+                filter_date = datetime.fromisoformat(since_datetime.replace('Z', '+00:00'))
+                query = query.filter(File.last_modified > filter_date)
+            except ValueError as e:
+                return jsonify({
+                    'error': f'Invalid datetime format: {str(e)}'
+                }), 400
+        
+        # Get all matching files
+        files = query.all()
+        
+        # Format response
+        response = [{
+            'key': file.key,
+            'size': file.size
+        } for file in files]
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logging.error(f"Error listing files for {account_url}: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
