@@ -58,10 +58,6 @@
                             <th>Version:</th>
                             <td id="modalVersion"></td>
                         </tr>
-                        <tr>
-                            <th>Last Checked:</th>
-                            <td id="modalLastChecked"></td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -344,7 +340,7 @@
         }
     }
 
-    function showFileDetails(fileId, key, size, lastModified, version, lastChecked) {
+    function showFileDetails(fileId, key, size, lastModified, version) {
         if (!fileDetailsModal) {
             console.error('File details modal element not found');
             return;
@@ -354,7 +350,6 @@
         document.getElementById('modalFileSize').textContent = size;
         document.getElementById('modalLastModified').textContent = lastModified || 'Never';
         document.getElementById('modalVersion').textContent = version || 'N/A';
-        document.getElementById('modalLastChecked').textContent = lastChecked || 'Never';
         
         const modal = bootstrap.Modal.getOrCreateInstance(fileDetailsModal);
         modal.show();
