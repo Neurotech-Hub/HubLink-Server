@@ -1247,8 +1247,8 @@ def account_data_content(account_url):
         files = []
         for file in pagination.items:
             # Ensure last_checked has timezone info for comparison
-            if file.last_checked and file.last_checked.tzinfo is None:
-                file.last_checked = file.last_checked.replace(tzinfo=timezone.utc)
+            if file.last_modified and file.last_modified.tzinfo is None:
+                file.last_modified = file.last_modified.replace(tzinfo=timezone.utc)
             files.append(file)
         
         return render_template('components/data_content.html',

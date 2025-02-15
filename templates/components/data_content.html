@@ -1,5 +1,5 @@
 <!-- Device Filter Pills and Download Bar -->
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-3">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start mb-1 gap-3">
     <!-- Directory Filter -->
     <div class="dropdown mb-3">
         <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -35,12 +35,12 @@
 
 <!-- Limit Notice and Legend -->
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="small">
-        <span class="fileActive text-muted rounded px-2 py-1">checked &lt;30 min ago</span>
-    </div>
     {% if pagination and pagination.pages %}
     <p class="small text-muted mb-0">Page {{ pagination.page }} of {{ pagination.pages }}</p>
     {% endif %}
+    <div class="small">
+        <span class="fileActive text-muted rounded px-2 py-1">modified &lt;30 min ago</span>
+    </div>
 </div>
 
 <!-- File Details Pill -->
@@ -67,7 +67,7 @@
         </thead>
         <tbody>
             {% for file in recent_files %}
-            <tr class="{% if file.last_checked and (now - file.last_checked).total_seconds() < 1800 %}fileActive{% endif %}">
+            <tr class="{% if file.last_modified and (now - file.last_modified).total_seconds() < 1800 %}fileActive{% endif %}">
                 <td>
                     <div class="form-check">
                         <input class="form-check-input file-select" type="checkbox" 
