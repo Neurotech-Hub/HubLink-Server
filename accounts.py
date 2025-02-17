@@ -235,10 +235,25 @@ def get_source_files(account_url, source_id):
         # Get matching files for this source
         matching_files = list_source_files(account, source)
         
+        # Sort by last_modified in descending order (most recent first)
+        matching_files.sort(key=lambda x: x.last_modified or datetime.min, reverse=True)
+        
+        # Filter files up to 12MB cumulative size
+        filtered_files = []
+        cumulative_size = 0
+        max_size = 12 * 1024 * 1024  # 12MB in bytes
+        
+        for file in matching_files:
+            if cumulative_size + file.size <= max_size:
+                filtered_files.append(file)
+                cumulative_size += file.size
+            else:
+                break
+        
         # Convert files to dict for JSON response
         files_data = [{'key': f.key, 'size': f.size, 
-                      'last_modified': f.last_modified.isoformat() if f.last_modified else None} 
-                     for f in matching_files]
+                       'last_modified': f.last_modified.isoformat() if f.last_modified else None} 
+                      for f in filtered_files]
         
         return jsonify(files_data)
         
@@ -1530,6 +1545,8 @@ def source_callback(account_url, source_id):
             db.session.add(file)
             db.session.flush()
         else:
+            file.size = data['size']
+            file.version += 1
             file.last_modified = datetime.now(timezone.utc)
         
         source.file_id = file.id
