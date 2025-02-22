@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, jsonify, request, url_for, session, flash
 from flask_migrate import Migrate, upgrade
-from models import db, Account, Setting, File, Gateway, Source, Admin # db locations
+from models import db, Account, Setting, File, Gateway, Source, Admin, Node # db locations
 from S3Manager import setup_aws_resources, cleanup_aws_resources, get_storage_usage
 import os
 import logging
@@ -58,6 +58,7 @@ app = Flask(__name__, instance_relative_config=True)
 
 # Load environment configuration
 app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
+print(f"ENVIRONMENT: {app.config['ENVIRONMENT']}")
 
 # Configure Flask app logger to use our configuration
 app.logger.setLevel(logging.INFO)
@@ -383,6 +384,16 @@ def docs():
         logger.error(f"Error loading documentation: {e}")
         return "There was an issue loading the documentation.", 500
     
+# Route to view about page
+@app.route('/about', methods=['GET'])
+def about():
+    g.title = "About"
+    try:
+        return render_template('about.html')
+    except Exception as e:
+        logger.error(f"Error loading about page: {e}")
+        return "There was an issue loading the about page.", 500
+    
 # Route to view pricing
 @app.route('/pricing', methods=['GET'])
 def pricing():
@@ -437,44 +448,70 @@ def cronjob():
                     account.count_uploaded_files_mo = 0
                     db.session.commit()
 
+            # Clean up old gateways that have no node associations
+            days_ago = current_time - timedelta(days=7)
+            # Find gateways older than days_ago that don't have any nodes
+            old_gateways = Gateway.query.filter(
+                Gateway.created_at <= days_ago,
+                ~Gateway.id.in_(db.session.query(Node.gateway_id))
+            ).all()
+            
+            if old_gateways:
+                logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
+                print(f"/cronjob: Deleting {len(old_gateways)} old gateways with no nodes")
+                for gateway in old_gateways:
+                    db.session.delete(gateway)
+                db.session.commit()
+
             # Update last cron run time
             admin.last_daily_cron = current_time
             db.session.commit()
         
-        # Get SOURCE_INTERVAL_MINUTES from environment, default to 5
-        interval_minutes = int(os.getenv('SOURCE_INTERVAL_MINUTES', '5'))
-        cutoff_time = current_time - timedelta(minutes=interval_minutes)
-        
-        logger.info(f"Looking for sources not updated since {cutoff_time}")
-        
-        # Find sources that need updating
-        sources = Source.query.filter(
-            Source.do_update == True,
-            (Source.last_updated == None) | 
-            (Source.last_updated <= cutoff_time.replace(tzinfo=None))  # Remove timezone info for comparison
-        ).all()
-        
-        logger.info(f"Found {len(sources)} sources that need updating")
-        for source in sources:
-            last_updated = source.last_updated.replace(tzinfo=timezone.utc) if source.last_updated else None
-            logger.info(f"Source {source.id}: last_updated={last_updated}, "
-                       f"needs_update={(last_updated is None) or (last_updated <= cutoff_time)}")
-        
         updated_count = 0
-        for source in sources:
-            # Get the account for this source
-            account = db.session.get(Account, source.account_id)
-            if account:
-                success, _ = initiate_source_refresh(account, source)
-                if success:
-                    updated_count += 1
+        sources = []  # Initialize sources list
+        if app.config['ENVIRONMENT'] == 'production':
+            interval_minutes = int(os.getenv('SOURCE_INTERVAL_MINUTES', '5'))
+            cutoff_time = current_time - timedelta(minutes=interval_minutes)
+            
+            logger.info(f"Looking for sources not updated since {cutoff_time}")
+            print(f"/cronjob: Looking for sources not updated since {cutoff_time}")
+            
+            # Find sources that need updating
+            sources = Source.query.filter(
+                Source.do_update == True,
+                (Source.last_updated == None) | 
+                (Source.last_updated <= cutoff_time.replace(tzinfo=None))  # Remove timezone info for comparison
+            ).all()
+            
+            logger.info(f"Found {len(sources)} sources that need updating")
+            print(f"/cronjob: Found {len(sources)} sources that need updating")
+            
+            for source in sources:
+                last_updated = source.last_updated.replace(tzinfo=timezone.utc) if source.last_updated else None
+                logger.info(f"Source {source.id}: last_updated={last_updated}, "
+                        f"needs_update={(last_updated is None) or (last_updated <= cutoff_time)}")
+            
+            for source in sources:
+                # Get the account for this source
+                account = db.session.get(Account, source.account_id)
+                if account:
+                    success, _ = initiate_source_refresh(account, source)
+                    if success:
+                        updated_count += 1
         
-        return jsonify({
-            'success': True,
-            'message': f'Processed {len(sources)} sources, updated {updated_count}',
-            'processed': len(sources),
-            'updated': updated_count
-        })
+            return jsonify({
+                'success': True,
+                'message': f'Processed {len(sources)} sources, updated {updated_count}',
+                'processed': len(sources),
+                'updated': updated_count
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'message': 'Cronjob completed successfully (non-production environment)',
+                'processed': 0,
+                'updated': 0
+            })
         
     except Exception as e:
         logger.error(f"Error in cronjob: {e}")
