@@ -33,6 +33,24 @@
             margin-left: auto;
         }
 
+        /* Add image container styles */
+        .timeline-image-container {
+            position: relative;
+            width: 100%;
+            padding-top: 50%; /* This creates a 2:1 aspect ratio */
+            overflow: hidden;
+        }
+
+        .timeline-image-container img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 0.375rem;
+        }
+
         .timeline-item:nth-child(even) .timeline-content {
             margin-left: 0;
             margin-right: auto;
@@ -70,13 +88,13 @@
         }
 
         .timeline-item:nth-child(odd) .timeline-date {
-            right: 55%;
+            right: 52%;
             text-align: right;
             margin-right: 2rem;
         }
 
         .timeline-item:nth-child(even) .timeline-date {
-            left: 55%;
+            left: 52%;
             margin-left: 2rem;
             text-align: left;
         }
@@ -229,7 +247,9 @@
                     </div>
                     <div class="timeline-content">
                         <div class="card border-0 shadow-sm">
-                            <img src="{{ url_for('static', filename='img/timeline_00.jpg') }}" class="card-img-top" alt="Concept Development" width="800" height="300">
+                            <div class="timeline-image-container">
+                                <img src="{{ url_for('static', filename='img/timeline_00.jpg') }}" class="card-img-top" alt="Concept Development">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -244,7 +264,9 @@
                     </div>
                     <div class="timeline-content">
                         <div class="card border-0 shadow-sm">
-                            <img src="{{ url_for('static', filename='img/timeline_01.jpg') }}" class="card-img-top" alt="Beta Launch" width="800" height="300">
+                            <div class="timeline-image-container">
+                                <img src="{{ url_for('static', filename='img/timeline_01.jpg') }}" class="card-img-top" alt="Beta Launch">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -259,7 +281,9 @@
                     </div>
                     <div class="timeline-content">
                         <div class="card border-0 shadow-sm">
-                            <img src="{{ url_for('static', filename='img/timeline_02.jpg') }}" class="card-img-top" alt="Platform Growth" width="800" height="300">
+                            <div class="timeline-image-container">
+                                <img src="{{ url_for('static', filename='img/timeline_02.jpg') }}" class="card-img-top" alt="Platform Growth">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -274,7 +298,9 @@
                     </div>
                     <div class="timeline-content">
                         <div class="card border-0 shadow-sm">
-                            <img src="{{ url_for('static', filename='img/timeline_03.jpg') }}" class="card-img-top" alt="Innovation" width="800" height="300">
+                            <div class="timeline-image-container">
+                                <img src="{{ url_for('static', filename='img/timeline_03.jpg') }}" class="card-img-top" alt="Innovation">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -289,7 +315,9 @@
                     </div>
                     <div class="timeline-content">
                         <div class="card border-0 shadow-sm">
-                            <img src="{{ url_for('static', filename='img/timeline_04.jpg') }}" class="card-img-top" alt="Global Scale" width="800" height="300">
+                            <div class="timeline-image-container">
+                                <img src="{{ url_for('static', filename='img/timeline_04.jpg') }}" class="card-img-top" alt="Global Scale">
+                            </div>
                         </div>
                     </div>
                 </div>
