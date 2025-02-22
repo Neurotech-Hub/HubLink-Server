@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    {% include "head.html" %}
+    <style>
+        /* Timeline specific styles */
+        .timeline {
+            position: relative;
+            padding: 2rem 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            width: 3px;
+            background: #dee2e6;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            margin-left: -1px;
+        }
+
+        .timeline-item {
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .timeline-content {
+            position: relative;
+            width: 45%;
+            padding: 0;
+            margin-left: auto;
+        }
+
+        .timeline-item:nth-child(even) .timeline-content {
+            margin-left: 0;
+            margin-right: auto;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid #0d6efd;
+            background: #fff;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+        }
+
+        .timeline-date {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 300;
+            color: #6c757d;
+            font-size: 4rem;
+            text-align: center;
+        }
+
+        .timeline-subtitle {
+            display: block;
+            font-size: 1rem;
+            font-weight: 400;
+            margin-top: 0.5rem;
+            color: #adb5bd;
+        }
+
+        .timeline-item:nth-child(odd) .timeline-date {
+            right: 55%;
+            text-align: right;
+            margin-right: 2rem;
+        }
+
+        .timeline-item:nth-child(even) .timeline-date {
+            left: 55%;
+            margin-left: 2rem;
+            text-align: left;
+        }
+
+        /* Roadmap styles */
+        .roadmap-item {
+            position: relative;
+            padding: 1.5rem;
+            background: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .roadmap-item::before {
+            display: none; /* Remove the dot */
+        }
+
+        .roadmap-item::after {
+            display: none; /* Remove the line */
+        }
+
+        .roadmap-item .badge {
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .roadmap-item ul {
+            padding-left: 1.2rem;
+            margin-bottom: 0;
+        }
+
+        .roadmap-item ul li {
+            margin-bottom: 0.5rem;
+        }
+
+        .roadmap-item ul li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .timeline::before {
+                left: 40px;
+            }
+
+            .timeline-content {
+                width: calc(100% - 80px);
+                margin-left: 80px !important;
+            }
+
+            .timeline-marker {
+                left: 40px;
+            }
+
+            .timeline-date {
+                position: relative;
+                top: 0;
+                transform: none;
+                margin-bottom: 1rem;
+                color: #0d6efd;
+                font-weight: 300;
+                font-size: 2rem;
+            }
+
+            .timeline-item:nth-child(odd) .timeline-date,
+            .timeline-item:nth-child(even) .timeline-date {
+                left: 80px;
+                right: auto;
+                text-align: left;
+                margin-left: 0;
+                margin-right: 0;
+            }
+
+            .roadmap-item {
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* Button styles */
+        .btn-email {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 1.25rem;
+            padding: 1rem 2.5rem;
+        }
+        .btn-email:hover {
+            background-color: #f8f9fa;
+            border-color: #ced4da;
+            color: #495057;
+        }
+
+        .timeline-month {
+            font-weight: 200;
+            display: block;
+            font-size: 1.5rem;
+            line-height: 1.2;
+        }
+        
+        .timeline-year {
+            font-weight: 500;
+            display: block;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+
+<body>
+    {% include "nav.html" %}
+
+    <div class="container mt-5 mb-5">
+        <h1 class="mb-5">About</h1>
+
+        <!-- Introduction Section -->
+        <section class="mb-5">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-lg-5">
+                    <h2 class="card-title h2 mb-4">Our Mission</h2>
+                    <p class="lead fs-3 mb-4">
+                        Hublink is revolutionizing data collection by seamlessly connecting memory cards to the cloud.
+                        We're building the future of scientific data management, one byte at a time.
+                    </p>
+                    <div class="fs-5">
+                        <p class="mb-4">In late 2024, a group of us were chatting in the <a target="_blank" href="https://neurotechhub.wustl.edu/" class="text-decoration-none">Neurotech Hub at WashU</a> about how to wirelessly sync data
+                        from in-cage behavior devices. Previous attempts to perform event-based syncing failed, largely because the data was
+                        complex, ever-changing, and experiment-specific.</p>
+                        
+                        <p class="mb-4">We started to simplify the problem: <em>what if we could just get files from the SD card on the device to the cloud with
+                        minimal interruption and impact to battery life?</em> And that's what we've done.</p>
+                        
+                        <p class="mb-0"><strong>The Neurotech Hub has spearheaded hublink.cloud™ as a platform for all researchers</strong> and continues to expand its use in
+                        multiple experimental paradigms and domains.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline Section -->
+        <section class="mb-5">
+            <h2 class="border-bottom pb-2 mb-4">Our Journey</h2>
+            <div class="timeline">
+                <!-- Timeline Item 1 -->
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">
+                        <span class="timeline-month">OCT</span>
+                        <span class="timeline-year">2024</span>
+                        <span class="timeline-subtitle">First Bench Prototype</span>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="card border-0 shadow-sm">
+                            <img src="{{ url_for('static', filename='img/timeline_00.jpg') }}" class="card-img-top" alt="Concept Development" width="800" height="300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 2 -->
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">
+                        <span class="timeline-month">NOV</span>
+                        <span class="timeline-year">2024</span>
+                        <span class="timeline-subtitle">Custom Hublink Hardware</span>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="card border-0 shadow-sm">
+                            <img src="{{ url_for('static', filename='img/timeline_01.jpg') }}" class="card-img-top" alt="Beta Launch" width="800" height="300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 3 -->
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">
+                        <span class="timeline-month">DEC</span>
+                        <span class="timeline-year">2024</span>
+                        <span class="timeline-subtitle">Hublink Beta using FED3 Devices</span>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="card border-0 shadow-sm">
+                            <img src="{{ url_for('static', filename='img/timeline_02.jpg') }}" class="card-img-top" alt="Platform Growth" width="800" height="300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 4 -->
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">
+                        <span class="timeline-month">JAN</span>
+                        <span class="timeline-year">2025</span>
+                        <span class="timeline-subtitle">Low Power Enhancements</span>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="card border-0 shadow-sm">
+                            <img src="{{ url_for('static', filename='img/timeline_03.jpg') }}" class="card-img-top" alt="Innovation" width="800" height="300">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Item 5 -->
+                <div class="timeline-item">
+                    <div class="timeline-marker"></div>
+                    <div class="timeline-date">
+                        <span class="timeline-month">FEB</span>
+                        <span class="timeline-year">2025</span>
+                        <span class="timeline-subtitle">Hublink Develops BEAM Devices</span>
+                    </div>
+                    <div class="timeline-content">
+                        <div class="card border-0 shadow-sm">
+                            <img src="{{ url_for('static', filename='img/timeline_04.jpg') }}" class="card-img-top" alt="Global Scale" width="800" height="300">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Roadmap Section -->
+        <section class="mb-5">
+            <h2 class="border-bottom pb-2 mb-4">Roadmap</h2>
+            
+            <div class="row g-4">
+                <!-- Q2 2024 -->
+                <div class="col-md-6">
+                    <div class="roadmap-item h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary">Data Redundancy</span>
+                            <div class="border-bottom flex-grow-1 mx-3"></div>
+                        </div>
+                        <h5>Better versioning and cold storage.</h5>
+                        <p class="text-muted">We're working on a system that allows you to version your data and store it in cold storage. This requires better data management tools in the dashboard.</p>
+                    </div>
+                </div>
+
+                <!-- Q3 2024 -->
+                <div class="col-md-6">
+                    <div class="roadmap-item h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary">Node Management</span>
+                            <div class="border-bottom flex-grow-1 mx-3"></div>
+                        </div>
+                        <h5>Command each node individually.</h5>
+                        <p class="text-muted">We're working on a system that allows you to command each node individually. This will allow us to do things like update the software on the nodes or send reboot commands.</p>
+                    </div>
+                </div>
+
+                <!-- Q4 2024 -->
+                <div class="col-md-6">
+                    <div class="roadmap-item h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary">Server Efficiency</span>
+                            <div class="border-bottom flex-grow-1 mx-3"></div>
+                        </div>
+                        <h5>Faster load times and better analytics.</h5>
+                        <p class="text-muted">Hublink can be faster and more efficient. We are working on making the dashboard more responsive and adding more analytics tools that feel natural and easy to use.</p>
+                    </div>
+                </div>
+
+                <!-- Q1 2025 -->
+                <div class="col-md-6">
+                    <div class="roadmap-item h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary">AI Integration</span>
+                            <div class="border-bottom flex-grow-1 mx-3"></div>
+                        </div>
+                        <h5>Predict the data that matters to you most.</h5>
+                        <p class="text-muted">We're working on integrating AI tools into the dashboard to help with data analysis. This will allow us to do things like automatically generate plots and summaries of the data automatically based on column types and metadata.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Team/Contact CTA Section -->
+        <section class="text-center py-5">
+            <h3 class="mb-4">Join Us on Our Journey</h3>
+            <p class="lead mb-4">
+                We're always looking for partners and collaborators who share our vision.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="mailto:hi@hublink.cloud" class="btn btn-email rounded-pill">
+                    hi@hublink.cloud
+                </a>
+            </div>
+        </section>
+    </div>
+
+    {% include "footer.html" %}
+</body>
+
+</html> 

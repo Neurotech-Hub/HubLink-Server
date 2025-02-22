@@ -18,6 +18,12 @@
                     </div>
                     <ul class="nav flex-column">
                         <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">
+                                <i class="fa fa-info-circle"></i>
+                                <span>About</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {% if request.path == '/' + account.url %}active{% endif %}"
                                 href="/{{ account.url }}">
                                 <i class="fa fa-home"></i>
@@ -59,6 +65,11 @@
 
             <nav class="mobile-nav d-md-none fixed-bottom bg-light">
                 <ul class="nav justify-content-around">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == '/about' %}active{% endif %}" href="/about">
+                            <i class="fa fa-info-circle"></i>
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == '/' + account.url %}active{% endif %}"
                             href="/{{ account.url }}" aria-label="Dashboard">
