@@ -10,7 +10,6 @@ from datetime import datetime, timezone, timedelta
 from accounts import accounts_bp  # Importing Blueprint for account-specific routes
 from dotenv import load_dotenv
 import json
-from plot_utils import get_plot_data
 from sqlalchemy import text
 from sqlalchemy.pool import QueuePool
 from functools import wraps
@@ -18,54 +17,53 @@ from utils import admin_required, get_analytics, initiate_source_refresh, format
 
 load_dotenv(override=True)
 
-# Configure logging for production environment
-formatter = logging.Formatter('%(asctime)s [%(levelname)s] [%(name)s] %(message)s')
-handler = logging.StreamHandler()
-handler.setFormatter(formatter)
+def setup_logging(app):
+    """Configure logging for the application"""
+    # Configure logging for production environment
+    formatter = logging.Formatter('%(asctime)s [%(levelname)s] [%(name)s] %(message)s')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
 
-# Configure root logger first
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.INFO)
-# Remove any existing handlers to avoid duplicate logs
-for h in root_logger.handlers:
-    root_logger.removeHandler(h)
-root_logger.addHandler(handler)
+    # Configure root logger first
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    # Remove any existing handlers to avoid duplicate logs
+    for h in root_logger.handlers:
+        root_logger.removeHandler(h)
+    root_logger.addHandler(handler)
 
-# Create logger for the application
-logger = logging.getLogger(__name__)  # This creates the 'app' logger
-logger.setLevel(logging.INFO)
-logger.propagate = True  # Ensure propagation to root logger
+    # Configure Flask app logger
+    app.logger.setLevel(logging.INFO)
+    # Remove default Flask handlers
+    app.logger.handlers = []
+    app.logger.addHandler(handler)
+    # Don't propagate to avoid duplicate logs
+    app.logger.propagate = False
 
-# Configure all module loggers
-loggers = ['plot_utils', 'accounts', 'models', 'S3Manager']  # Removed __name__ since we configured it above
-for logger_name in loggers:
-    module_logger = logging.getLogger(logger_name)
-    module_logger.setLevel(logging.INFO)
-    # Remove any existing handlers
-    for h in module_logger.handlers:
-        module_logger.removeHandler(h)
-    module_logger.propagate = True
+    # Configure all module loggers
+    loggers = ['plot_utils', 'accounts', 'models', 'S3Manager']
+    for logger_name in loggers:
+        module_logger = logging.getLogger(logger_name)
+        module_logger.setLevel(logging.INFO)
+        for h in module_logger.handlers:
+            module_logger.removeHandler(h)
+        module_logger.addHandler(handler)
+        module_logger.propagate = False
 
-# Configure SQLAlchemy logging to be less verbose
-logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
-logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)
-
-# Test log message
-logger.info("Logging configuration completed")
+    # Configure SQLAlchemy logging to be less verbose
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+    logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)
 
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
 
 # Load environment configuration
 app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
-print(f"ENVIRONMENT: {app.config['ENVIRONMENT']}")
 
-# Configure Flask app logger to use our configuration
-app.logger.setLevel(logging.INFO)
-# Remove default Flask handlers
-app.logger.handlers = []
-# Let Flask logger propagate to root
-app.logger.propagate = True
+# Setup logging
+setup_logging(app)
+app.logger.info("Logging configuration completed")
+app.logger.info(f"ENVIRONMENT: {app.config['ENVIRONMENT']}")
 
 # Essential Flask and SQLAlchemy configuration
 app.config['SECRET_KEY'] = os.urandom(24)
@@ -77,9 +75,9 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 # Configure SQLAlchemy connection pooling
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'poolclass': QueuePool,
-    'pool_size': 2,  # Reduced from 5
-    'max_overflow': 3,  # Reduced from 10
-    'pool_timeout': 20,  # Reduced from 30
+    'pool_size': 2,
+    'max_overflow': 3,
+    'pool_timeout': 20,
     'pool_recycle': 1800,
     'pool_pre_ping': True
 }
@@ -88,17 +86,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize SQLAlchemy
 db.init_app(app)
-
-# Enable SQLite foreign key support
-# with app.app_context():
-#     if db.engine.url.drivername == 'sqlite':
-#         from sqlalchemy import event
-#         from sqlalchemy.engine import Engine
-#         @event.listens_for(Engine, "connect")
-#         def set_sqlite_pragma(dbapi_connection, connection_record):
-#             cursor = dbapi_connection.cursor()
-#             cursor.execute("PRAGMA foreign_keys=ON")
-#             cursor.close()
 
 # Initialize Flask-Migrate
 migrate = Migrate(app, db)
@@ -109,33 +96,28 @@ def cleanup_alembic_tables():
         with db.engine.connect() as conn:
             tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '_alembic_tmp_%'"))
             for table in tables:
-                logger.info(f"Dropping temporary table: {table[0]}")
+                app.logger.info(f"Dropping temporary table: {table[0]}")
                 conn.execute(text(f"DROP TABLE IF EXISTS {table[0]}"))
     except Exception as e:
-        logger.error(f"Error cleaning up temporary tables: {e}")
+        app.logger.error(f"Error cleaning up temporary tables: {e}")
 
 # Note: Database migrations are now handled during app initialization
-with app.app_context():
-    try:
-        # Clean up any temporary tables first
-        cleanup_alembic_tables()
-        
-        # Run migrations
-        logger.info("Running database migrations...")
+if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
+    with app.app_context():
         try:
-            upgrade()
-            logger.info("Database migrations completed successfully")
+            # Clean up any temporary tables first
+            cleanup_alembic_tables()
+            
+            # Run migrations
+            app.logger.info("Running database migrations...")
+            try:
+                upgrade()
+                app.logger.info("Database migrations completed successfully")
+            except Exception as e:
+                app.logger.error(f"Error during migrations: {e}")
+                
         except Exception as e:
-            logger.error(f"Error during migrations: {e}")
-            
-        # Re-enable foreign keys after migrations
-        # with db.engine.connect() as conn:
-        #     conn.execute(text("PRAGMA foreign_keys=ON"))
-            
-        # Initialize any required application state
-        pass
-    except Exception as e:
-        logger.error(f"Error during application initialization: {e}")
+            app.logger.error(f"Error during application initialization: {e}")
 
 # Register the Blueprint for account-specific routes
 app.register_blueprint(accounts_bp)
@@ -182,9 +164,9 @@ def create_default_settings(account_id):
         )
         db.session.add(new_setting)
         db.session.commit()
-        logger.debug(f"Default settings created for account ID {account_id}")
+        app.logger.debug(f"Default settings created for account ID {account_id}")
     except Exception as e:
-        logger.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
+        app.logger.error(f"There was an issue creating default settings for account ID {account_id}: {e}")
         db.session.rollback()
 
 # Add this before the routes
@@ -200,10 +182,10 @@ def load_user():
 @app.route('/')
 def index():
     try:
-        logger.debug("Accessing the index route.")
+        app.logger.debug("Accessing the index route.")
         return render_template('index.html')
     except Exception as e:
-        logger.error(f"Error loading index: {e}")
+        app.logger.error(f"Error loading index: {e}")
         return "There was an issue loading the homepage.", 500
 
 def admin_required(f):
@@ -242,7 +224,7 @@ def admin():
                                          admin_route='admin',
                                          analytics=analytics)
                 except Exception as e:
-                    logger.error(f"Error loading admin dashboard: {e}")
+                    app.logger.error(f"Error loading admin dashboard: {e}")
                     return "There was an issue loading the page.", 500
             
             # Handle POST request - create new account
@@ -294,8 +276,8 @@ def submit():
     if aws_user_name and bucket_name:
         # Get admin account's settings for AWS operations
         admin_account = Account.query.filter_by(is_admin=True).first()
-        logger.info(f"Found admin account: {admin_account.name if admin_account else 'None'}")
-        logger.info(f"Admin has AWS credentials: {bool(admin_account and admin_account.settings and admin_account.settings.aws_access_key_id)}")
+        app.logger.info(f"Found admin account: {admin_account.name if admin_account else 'None'}")
+        app.logger.info(f"Admin has AWS credentials: {bool(admin_account and admin_account.settings and admin_account.settings.aws_access_key_id)}")
         
         if not admin_account or not admin_account.settings:
             flash('Error: Admin AWS credentials are not configured. Please set up AWS credentials for the admin account first.', 'danger')
@@ -346,13 +328,13 @@ def submit():
             
             db.session.commit()
             
-            logger.info(f"New account created with AWS resources: {new_account.name} (ID: {new_account.id})")
+            app.logger.info(f"New account created with AWS resources: {new_account.name} (ID: {new_account.id})")
             flash('Account created successfully with AWS configuration', 'success')
             return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
 
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Database error creating account: {e}")
+            app.logger.error(f"Database error creating account: {e}")
             flash('Failed to create account in database', 'danger')
             return redirect(url_for('admin'))
 
@@ -365,12 +347,12 @@ def submit():
             create_default_settings(new_account.id)
             db.session.commit()
             
-            logger.debug(f"New account created without AWS: {new_account.name} (ID: {new_account.id})")
+            app.logger.debug(f"New account created without AWS: {new_account.name} (ID: {new_account.id})")
             flash('Account created successfully', 'success')
             return redirect(url_for('accounts.account_dashboard', account_url=new_account.url))
         except Exception as e:
             db.session.rollback()
-            logger.error(f"There was an issue adding your account: {e}")
+            app.logger.error(f"There was an issue adding your account: {e}")
             flash('Failed to create account', 'danger')
             return redirect(url_for('admin'))
 
@@ -381,7 +363,7 @@ def docs():
     try:
         return render_template('docs.html')
     except Exception as e:
-        logger.error(f"Error loading documentation: {e}")
+        app.logger.error(f"Error loading documentation: {e}")
         return "There was an issue loading the documentation.", 500
     
 # Route to view about page
@@ -392,7 +374,7 @@ def about():
         analytics = get_analytics()
         return render_template('about.html', analytics=analytics)
     except Exception as e:
-        logger.error(f"Error loading about page: {e}")
+        app.logger.error(f"Error loading about page: {e}")
         return "There was an issue loading the about page.", 500
     
 # Route to view pricing
@@ -402,7 +384,7 @@ def pricing():
     try:
         return render_template('pricing.html')
     except Exception as e:
-        logger.error(f"Error loading pricing: {e}")
+        app.logger.error(f"Error loading pricing: {e}")
         return "There was an issue loading the pricing.", 500
     
 @app.route('/favicon.ico')
@@ -413,7 +395,7 @@ def favicon():
 def cronjob():
     try:
         current_time = datetime.now(timezone.utc)
-        logger.info(f"Cronjob running at {current_time}")
+        app.logger.info(f"Cronjob running at {current_time}")
         
         # Check for daily tasks
         admin = Admin.query.first()
@@ -428,7 +410,7 @@ def cronjob():
             current_time.month != last_cron.month or 
             current_time.day != last_cron.day
         ):
-            logger.info(f"Running daily tasks at {current_time}")
+            app.logger.info(f"Running daily tasks at {current_time}")
             # check if sum of file.size > account.storage_current_bytes for each account
             # if so, use S3Manager > get_storage_usage() to update account.storage_current_bytes
             for account in Account.query.all():
@@ -445,7 +427,7 @@ def cronjob():
                 new_month = current_time.day == plan_anniversary.day
 
                 if new_month:
-                    logger.info(f"Monthly reset for account {account.name} (ID: {account.id})")
+                    app.logger.info(f"Monthly reset for account {account.name} (ID: {account.id})")
                     account.count_uploaded_files_mo = 0
                     db.session.commit()
 
@@ -458,7 +440,7 @@ def cronjob():
             ).all()
             
             if old_gateways:
-                logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
+                app.logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
                 print(f"/cronjob: Deleting {len(old_gateways)} old gateways with no nodes")
                 for gateway in old_gateways:
                     db.session.delete(gateway)
@@ -474,7 +456,7 @@ def cronjob():
             interval_minutes = int(os.getenv('SOURCE_INTERVAL_MINUTES', '5'))
             cutoff_time = current_time - timedelta(minutes=interval_minutes)
             
-            logger.info(f"Looking for sources not updated since {cutoff_time}")
+            app.logger.info(f"Looking for sources not updated since {cutoff_time}")
             print(f"/cronjob: Looking for sources not updated since {cutoff_time}")
             
             # Find sources that need updating
@@ -484,12 +466,12 @@ def cronjob():
                 (Source.last_updated <= cutoff_time.replace(tzinfo=None))  # Remove timezone info for comparison
             ).all()
             
-            logger.info(f"Found {len(sources)} sources that need updating")
+            app.logger.info(f"Found {len(sources)} sources that need updating")
             print(f"/cronjob: Found {len(sources)} sources that need updating")
             
             for source in sources:
                 last_updated = source.last_updated.replace(tzinfo=timezone.utc) if source.last_updated else None
-                logger.info(f"Source {source.id}: last_updated={last_updated}, "
+                app.logger.info(f"Source {source.id}: last_updated={last_updated}, "
                         f"needs_update={(last_updated is None) or (last_updated <= cutoff_time)}")
             
             for source in sources:
@@ -515,7 +497,7 @@ def cronjob():
             })
         
     except Exception as e:
-        logger.error(f"Error in cronjob: {e}")
+        app.logger.error(f"Error in cronjob: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -524,7 +506,7 @@ def cronjob():
 # Define error handler
 @app.errorhandler(404)
 def page_not_found(e):
-    logger.error(f"404 error: {e}")
+    app.logger.error(f"404 error: {e}")
     return render_template('404.html'), 404
 
 @app.template_filter('to_csv')
@@ -577,7 +559,7 @@ def edit_account(account_id):
             try:
                 account.plan_start_date = datetime.strptime(plan_start_date, '%Y-%m-%d')
             except ValueError as e:
-                logger.error(f"Invalid date format for plan_start_date: {e}")
+                app.logger.error(f"Invalid date format for plan_start_date: {e}")
                 flash('Invalid date format for plan start date', 'error')
                 return redirect(url_for('admin'))
         
@@ -593,7 +575,7 @@ def edit_account(account_id):
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error updating account {account_id}: {e}")
+        app.logger.error(f"Error updating account {account_id}: {e}")
         flash('Error updating account', 'error')
         
     return redirect(url_for('admin'))
@@ -666,7 +648,7 @@ def reset_account_stats(account_id):
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error resetting stats for account {account_id}: {e}")
+        app.logger.error(f"Error resetting stats for account {account_id}: {e}")
         flash('Error resetting account statistics', 'error')
         
     return redirect(url_for('admin'))
