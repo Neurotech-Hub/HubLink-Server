@@ -24,15 +24,4 @@
             </table>
         </div>
     </div>
-</div>
-
-<script>
-    // Update times every minute
-    setInterval(function() {
-        fetch(window.location.pathname + '/gateways')
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('dashboardGateways').innerHTML = html;
-            });
-    }, 60000);
-</script> 
+</div> 

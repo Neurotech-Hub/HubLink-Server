@@ -200,6 +200,31 @@
             display: block;
             line-height: 1.2;
         }
+
+        /* Add counter styles */
+        .stats-counter {
+            padding: 1rem 0;
+            min-height: 40vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .counter-number {
+            font-size: min(20vw, 12rem);
+            font-weight: 900;
+            color: #0d6efd;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .stats-counter {
+                min-height: 30vh;
+            }
+        }
     </style>
 </head>
 
@@ -219,12 +244,12 @@
                         We're building the future of scientific data management, one byte at a time.
                     </p>
                     <div class="fs-5">
-                        <p class="mb-4">In late 2024, a group of us were chatting in the <a target="_blank" href="https://neurotechhub.wustl.edu/" class="text-decoration-none">Neurotech Hub at WashU</a> about how to wirelessly sync data
-                        from in-cage behavior devices. Previous attempts to perform event-based syncing failed, largely because the data was
+                        <p class="mb-4">In late 2024, a group of us were gathered in the <a target="_blank" href="https://neurotechhub.wustl.edu/" class="text-decoration-none">Neurotech Hub at WashU</a> talking about how to wirelessly sync data
+                        from in-cage behavior devices. We observed that previous attempts to perform event-based syncing failed, largely because the data was
                         complex, ever-changing, and experiment-specific.</p>
                         
                         <p class="mb-4">We started to simplify the problem: <em>what if we could just get files from the SD card on the device to the cloud with
-                        minimal interruption and impact to battery life?</em> And that's what we've done.</p>
+                        minimal interruption and impact to battery life?</em> So that's what we set out to do.</p>
                         
                         <p class="mb-0"><strong>The Neurotech Hub has spearheaded hublink.cloud™ as a platform for all researchers</strong> and continues to expand its use in
                         multiple experimental paradigms and domains.</p>
@@ -234,7 +259,7 @@
         </section>
 
         <!-- Timeline Section -->
-        <section class="mb-5">
+        <section class="mb-2">
             <h2 class="border-bottom pb-2 mb-4">Our Journey</h2>
             <div class="timeline">
                 <!-- Timeline Item 1 -->
@@ -324,6 +349,14 @@
             </div>
         </section>
 
+        <!-- Stats Counter Section -->
+        <section class="text-center mb-4">
+            <div class="stats-counter">
+                <div id="filesCounter" class="counter-number royal">{{ analytics.total_uploaded_files|default(0) }}</div>
+                <p class="lead text-muted">files uploaded to date</p>
+            </div>
+        </section>
+
         <!-- Roadmap Section -->
         <section class="mb-5">
             <h2 class="border-bottom pb-2 mb-4">Roadmap</h2>
@@ -373,7 +406,7 @@
                             <div class="border-bottom flex-grow-1 mx-3"></div>
                         </div>
                         <h5>Predict the data that matters to you most.</h5>
-                        <p class="text-muted">We're working on integrating AI tools into the dashboard to help with data analysis. This will allow us to do things like automatically generate plots and summaries of the data automatically based on column types and metadata.</p>
+                        <p class="text-muted">We want to integrate AI tools to provide more meaningful insights. This will allow us to do things like automatically generate plots and summaries of the data automatically based on column types and metadata.</p>
                     </div>
                 </div>
             </div>
@@ -394,6 +427,53 @@
     </div>
 
     {% include "footer.html" %}
+
+    <!-- CountUp.js -->
+    <script type="module">
+        import { CountUp } from 'https://cdnjs.cloudflare.com/ajax/libs/countup.js/2.8.0/countUp.min.js';
+        
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            const finalNumber = {{ analytics.total_uploaded_files|default(0) }};
+            const almostThere = finalNumber - 1;
+            
+            // First counter animation (0 to n-1)
+            const firstCount = new CountUp('filesCounter', almostThere, {
+                duration: 2.5,
+                separator: ',',
+                useEasing: true,
+                startVal: 0
+            });
+
+            // Second counter animation (n-1 to n)
+            const finalCount = new CountUp('filesCounter', finalNumber, {
+                duration: 0.5,
+                separator: ',',
+                useEasing: true,
+                startVal: almostThere
+            });
+
+            // Create observer to start animation when counter is visible
+            const observer = new IntersectionObserver(
+                function(entries) {
+                    if (entries[0].isIntersecting) {
+                        // Start first animation
+                        firstCount.start(() => {
+                            // After first animation completes, wait 2s then do final increment
+                            setTimeout(() => {
+                                finalCount.start();
+                            }, 2000);
+                        });
+                        observer.disconnect();
+                    }
+                },
+                { threshold: 0.2 }
+            );
+
+            // Start observing the counter section
+            observer.observe(document.querySelector('.stats-counter'));
+        });
+    </script>
 </body>
 
 </html> 

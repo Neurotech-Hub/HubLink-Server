@@ -389,7 +389,8 @@ def docs():
 def about():
     g.title = "About"
     try:
-        return render_template('about.html')
+        analytics = get_analytics()
+        return render_template('about.html', analytics=analytics)
     except Exception as e:
         logger.error(f"Error loading about page: {e}")
         return "There was an issue loading the about page.", 500
