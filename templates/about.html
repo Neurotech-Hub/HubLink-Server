@@ -362,51 +362,99 @@
             <h2 class="border-bottom pb-2 mb-4">Roadmap</h2>
             
             <div class="row g-4">
-                <!-- Q2 2024 -->
                 <div class="col-md-6">
                     <div class="roadmap-item h-100">
                         <div class="d-flex align-items-center mb-3">
-                            <span class="badge bg-primary">Data Redundancy</span>
+                            <span class="badge bg-primary"><i class="fas fa-shield-alt me-2"></i>Data Integrity</span>
                             <div class="border-bottom flex-grow-1 mx-3"></div>
                         </div>
                         <h5>Better versioning and cold storage.</h5>
-                        <p class="text-muted">We're working on a system that allows you to version your data and store it in cold storage. This requires better data management tools in the dashboard.</p>
+                        <p class="text-muted">We already provide file versioning and cold storage, but we want disaster recovery or
+                            unearthing old data to be more intuitive. We also want world-class encryption for sensitive data.</p>
+                        <ul class="text-muted small">
+                            <li>Add S3 Glacier Deep Archive support for 1-year+ old data with retrieval scheduling</li>
+                            <li>End-to-end encryption to meet HIPAA and GDPR standards</li>
+                            <li>Enable point-in-time recovery with 30-day retention window</li>
+                        </ul>
                     </div>
                 </div>
-
-                <!-- Q3 2024 -->
                 <div class="col-md-6">
                     <div class="roadmap-item h-100">
                         <div class="d-flex align-items-center mb-3">
-                            <span class="badge bg-primary">Node Management</span>
+                            <span class="badge bg-primary"><i class="fas fa-microchip me-2"></i>Node Management</span>
                             <div class="border-bottom flex-grow-1 mx-3"></div>
                         </div>
-                        <h5>Command each node individually.</h5>
-                        <p class="text-muted">We're working on a system that allows you to command each node individually. This will allow us to do things like update the software on the nodes or send reboot commands.</p>
+                        <h5>Streamline interactions and boost efficiency.</h5>
+                        <p class="text-muted">We imagine that node devices could be a lot smarter. Not only should every node be commanded
+                        individually (with over the air updates) but data diffs for efficient syncing should be implemented.</p>
+                        <ul class="text-muted small">
+                            <li>Add delta updates to minimize bandwidth for Arduino/ESP32 firmware</li>
+                            <li>Enable over the air (OTA) updates for node firmware</li>
+                            <li>Support wake-on-RTC for battery-optimized command scheduling</li>
+                        </ul>
                     </div>
                 </div>
-
-                <!-- Q4 2024 -->
                 <div class="col-md-6">
                     <div class="roadmap-item h-100">
                         <div class="d-flex align-items-center mb-3">
-                            <span class="badge bg-primary">Server Efficiency</span>
+                            <span class="badge bg-primary"><i class="fas fa-server me-2"></i>Server Efficiency</span>
                             <div class="border-bottom flex-grow-1 mx-3"></div>
                         </div>
                         <h5>Faster load times and better analytics.</h5>
-                        <p class="text-muted">Hublink can be faster and more efficient. We are working on making the dashboard more responsive and adding more analytics tools that feel natural and easy to use.</p>
+                        <p class="text-muted">Hublink can be faster and more intuitive. We are working on making the dashboard more
+                            responsive and adding tools for users that give more visibility into their fleet and data.</p>
+                        <ul class="text-muted small">
+                            <li>Implement server sockets for true real-time dashboard updates</li>
+                            <li>Add user-driven alerting and notifications</li>
+                        </ul>
                     </div>
                 </div>
-
-                <!-- Q1 2025 -->
                 <div class="col-md-6">
                     <div class="roadmap-item h-100">
                         <div class="d-flex align-items-center mb-3">
-                            <span class="badge bg-primary">AI Integration</span>
+                            <span class="badge bg-primary"><i class="fas fa-brain me-2"></i>AI Integration</span>
                             <div class="border-bottom flex-grow-1 mx-3"></div>
                         </div>
-                        <h5>Predict the data that matters to you most.</h5>
-                        <p class="text-muted">We want to integrate AI tools to provide more meaningful insights. This will allow us to do things like automatically generate plots and summaries of the data based on detection of column types or metadata.</p>
+                        <h5>Predict the data that matters most.</h5>
+                        <p class="text-muted">We want to integrate AI tools to provide more meaningful insights. This will allow us to
+                            do things like automatically generate plots and summaries of the data based on detection of column types or
+                            metadata.</p>
+                        <ul class="text-muted small">
+                            <li>Auto-detect CSV schemas and suggest appropriate visualizations</li>
+                            <li>Generate automated experiment summaries from metadata tags</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="roadmap-item h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary"><i class="fas fa-users-gear me-2"></i>Team Management</span>
+                            <div class="border-bottom flex-grow-1 mx-3"></div>
+                        </div>
+                        <h5>Control access and share insights.</h5>
+                        <p class="text-muted">Managing teams of researchers and administrators requires granular permissions and the
+                            ability to share data efficiently across collaborators.</p>
+                        <ul class="text-muted small">
+                            <li>Add role-based access control with custom permission sets per project</li>
+                            <li>Enable secure data sharing through signed URLs with expiration</li>
+                            <li>Implement audit logs for tracking data access and modifications</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="roadmap-item h-100">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-primary"><i class="fas fa-wifi me-2"></i>Gateway Independence</span>
+                            <div class="border-bottom flex-grow-1 mx-3"></div>
+                        </div>
+                        <h5>Work offline with confidence.</h5>
+                        <p class="text-muted">For field research and remote sites, gateways need to function independently while
+                            maintaining data integrity and providing local access to critical functions.</p>
+                        <ul class="text-muted small">
+                            <li>Deploy local web interface for gateway configuration without cloud</li>
+                            <li>Add store-and-forward queuing with up to 1TB local buffer</li>
+                            <li>Enable mesh networking between gateways for extended coverage</li>
+                        </ul>
                     </div>
                 </div>
             </div>
