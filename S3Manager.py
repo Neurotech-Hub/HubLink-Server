@@ -890,3 +890,90 @@ def get_storage_usage(account_settings):
     except Exception as e:
         logging.error(f"Error calculating bucket sizes: {e}")
         return None
+
+def update_specific_files(account_settings, file_keys):
+    """
+    Update or create database entries for specific S3 files.
+    
+    Args:
+        account_settings: Setting object containing AWS credentials
+        file_keys: List of file keys to check/update
+    
+    Returns:
+        List of affected File objects
+    """
+    affected_files = []
+    
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=account_settings.aws_access_key_id,
+            aws_secret_access_key=account_settings.aws_secret_access_key,
+            region_name=os.getenv('AWS_REGION', 'us-east-1')
+        )
+        
+        # Get existing files from database
+        existing_files = {
+            file.key: file 
+            for file in File.query.filter_by(
+                account_id=account_settings.account_id
+            ).filter(File.key.in_(file_keys)).all()
+        }
+        
+        for file_key in file_keys:
+            try:
+                # Get object metadata from S3
+                obj = s3_client.head_object(
+                    Bucket=account_settings.bucket_name,
+                    Key=file_key
+                )
+                
+                # Get version count
+                version_response = s3_client.list_object_versions(
+                    Bucket=account_settings.bucket_name,
+                    Prefix=file_key
+                )
+                version_count = len(version_response.get('Versions', []))
+                
+                if file_key in existing_files:
+                    # Update existing file
+                    existing_file = existing_files[file_key]
+                    if existing_file.version != version_count:
+                        affected_files.append(existing_file)
+                    
+                    existing_file.size = obj['ContentLength']
+                    existing_file.last_modified = obj['LastModified']
+                    existing_file.version = version_count
+                    existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
+                    db.session.add(existing_file)
+                else:
+                    # Create new file entry
+                    new_file = File(
+                        account_id=account_settings.account_id,
+                        key=file_key,
+                        url=generate_s3_url(account_settings.bucket_name, file_key),
+                        size=obj['ContentLength'],
+                        last_modified=obj['LastModified'],
+                        last_checked=datetime.now(timezone.utc),
+                        version=version_count
+                    )
+                    db.session.add(new_file)
+                    affected_files.append(new_file)
+                
+            except botocore.exceptions.ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code')
+                if error_code == '404':
+                    # File doesn't exist in S3, remove from DB if present
+                    if file_key in existing_files:
+                        db.session.delete(existing_files[file_key])
+                else:
+                    logging.error(f"Error checking file {file_key}: {str(e)}")
+                    continue
+                    
+        db.session.commit()
+        return affected_files
+        
+    except Exception as e:
+        logging.error(f"Error in update_specific_files: {str(e)}")
+        db.session.rollback()
+        return []

@@ -186,46 +186,6 @@ def account_data(account_url, directory=None):
         logging.error(f"Error loading data for {account_url}: {e}")
         return "There was an issue loading the data page.", 500
 
-@accounts_bp.route('/<account_url>/files', methods=['POST'])
-def check_files(account_url):
-    try:
-        logging.debug(f"Received request for checking files for account: {account_url}")
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        request_data = request.get_json()
-        logging.debug(f"Request data: {request_data}")
-
-        if not request_data or 'files' not in request_data:
-            return jsonify({"error": "Invalid input. JSON body must contain 'files'."}), 400
-        
-        files = request_data.get('files', [])
-        
-        if not isinstance(files, list) or not all(isinstance(file, dict) and 'filename' in file and 'size' in file for file in files):
-            logging.error("Invalid input structure for 'files'. Must be a list of dictionaries with 'filename' and 'size'.")
-            return jsonify({"error": "Invalid input. 'files' must be a list of dictionaries with 'filename' and 'size' keys."}), 400
-
-        # Get the current time in UTC
-        current_time = datetime.now(timezone.utc)
-        logger.info(f"Setting last_checked to UTC time: {current_time} for files: {[f['filename'] for f in files]}")
-        
-        # Update last_checked for all files being checked
-        for file_data in files:
-            file = File.query.filter_by(account_id=account.id, key=file_data['filename']).first()
-            if file:
-                file.last_checked = current_time
-        
-        db.session.commit()
-
-        # Delegate to existing function to check file existence
-        result = do_files_exist(account.id, files)
-        logging.debug(f"File existence result: {result}")
-
-        return jsonify({"exists": result})
-
-    except Exception as e:
-        logging.error(f"Error in '/{account_url}/files' endpoint: {e}")
-        logging.error(f"Traceback: {traceback.format_exc()}")
-        return jsonify({"error": "There was an issue processing your request."}), 500
-
 @accounts_bp.route('/<account_url>/source/<int:source_id>.json', methods=['GET'])
 def get_source_files(account_url, source_id):
     try:
@@ -261,6 +221,57 @@ def get_source_files(account_url, source_id):
         logging.error(f"Error getting source files: {e}")
         return jsonify({'error': str(e)}), 500
 
+def _update_sources_for_files(account, affected_files):
+    """Helper function to update sources based on affected files.
+    
+    Args:
+        account: Account object
+        affected_files: List of File objects that were affected
+        
+    Returns:
+        Tuple of (refresh_count, affected_sources)
+    """
+    if not affected_files:
+        return 0, set()
+        
+    # Update account counter
+    account.count_uploaded_files += len(affected_files)
+    account.count_uploaded_files_mo += len(affected_files)
+    
+    # Get all sources for this account
+    sources = Source.query.filter_by(account_id=account.id).all()
+    affected_sources = set()  # Use set to ensure uniqueness
+    
+    # Create a set of affected file keys for efficient lookup
+    affected_file_keys = {file.key for file in affected_files}
+    
+    # For each source, check if any of its matching files were affected
+    for source in sources:
+        try:
+            matching_files = list_source_files(account, source)
+            # Check if any matching files were affected
+            if any(file.key in affected_file_keys for file in matching_files):
+                affected_sources.add(source)
+        except Exception as e:
+            logging.error(f"Error matching pattern for source {source.id}: {e}")
+            continue
+    
+    # Set do_update=True for each affected source
+    refresh_count = 0
+    for source in affected_sources:
+        try:
+            source.do_update = True
+            refresh_count += 1
+            logging.info(f"Marked {account.name}: {source.id}|{source.name} for update")
+        except Exception as e:
+            logging.error(f"Error marking source {source.id} for update: {e}")
+            continue
+
+    db.session.commit()
+    logging.info(f"Added/updated {len(affected_files)} files; marked {refresh_count} sources for refresh for {account.id}|{account.name}")
+    
+    return refresh_count, affected_sources
+
 @accounts_bp.route('/<account_url>/rebuild', methods=['GET'])
 def rebuild(account_url):
     try:
@@ -269,47 +280,13 @@ def rebuild(account_url):
 
         # Get list of affected files from rebuild operation
         affected_files = rebuild_S3_files(settings)
-        refresh_count = 0
         
-        if affected_files:
-            # Update account counter
-            account.count_uploaded_files += len(affected_files)
-            account.count_uploaded_files_mo += len(affected_files)
-            
-            # Get all sources for this account
-            sources = Source.query.filter_by(account_id=account.id).all()
-            affected_sources = set()  # Use set to ensure uniqueness
-            
-            # Create a set of affected file keys for efficient lookup
-            affected_file_keys = {file.key for file in affected_files}
-            
-            # For each source, check if any of its matching files were affected
-            for source in sources:
-                try:
-                    matching_files = list_source_files(account, source)
-                    # Check if any matching files were affected by the rebuild
-                    if any(file.key in affected_file_keys for file in matching_files):
-                        affected_sources.add(source)
-                except Exception as e:
-                    logging.error(f"Error matching pattern for source {source.id}: {e}")
-                    continue
-            
-            # Set do_update=True for each affected source
-            for source in affected_sources:
-                try:
-                    source.do_update = True
-                    refresh_count += 1
-                    logging.info(f"Marked {account.name}: {source.id}|{source.name} for update")
-                except Exception as e:
-                    logging.error(f"Error marking source {source.id} for update: {e}")
-                    continue
-
-            db.session.commit()
-            logging.info(f"Added/updated {len(affected_files)} files; marked {refresh_count} sources for refresh for {account.id}|{account.name}")
+        # Update sources using helper function
+        refresh_count, _ = _update_sources_for_files(account, affected_files)
 
         return jsonify({
             "message": "Rebuild completed successfully",
-            "affected_files": len(affected_files),
+            "affected_files": len(affected_files) if affected_files else 0,
             "marked_for_refresh": refresh_count
         }), 200
     except Exception as e:
@@ -1681,6 +1658,84 @@ def list_files_json(account_url, since_datetime=None):
         
     except Exception as e:
         logging.error(f"Error listing files for {account_url}: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
+
+"""
+Example curl command to test this endpoint:
+
+curl -X POST http://127.0.0.1:5000/your-account-url/files \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uploaded_files": [
+      "data/file1.csv",
+      "data/file2.csv",
+      "experiments/test.csv"
+    ]
+  }'
+
+Response on success:
+{
+    "success": true,
+    "message": "Updated 3 files, marked 2 sources for refresh",
+    "updated_files": 3,
+    "marked_sources": 2
+}
+
+Response on error:
+{
+    "error": "Error message here"
+}
+"""
+@accounts_bp.route('/<account_url>/files', methods=['POST'])
+def update_files(account_url):
+    """Update database entries for specific S3 files.
+    
+    Expected JSON payload:
+    {
+        "uploaded_files": ["file1.csv", "path/to/file2.csv", ...]
+    }
+    """
+    try:
+        # Get account and settings
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        settings = Setting.query.filter_by(account_id=account.id).first_or_404()
+        
+        # Get file keys from request
+        data = request.get_json()
+        if not data or 'uploaded_files' not in data:
+            return jsonify({
+                'error': 'Missing uploaded_files in request body'
+            }), 400
+            
+        file_keys = data['uploaded_files']
+        if not file_keys:
+            return jsonify({
+                'error': 'No files provided'
+            }), 400
+            
+        # Update files in database
+        affected_files = update_specific_files(settings, file_keys)
+        
+        # Update sources using helper function
+        refresh_count, _ = _update_sources_for_files(account, affected_files)
+        
+        if affected_files:
+            return jsonify({
+                'message': 'Files updated successfully',
+                'affected_files': len(affected_files),
+                'marked_for_refresh': refresh_count
+            }), 200
+        else:
+            return jsonify({
+                'message': 'No files were affected',
+                'affected_files': 0,
+                'marked_for_refresh': 0
+            }), 200
+            
+    except Exception as e:
+        logging.error(f"Error updating files for {account_url}: {e}")
         return jsonify({
             'error': str(e)
         }), 500
