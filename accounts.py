@@ -1240,6 +1240,9 @@ def account_data_content(account_url):
             error_out=False
         )
         
+        # Get total count of files in current view
+        total_files = files_query.count()
+        
         # Get directories for dropdown
         directories = get_directory_paths(account.id)
         
@@ -1259,7 +1262,8 @@ def account_data_content(account_url):
                              now=now,
                              directory=directory,
                              current_directory=directory,
-                             directories=directories)
+                             directories=directories,
+                             total_files=total_files)
                              
     except Exception as e:
         logger.error(f"Error loading data content: {str(e)}")
