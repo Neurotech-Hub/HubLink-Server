@@ -209,8 +209,9 @@ def get_source_files(account_url, source_id):
         # Get matching files for this source
         matching_files = list_source_files(account, source)
         
-        # Sort by last_modified in descending order (most recent first)
+        # Sort by last_modified in descending order (most recent first) and limit to 300
         matching_files.sort(key=lambda x: x.last_modified or datetime.min, reverse=True)
+        matching_files = matching_files[:300]  # Limit to 300 most recent files
         
         # Filter files up to 12MB cumulative size
         filtered_files = []
@@ -1234,9 +1235,6 @@ def account_data_content(account_url):
                         not_(File.key.like(f"{directory}/%/%"))
                     )
                 )
-        else:
-            # No directory filter, just use base filters
-            files_query = File.query.filter(base_filters)
 
         # Order by last modified and paginate
         pagination = files_query.order_by(File.last_modified.desc()).paginate(
