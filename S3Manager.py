@@ -50,33 +50,18 @@ def rebuild_S3_files(account_settings):
                             
                         s3_files.add(file_key)
 
-                        # Get the version count for this file
-                        try:
-                            version_response = s3_client.list_object_versions(
-                                Bucket=account_settings.bucket_name,
-                                Prefix=file_key
-                            )
-                            # Count all versions including the 'null' version
-                            version_count = len(version_response.get('Versions', []))
-                        except Exception as ve:
-                            logging.error(f"Error getting versions for {file_key}: {ve}")
-                            version_count = 1  # Default to 1 if we can't get versions
-
                         # rewrite all right now, check version in the future to minimize db operations
                         if file_key in db_files:
                             existing_file = db_files[file_key]
-
-                            # affected files determines if the source needs to be rebuilt
-                            if existing_file.version != version_count:
-                                affected_files.append(existing_file)  # Add updated file
-
+                            # Only add to affected_files if last_modified has changed
+                            if existing_file.last_modified != obj['LastModified']:
+                                affected_files.append(existing_file)
                             existing_file.size = obj['Size']
                             existing_file.last_modified = obj['LastModified']
-                            existing_file.version = version_count
                             existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                             db.session.add(existing_file)
                         else:
-                            # New file - create new entry
+                            # New file - create new entry with version 1
                             new_file = File(
                                 account_id=account_id,
                                 key=file_key,
@@ -84,10 +69,10 @@ def rebuild_S3_files(account_settings):
                                 size=obj['Size'],
                                 last_modified=obj['LastModified'],
                                 last_checked=datetime.now(timezone.utc),
-                                version=version_count
+                                version=1
                             )
                             db.session.add(new_file)
-                            affected_files.append(new_file)  # Add new file
+                            affected_files.append(new_file)
 
                 # Handle pagination
                 if response.get('IsTruncated'):
@@ -98,6 +83,8 @@ def rebuild_S3_files(account_settings):
             # Remove files that exist in DB but not in S3
             for key in db_files:
                 if key not in s3_files:
+                    # Add to affected_files before deleting
+                    affected_files.append(db_files[key])
                     db.session.delete(db_files[key])
 
             db.session.commit()
@@ -935,26 +922,21 @@ def update_specific_files(account_settings, file_keys):
                     Key=file_key
                 )
                 
-                # Get version count
-                version_response = s3_client.list_object_versions(
-                    Bucket=account_settings.bucket_name,
-                    Prefix=file_key
-                )
-                version_count = len(version_response.get('Versions', []))
-                
                 if file_key in existing_files:
                     # Update existing file
                     existing_file = existing_files[file_key]
-                    if existing_file.version != version_count:
+                    # If size or last_modified has changed, increment version
+                    if (existing_file.size != obj['ContentLength'] or 
+                        existing_file.last_modified != obj['LastModified']):
+                        existing_file.version += 1
                         affected_files.append(existing_file)
                     
                     existing_file.size = obj['ContentLength']
                     existing_file.last_modified = obj['LastModified']
-                    existing_file.version = version_count
                     existing_file.url = generate_s3_url(account_settings.bucket_name, file_key)
                     db.session.add(existing_file)
                 else:
-                    # Create new file entry
+                    # Create new file entry starting at version 1
                     new_file = File(
                         account_id=account_settings.account_id,
                         key=file_key,
@@ -962,7 +944,7 @@ def update_specific_files(account_settings, file_keys):
                         size=obj['ContentLength'],
                         last_modified=obj['LastModified'],
                         last_checked=datetime.now(timezone.utc),
-                        version=version_count
+                        version=1
                     )
                     db.session.add(new_file)
                     affected_files.append(new_file)
