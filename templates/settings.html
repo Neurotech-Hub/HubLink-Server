@@ -72,7 +72,7 @@
                             {% set uploads_width = uploads_percent if uploads_percent <= 100 else 100 %}
                             <label class="form-label d-flex justify-content-between">
                                 <span>Monthly Uploads</span>
-                                <span>{{ account.count_uploaded_files_mo }} / {{ account.plan_uploads_mo }}</span>
+                                <span>{{ account.count_uploaded_files_mo|number_format }} / {{ account.plan_uploads_mo|number_format }}</span>
                             </label>
                             <div class="progress progress-bar-2rem">
                                 <div class="progress-bar {% if uploads_percent >= 100 %}bg-danger{% elif uploads_percent >= 90 %}bg-warning{% else %}bg-success{% endif %}" 

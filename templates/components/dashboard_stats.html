@@ -20,7 +20,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light py-1">
-                    <small class="text-muted">{{ analytics.total_uploaded_files }} total uploads</small>
+                    <small class="text-muted">{{ analytics.total_uploaded_files|number_format }} total uploads</small>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light py-1">
-                    <small class="text-muted">{{ analytics.total_gateway_pings }} total pings</small>
+                    <small class="text-muted">{{ analytics.total_gateway_pings|number_format }} total pings</small>
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light py-1">
-                    <small class="text-muted">{{ analytics.total_nodes }} total nodes</small>
+                    <small class="text-muted">{{ analytics.total_nodes|number_format }} total nodes</small>
                 </div>
             </div>
         </div>

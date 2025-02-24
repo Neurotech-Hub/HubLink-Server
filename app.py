@@ -138,6 +138,14 @@ def format_datetime_filter(value, format='relative'):
     
     return format_datetime(value, timezone, format)
 
+@app.template_filter('number_format')
+def number_format_filter(value):
+    """Template filter to format numbers with commas."""
+    try:
+        return "{:,}".format(int(value))
+    except (ValueError, TypeError):
+        return value
+
 @app.template_filter('filesize')
 def format_file_size_filter(size_in_bytes):
     """Template filter wrapper for format_file_size utility function."""
