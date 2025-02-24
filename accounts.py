@@ -1214,23 +1214,20 @@ def account_data_content(account_url):
             not_(File.key.like('__MACOSX%'))
         )
         
+        # Initialize files_query with base filters
+        files_query = File.query.filter(base_filters)
+        
         # Add directory-specific filters if needed
         if directory:
             if directory == '/':
                 # For root directory, add filter for files without slashes
-                files_query = File.query.filter(
-                    and_(
-                        base_filters,
-                        not_(File.key.contains('/'))
-                    )
-                )
+                files_query = files_query.filter(not_(File.key.contains('/')))
             else:
                 # Remove leading slash if present for consistency
                 directory = directory.lstrip('/')
                 # Match files that are directly in this directory
-                files_query = File.query.filter(
+                files_query = files_query.filter(
                     and_(
-                        base_filters,
                         File.key.like(f"{directory}/%"),
                         not_(File.key.like(f"{directory}/%/%"))
                     )
