@@ -118,10 +118,22 @@ def update_settings(account_url):
             flash("Max file size cannot exceed 1GB", "error")
             return redirect(url_for('accounts.account_settings', account_url=account_url))
 
-        # Track original values
-        original_access_key = settings.aws_access_key_id
-        original_secret_key = settings.aws_secret_access_key
-        original_bucket_name = settings.bucket_name
+        original_access_key = None
+        original_secret_key = None
+        original_bucket_name = None
+
+        # Store original values only if admin
+        if g.user and g.user.is_admin:
+            original_access_key = settings.aws_access_key_id
+            original_secret_key = settings.aws_secret_access_key
+            original_bucket_name = settings.bucket_name
+        else:
+            # Non-admins can't modify AWS settings
+            if (request.form.get('aws_access_key_id') != settings.aws_access_key_id or
+                request.form.get('aws_secret_access_key') != settings.aws_secret_access_key or
+                request.form.get('bucket_name') != settings.bucket_name):
+                flash("Only administrators can modify AWS settings", "error")
+                return redirect(url_for('accounts.account_settings', account_url=account_url))
 
         # Update settings with new form data
         settings.aws_access_key_id = request.form['aws_access_key_id']
@@ -139,6 +151,8 @@ def update_settings(account_url):
             original_secret_key != settings.aws_secret_access_key or
             original_bucket_name != settings.bucket_name
         )
+
+        # we would need to rebuild if AWS settings changed
 
         db.session.commit()
 

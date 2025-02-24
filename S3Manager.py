@@ -441,6 +441,10 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                             'Status': 'Enabled',
                             'NoncurrentVersionExpiration': {
                                 'NoncurrentDays': version_days
+                            },
+                            'ExpiredObjectDeleteMarker': True,
+                            'AbortIncompleteMultipartUpload': {
+                                'DaysAfterInitiation': 7
                             }
                         }
                     ]
@@ -449,7 +453,7 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                     Bucket=new_bucket_name,
                     LifecycleConfiguration=lifecycle_config
                 )
-                logging.info(f"Set lifecycle configuration to delete old versions after {version_days} days")
+                logging.info(f"Set lifecycle configuration to delete old versions after {version_days} days, with cleanup of delete markers and incomplete uploads")
 
             # Disable block public access settings for the bucket
             s3_client.put_public_access_block(
@@ -473,7 +477,7 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
             logging.error(f"Failed to create bucket: {str(e)}")
             return False, None, f"Failed to create bucket: {str(e)}"
 
-        # 2. Apply bucket policy
+        # 2. Apply bucket policy to make sources public
         bucket_policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -534,7 +538,10 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                         "Action": [
                             "s3:GetObject",
                             "s3:PutObject",
-                            "s3:DeleteObject"
+                            "s3:DeleteObject",
+                            "s3:DeleteObjectVersion",
+                            "s3:DeleteObjectVersionTagging",
+                            "s3:GetObjectVersion"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}/*"
                     }

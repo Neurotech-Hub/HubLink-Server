@@ -188,20 +188,6 @@ def index():
         app.logger.error(f"Error loading index: {e}")
         return "There was an issue loading the homepage.", 500
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'admin_id' not in session:
-            return redirect(url_for('admin'))
-        
-        account = db.session.get(Account, session['admin_id'])
-        if not account or not account.is_admin:
-            session.pop('admin_id', None)
-            return redirect(url_for('admin'))
-            
-        return f(*args, **kwargs)
-    return decorated_function
-
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     g.title = "Admin"
