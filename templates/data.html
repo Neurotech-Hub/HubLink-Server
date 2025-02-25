@@ -21,7 +21,7 @@
     <h2 class="mb-4">Data</h2>
 
     <div id="dataContent" 
-         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}{% if directory or request.args.get('page') %}?{% endif %}{% if directory %}directory={{ directory }}{% endif %}{% if directory and request.args.get('page') %}&{% endif %}{% if request.args.get('page') %}page={{ request.args.get('page') }}{% endif %}"
+         hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}{% if directory or request.args.get('page') or request.args.get('archived') %}?{% endif %}{% if directory %}directory={{ directory }}{% endif %}{% if directory and (request.args.get('page') or request.args.get('archived')) %}&{% endif %}{% if request.args.get('page') %}page={{ request.args.get('page') }}{% endif %}{% if request.args.get('archived') %}{% if directory or request.args.get('page') %}&{% endif %}archived={{ request.args.get('archived') }}{% endif %}"
          hx-trigger="load, every 30s"
          hx-swap="innerHTML"
          hx-preserve="true">
@@ -135,9 +135,8 @@
         const selectedSize = document.getElementById('selectedSize');
         const downloadBtn = document.getElementById('downloadSelectedBtn');
         const clearBtn = document.getElementById('clearSelectionBtn');
-        {% if g.user and g.user.is_admin %}
+        const archiveBtn = document.getElementById('archiveSelectedBtn');
         const deleteBtn = document.getElementById('deleteSelectedBtn');
-        {% endif %}
 
         selectedCount.textContent = selectedFiles.size;
         
@@ -151,14 +150,14 @@
         const hasSelections = selectedFiles.size > 0;
         clearBtn.disabled = !hasSelections;
         downloadBtn.disabled = !hasSelections || totalSize > ONE_GB;
-        {% if g.user and g.user.is_admin %}
+        if (archiveBtn) {
+            archiveBtn.disabled = !hasSelections;
+        }
         if (deleteBtn) {
             deleteBtn.disabled = !hasSelections;
         }
-        {% endif %}
         
         // Control HTMX polling based on selections
-        // Enable polling when no selections, disable when there are selections
         toggleHtmxPolling('dataContent', !hasSelections);
         
         if (totalSize > ONE_GB) {
@@ -196,7 +195,6 @@
                 const checkboxes = document.querySelectorAll('.file-select');
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = selectAllCheckbox.checked;
-                    // Trigger the change event to update the selectedFiles Map
                     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
                 });
             };
@@ -210,12 +208,75 @@
                 document.querySelectorAll('.file-select').forEach(checkbox => {
                     checkbox.checked = false;
                 });
-                // Also uncheck the select all checkbox
                 const selectAllCheckbox = document.getElementById('selectAllCheckbox');
                 if (selectAllCheckbox) {
                     selectAllCheckbox.checked = false;
                 }
                 updateSelectedFilesUI();
+            };
+        }
+        
+        // Handle unarchive button clicks using event delegation
+        dataContent.onclick = async function(e) {
+            if (!e.target.classList.contains('unarchive-btn')) return;
+            
+            e.preventDefault();
+            const fileId = e.target.dataset.fileId;
+            
+            if (!confirm('Are you sure you want to unarchive this file?')) return;
+            
+            try {
+                const response = await fetch('{{ url_for("accounts.unarchive_files", account_url=account.url) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ file_ids: [fileId] })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('Error unarchiving file: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error unarchiving file');
+            }
+        };
+        
+        // Archive selected files
+        const archiveBtn = document.getElementById('archiveSelectedBtn');
+        if (archiveBtn) {
+            archiveBtn.onclick = async function() {
+                if (selectedFiles.size === 0) return;
+                
+                if (!confirm('Are you sure you want to archive the selected files?')) return;
+                
+                const fileIds = Array.from(selectedFiles.keys());
+                
+                try {
+                    const response = await fetch('{{ url_for("accounts.archive_files", account_url=account.url) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ file_ids: fileIds })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        window.location.reload();
+                    } else {
+                        alert('Error archiving files: ' + (result.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error archiving files');
+                }
             };
         }
         

@@ -1525,7 +1525,8 @@ table td code {
     /* Hide first column and version tag */
     #dataContent .data-table th:first-child,
     #dataContent .data-table td:first-child,
-    #dataContent .data-table .version-tag {
+    #dataContent .data-table .version-tag,
+    #dataContent .data-table .unarchive-btn {
         display: none;
     }
 
@@ -1800,4 +1801,37 @@ table td code {
 .mobile-preview:hover {
     transform: scale(1.3);
     transition: transform 0.4s ease-out;
+}
+
+/* Unarchive button styling */
+.unarchive-btn {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    position: absolute;
+    right: 60px;
+    /* Leave space for version tag */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* Version tag positioning */
+.version-tag {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+/* File name container */
+.file-name-container {
+    position: relative;
+    padding-right: 130px;
+    /* Space for unarchive button and version tag */
+}
+
+/* Remove padding on mobile */
+@media (max-width: 768px) {
+    .file-name-container {
+        padding-right: 0;
+    }
 }

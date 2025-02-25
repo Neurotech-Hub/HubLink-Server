@@ -123,6 +123,7 @@ class File(db.Model):
     last_modified = db.Column(db.DateTime, nullable=False, server_default=func.now())
     version = db.Column(db.Integer, nullable=False, server_default='1')
     last_checked = db.Column(db.DateTime, nullable=True)
+    archived = db.Column(db.Boolean, nullable=False, server_default='0')
 
     def __repr__(self):
         return f"<File {self.key} for Account {self.account_id}>"
@@ -138,7 +139,8 @@ class File(db.Model):
             'size': self.size,
             'last_modified': utc_last_modified.isoformat() if utc_last_modified else None,
             'last_checked': utc_last_checked.isoformat() if utc_last_checked else None,
-            'version': self.version
+            'version': self.version,
+            'archived': self.archived
         }
 
 # Define the device model with ip_address instead of mac_address

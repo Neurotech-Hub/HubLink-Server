@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app, session, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, send_file, current_app as app, session
 from models import db, Account, Setting, File, Gateway, Source, Plot, Layout, Node
 from datetime import datetime, timedelta, timezone
 import logging
@@ -206,8 +206,9 @@ def get_source_files(account_url, source_id):
         account = Account.query.filter_by(url=account_url).first_or_404()
         source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
             
-        # Get matching files for this source
+        # Get matching files for this source, excluding archived files
         matching_files = list_source_files(account, source)
+        matching_files = [f for f in matching_files if not f.archived]
         
         # Sort by last_modified in descending order (most recent first) and limit to 300
         matching_files.sort(key=lambda x: x.last_modified or datetime.min, reverse=True)
@@ -1193,6 +1194,74 @@ def delete_files(account_url):
         flash('An error occurred while deleting files', 'error')
         return jsonify({'error': str(e)}), 500
 
+@accounts_bp.route('/<account_url>/files/archive', methods=['POST'])
+def archive_files(account_url):
+    app.logger.info(f"Archiving files for account {account_url}")
+    try:
+        # Get target account
+        target_account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        data = request.get_json()
+        if not data or 'file_ids' not in data:
+            return jsonify({'error': 'No file IDs provided'}), 400
+            
+        file_ids = data['file_ids']
+        
+        # Update files to archived status
+        files = File.query.filter(
+            File.id.in_(file_ids),
+            File.account_id == target_account.id
+        ).all()
+        
+        for file in files:
+            file.archived = True
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully archived {len(files)} files'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error archiving files for account {account_url}: {e}")
+        return jsonify({'error': 'Failed to archive files'}), 500
+
+@accounts_bp.route('/<account_url>/files/unarchive', methods=['POST'])
+def unarchive_files(account_url):
+    app.logger.info(f"Unarchiving files for account {account_url}")
+    try:
+        # Get target account
+        target_account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        data = request.get_json()
+        if not data or 'file_ids' not in data:
+            return jsonify({'error': 'No file IDs provided'}), 400
+            
+        file_ids = data['file_ids']
+        
+        # Update files to unarchived status
+        files = File.query.filter(
+            File.id.in_(file_ids),
+            File.account_id == target_account.id
+        ).all()
+        
+        for file in files:
+            file.archived = False
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully unarchived {len(files)} files'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error unarchiving files for account {account_url}: {e}")
+        return jsonify({'error': 'Failed to unarchive files'}), 500
+
 @accounts_bp.route('/<account_url>/data/content', methods=['GET'])
 def account_data_content(account_url):
     try:
@@ -1201,10 +1270,18 @@ def account_data_content(account_url):
         
         # Get directory filter
         directory = request.args.get('directory')
+        if directory == 'None':
+            directory = None
+        
+        # Get show_archived parameter and convert to boolean properly
+        archived_param = request.args.get('archived', 'false')
+        show_archived = archived_param.lower() in ['true', '1', 'yes', 'on']
         
         # Get page number
         page = request.args.get('page', 1, type=int)
-        per_page = 50
+        if page == 'None':
+            page = 1
+        per_page = 100
         
         # Combine base filters into a single expression
         base_filters = and_(
@@ -1216,6 +1293,10 @@ def account_data_content(account_url):
         
         # Initialize files_query with base filters
         files_query = File.query.filter(base_filters)
+        
+        # Add archived filter
+        if not show_archived:
+            files_query = files_query.filter(File.archived == False)
         
         # Add directory-specific filters if needed
         if directory:
@@ -1258,12 +1339,12 @@ def account_data_content(account_url):
         return render_template('components/data_content.html',
                              account=account,
                              recent_files=files,
-                             pagination=pagination,
                              now=now,
-                             directory=directory,
-                             current_directory=directory,
+                             pagination=pagination,
+                             total_files=total_files,
                              directories=directories,
-                             total_files=total_files)
+                             current_directory=directory,
+                             show_archived=show_archived)
                              
     except Exception as e:
         logger.error(f"Error loading data content: {str(e)}")
