@@ -18,7 +18,12 @@
     {% endif %}
     {% endwith %}
 
-    <h2 class="mb-4">Data</h2>
+    <h2 class="mb-4">Data
+        <i class="bi bi-info-circle ms-2 info-icon" data-bs-toggle="popover" data-bs-trigger="hover focus"
+            data-bs-placement="right" data-bs-container="body"
+            data-bs-content="Multiple files will download as a zip package. When files are archived, they are hidden and excluded from any data processing in plots."></i>
+    </h2>
+    
 
     <div id="dataContent" 
          hx-get="{{ url_for('accounts.account_data_content', account_url=account.url) }}{% if directory or request.args.get('page') or request.args.get('archived') %}?{% endif %}{% if directory %}directory={{ directory }}{% endif %}{% if directory and (request.args.get('page') or request.args.get('archived')) %}&{% endif %}{% if request.args.get('page') %}page={{ request.args.get('page') }}{% endif %}{% if request.args.get('archived') %}{% if directory or request.args.get('page') %}&{% endif %}archived={{ request.args.get('archived') }}{% endif %}"
@@ -109,6 +114,12 @@
     // Initialize event listeners on page load
     document.addEventListener('DOMContentLoaded', function() {
         initializeEventListeners();
+        
+        // Initialize all popovers
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
     });
     
     function getModalElements() {

@@ -169,8 +169,14 @@ def update_settings(account_url):
         flash("An error occurred while updating settings", "error")
         return redirect(url_for('accounts.account_settings', account_url=account_url))
 
-def get_directory_paths(account_id):
-    """Get unique directory paths that directly contain files for an account."""
+def get_directory_paths(account_id, include_all_subpaths=False):
+    """Get unique directory paths for an account.
+    
+    Args:
+        account_id: The ID of the account to get paths for
+        include_all_subpaths: If True, include all intermediate paths. If False, only include
+                             the deepest directory that directly contains files.
+    """
     files = File.query.filter_by(account_id=account_id)\
         .filter(~File.key.like('.%'))\
         .filter(~File.key.contains('/.')) \
@@ -181,10 +187,17 @@ def get_directory_paths(account_id):
         # Get the directory path by removing the file name
         path_parts = file.key.split('/')
         if len(path_parts) > 1:  # If file is in a directory
-            # Join all parts except the last one (file name)
-            dir_path = '/'.join(path_parts[:-1])
-            if not any(part.startswith('.') for part in path_parts):  # Skip if any part is hidden
-                directories.add(dir_path)
+            if include_all_subpaths:
+                # Add all intermediate paths
+                for i in range(1, len(path_parts)):
+                    dir_path = '/'.join(path_parts[:i])
+                    if not any(part.startswith('.') for part in path_parts[:i]):
+                        directories.add(dir_path)
+            else:
+                # Just add the immediate parent directory (original behavior)
+                dir_path = '/'.join(path_parts[:-1])
+                if not any(part.startswith('.') for part in path_parts):
+                    directories.add(dir_path)
     
     # Convert to sorted list
     return sorted(list(directories))
@@ -383,7 +396,7 @@ def account_plots(account_url):
                 layout_plot_names[layout.id] = []
         
         # Get directories for source creation
-        directories = get_directory_paths(account.id)
+        directories = get_directory_paths(account.id, include_all_subpaths=True)
 
         # Get recent files for the dropdown
         recent_files = File.query.filter_by(account_id=account.id)\
@@ -1325,7 +1338,7 @@ def account_data_content(account_url):
         total_files = files_query.count()
         
         # Get directories for dropdown
-        directories = get_directory_paths(account.id)
+        directories = get_directory_paths(account.id, include_all_subpaths=False)
         
         # Ensure datetime objects have timezone info for comparison
         now = datetime.now(timezone.utc)
