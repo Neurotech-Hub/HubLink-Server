@@ -386,7 +386,7 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <button type="button" 
                                             class="btn btn-outline-dark active px-4 py-2 fs-6" 
-                                            data-value="" 
+                                            data-value="0" 
                                             onclick="selectGroup(this)">
                                         No grouping
                                     </button>
@@ -465,7 +465,7 @@
     function togglePathLevels(event) {
         event.preventDefault();
         const pathLevels = document.querySelector('#groupPills .path-levels');
-        const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
+        const noGroupingBtn = document.querySelector('#groupPills button[data-value="0"]');
         
         if (pathLevels.style.display === 'none') {
             pathLevels.style.display = 'block';
@@ -494,13 +494,35 @@
         });
         // Add active class to selected pill
         element.classList.add('active');
+        
         // Update hidden input
-        document.getElementById('groupBy').value = element.dataset.value;
+        const groupByInput = document.getElementById('groupBy');
+        // Convert empty string to "0" for no grouping, otherwise use the data-value
+        const newValue = element.dataset.value === '0' ? '0' : element.dataset.value;
+        
+        // Only update if the value is different
+        if (groupByInput.value !== newValue) {
+            groupByInput.value = newValue;
+            // Store the selected group value in a data attribute on the form
+            document.getElementById('plotForm').dataset.selectedGroup = newValue;
+        }
         
         // Handle path levels visibility
         const pathLevels = document.querySelector('#groupPills .path-levels');
-        if (element.dataset.value === '') {
+        if (element.dataset.value === '0') {
             pathLevels.style.display = 'none';
+        }
+    }
+
+    // Function to restore group selection
+    function restoreGroupSelection() {
+        const form = document.getElementById('plotForm');
+        const savedGroup = form.dataset.selectedGroup;
+        if (savedGroup) {
+            const groupBtn = document.querySelector(`#groupPills button[data-value="${savedGroup}"]`);
+            if (groupBtn) {
+                selectGroup(groupBtn);
+            }
         }
     }
 
@@ -558,6 +580,10 @@
         // Reset form
         document.getElementById('plotForm').reset();
         document.getElementById('plotSourceId').value = source.id;
+        
+        // Initialize bin hours to 24 for new plots
+        document.getElementById('binHrs').value = 24;
+        document.getElementById('binHrsValue').textContent = 24;
         
         // Set form action based on whether we're editing or creating
         if (existingPlot) {
@@ -639,12 +665,13 @@
         const groupByPathLevel = document.querySelector('#groupPills .text-muted');
         const groupByLink = document.querySelector('#groupPills a');
         const pathLevels = document.querySelector('#groupPills .path-levels');
-        const noGroupingBtn = document.querySelector('#groupPills button[data-value=""]');
+        const noGroupingBtn = document.querySelector('#groupPills button[data-value="0"]');
         
         if (source.max_path_level === 0) {
             groupByPathLevel.style.display = 'none';
             groupByLink.style.display = 'none';
             noGroupingBtn.classList.add('active');
+            document.getElementById('groupBy').value = '0';  // Set default value
         } else {
             groupByPathLevel.style.display = '';
             groupByLink.style.display = '';
@@ -656,10 +683,19 @@
                 const groupBtn = pathLevels.querySelector(`button[data-value="${existingPlot.group_by}"]`);
                 if (groupBtn) {
                     groupBtn.classList.add('active');
+                    document.getElementById('groupBy').value = existingPlot.group_by.toString();  // Set existing value
+                    document.getElementById('plotForm').dataset.selectedGroup = existingPlot.group_by.toString();  // Store in dataset
+                } else {
+                    // Fallback to no grouping if the level doesn't exist
+                    noGroupingBtn.classList.add('active');
+                    document.getElementById('groupBy').value = '0';
+                    document.getElementById('plotForm').dataset.selectedGroup = '0';
                 }
             } else {
                 pathLevels.style.display = 'none';
                 noGroupingBtn.classList.add('active');
+                document.getElementById('groupBy').value = '0';  // Set default value
+                document.getElementById('plotForm').dataset.selectedGroup = '0';
             }
         }
         
@@ -747,6 +783,12 @@
             document.querySelectorAll('.timebin-only').forEach(el => {
                 el.style.display = 'block';
             });
+            
+            // Ensure bin hours is set to 24 by default
+            if (!document.getElementById('binHrs').value) {
+                document.getElementById('binHrs').value = 24;
+                document.getElementById('binHrsValue').textContent = 24;
+            }
         }
     }
 
@@ -767,6 +809,12 @@
         // Call existing plot type change handlers
         updatePlotName();
         updateAdvancedOptions(plotType);
+        
+        // If switching to timebin, ensure bin hours is set to 24
+        if (plotType === 'timebin') {
+            document.getElementById('binHrs').value = 24;
+            document.getElementById('binHrsValue').textContent = 24;
+        }
     }
 
     // Function to edit source - needs to be global for onclick
@@ -1084,6 +1132,22 @@
             // Set form action for creation
             form.action = `/{{ account.url }}/layout`;
         });
+
+        // Add event listeners to form inputs that might affect group selection
+        const plotForm = document.getElementById('plotForm');
+        if (plotForm) {
+            // Restore group selection after any form field changes
+            plotForm.addEventListener('change', function(event) {
+                if (event.target.id === 'binHrs' || event.target.id === 'meanNsum') {
+                    restoreGroupSelection();
+                }
+            });
+            
+            // Ensure group selection is preserved before form submission
+            plotForm.addEventListener('submit', function(event) {
+                restoreGroupSelection();
+            });
+        }
     });
 </script>
 {% endblock scripts %}
