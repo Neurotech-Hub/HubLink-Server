@@ -148,9 +148,9 @@
                 <div class="modal-body">
                     <input type="hidden" id="sourceId" name="source_id">
                     <div class="mb-3">
-                        <label for="sourceName" class="form-label">Name <span class="text-danger">*</span></label>
+                        <label for="sourceName" class="form-label fw-bold text-primary">Name <span class="text-danger">*</span></label>
                         <input type="text" 
-                               class="form-control" 
+                               class="form-control form-control-lg border-primary bg-light" 
                                id="sourceName" 
                                name="name" 
                                required
@@ -270,28 +270,35 @@
                         <label class="form-label">Plot Type <span class="text-danger">*</span></label>
                         <input type="hidden" id="plotType" name="type" value="timeline" required>
                         <div class="row g-2">
-                            <div class="col-6">
+                            <div class="col-4">
                                 <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn active" 
                                         data-type="timeline" onclick="selectPlotType(this)">
                                     <i class="bi bi-graph-up fs-5"></i>
                                     <div class="small mt-1">Timeline</div>
                                 </button>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
+                                <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
+                                        data-type="timebin" onclick="selectPlotType(this)">
+                                    <i class="bi bi-bar-chart-steps fs-5"></i>
+                                    <div class="small mt-1">Time Bin</div>
+                                </button>
+                            </div>
+                            <div class="col-4">
                                 <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
                                         data-type="box" onclick="selectPlotType(this)">
                                     <i class="bi bi-box fs-5"></i>
                                     <div class="small mt-1">Box Plot</div>
                                 </button>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
                                         data-type="bar" onclick="selectPlotType(this)">
                                     <i class="bi bi-bar-chart fs-5"></i>
                                     <div class="small mt-1">Bar Chart</div>
                                 </button>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <button type="button" class="btn btn-outline-primary w-100 h-100 py-2 plot-type-btn" 
                                         data-type="table" onclick="selectPlotType(this)">
                                     <i class="bi bi-table fs-5"></i>
@@ -323,27 +330,48 @@
                         <!-- Advanced Options -->
                         <div class="mb-3">
                             <div id="advancedOptions" class="mt-2">
+                                <!-- Timeline Options -->
                                 <div class="form-check timeline-only" style="display: none;">
                                     <input class="form-check-input" type="checkbox" id="accumulateValues" name="accumulate">
                                     <label class="form-check-label" for="accumulateValues">
                                         Accumulate across files
                                     </label>
                                 </div>
+                                <!-- Bar Chart Options -->
                                 <div class="form-check mt-2 bar-only" style="display: none;">
                                     <input class="form-check-input" type="checkbox" id="lastValue" name="last_value">
                                     <label class="form-check-label" for="lastValue">
                                         Only use last value
                                     </label>
                                 </div>
+                                <!-- Time Bin Options -->
+                                <div class="timebin-only" style="display: none;">
+                                    <div class="form-group mt-2">
+                                        <label for="binHrs" class="form-label">Bin Hours: <span id="binHrsValue">24</span></label>
+                                        <input type="range" class="form-range" id="binHrs" name="bin_hrs" value="24" min="1" max="24" step="1" required
+                                               oninput="document.getElementById('binHrsValue').textContent = this.value">
+                                        <div class="d-flex justify-content-between">
+                                            <small class="text-muted">1 hour</small>
+                                            <small class="text-muted">12 hours</small>
+                                            <small class="text-muted">24 hours</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch mt-3">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="meanNsum" name="mean_nsum" checked>
+                                        <label class="form-check-label" for="meanNsum">
+                                            Use mean <span class="text-muted">(off = sum)</span>
+                                        </label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Plot Name -->
                         <div class="mb-3">
-                            <label for="plotName" class="form-label">Plot Name <span class="text-danger">*</span></label>
+                            <label for="plotName" class="form-label fw-bold text-primary">Plot Name <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="plotName" name="name" required>
-                                <button class="btn btn-outline-secondary" type="button" onclick="clearPlotName()">
+                                <input type="text" class="form-control form-control-lg border-primary bg-light" id="plotName" name="name" required>
+                                <button class="btn btn-outline-primary" type="button" onclick="clearPlotName()">
                                     <i class="bi bi-x"></i>
                                 </button>
                             </div>
@@ -390,8 +418,8 @@
             <form id="layoutForm" action="" method="POST" class="needs-validation" novalidate>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="layoutName" class="form-label">Layout Name <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="layoutName" name="name" required>
+                        <label for="layoutName" class="form-label fw-bold text-primary">Layout Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg border-primary bg-light" id="layoutName" name="name" required>
                         <div class="invalid-feedback">Please provide a layout name.</div>
                         
                         <!-- Source Name Pills -->
@@ -648,6 +676,22 @@
             document.getElementById('accumulateValues').checked = advancedOptions.includes('accumulate');
             document.getElementById('lastValue').checked = advancedOptions.includes('last_value');
         }
+        
+        // Set timebin-specific options if editing a timebin plot
+        if (existingPlot?.type === 'timebin' && existingPlot?.config) {
+            const config = typeof existingPlot.config === 'string' ? 
+                JSON.parse(existingPlot.config) : existingPlot.config;
+            
+            // Set bin hours
+            if (config.bin_hrs) {
+                document.getElementById('binHrs').value = config.bin_hrs;
+                document.getElementById('binHrsValue').textContent = config.bin_hrs;
+            }
+            
+            // Set mean/sum toggle
+            document.getElementById('meanNsum').checked = config.mean_nsum !== false; // Default to true if not specified
+        }
+        
         updateAdvancedOptions(existingPlot?.type || 'timeline');
         
         // Update modal title and submit button
@@ -686,7 +730,7 @@
     // Function to update advanced options - needs to be global for selectPlotType
     function updateAdvancedOptions(plotType) {
         // Hide all plot-specific options first
-        document.querySelectorAll('.timeline-only, .bar-only').forEach(el => {
+        document.querySelectorAll('.timeline-only, .bar-only, .timebin-only').forEach(el => {
             el.style.display = 'none';
         });
         
@@ -697,6 +741,10 @@
             });
         } else if (plotType === 'bar') {
             document.querySelectorAll('.bar-only').forEach(el => {
+                el.style.display = 'block';
+            });
+        } else if (plotType === 'timebin') {
+            document.querySelectorAll('.timebin-only').forEach(el => {
                 el.style.display = 'block';
             });
         }

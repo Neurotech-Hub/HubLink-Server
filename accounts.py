@@ -618,17 +618,17 @@ def create_plot(account_url, source_id):
         
         # Build config based on plot type
         config = {}
-        if plot_type == 'timeline':
+        if plot_type in ['timeline', 'timebin']:  # Handle both timeline and timebin
             y_data = request.form.get('y_data')
             
             # Validate datetime column
             if not source.datetime_column:
                 print("[DEBUG] Error: Source has no datetime column")
-                flash('Timeline plots require a datetime column in the source.', 'error')
+                flash('Timeline and Time Bin plots require a datetime column in the source.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
             
             if not y_data:
-                print("[DEBUG] Error: Missing y_data for timeline plot")
+                print("[DEBUG] Error: Missing y_data for plot")
                 flash('Data Column is required for timeline plots.', 'error')
                 return redirect(url_for('accounts.account_plots', account_url=account_url))
                 
@@ -636,6 +636,22 @@ def create_plot(account_url, source_id):
                 'x_data': source.datetime_column,  # Use source's datetime column directly
                 'y_data': y_data
             }
+            
+            # Add timebin specific config
+            if plot_type == 'timebin':
+                bin_hrs = request.form.get('bin_hrs', type=int, default=24)
+                mean_nsum = request.form.get('mean_nsum') == 'on'  # True if checked
+                
+                # Validate bin_hrs
+                if not bin_hrs or bin_hrs < 1 or bin_hrs > 24:
+                    flash('Bin hours must be between 1 and 24.', 'error')
+                    return redirect(url_for('accounts.account_plots', account_url=account_url))
+                    
+                config.update({
+                    'bin_hrs': bin_hrs,
+                    'mean_nsum': mean_nsum
+                })
+                
         elif plot_type in ['box', 'bar', 'table']:
             y_data = request.form.get('y_data')
             print(f"[DEBUG] {plot_type} plot data - y_data: {y_data}")
@@ -1541,7 +1557,7 @@ def edit_plot(account_url, source_id, plot_id):
         
         # Update config based on plot type
         config = {}
-        if plot.type == 'timeline':
+        if plot.type in ['timeline', 'timebin']:  # Handle both timeline and timebin
             y_data = request.form.get('y_data')
             if not y_data:
                 flash('Data Column is required for timeline plots.', 'error')
@@ -1551,6 +1567,22 @@ def edit_plot(account_url, source_id, plot_id):
                 'x_data': plot.source.datetime_column,
                 'y_data': y_data
             }
+            
+            # Add timebin specific config
+            if plot.type == 'timebin':
+                bin_hrs = request.form.get('bin_hrs', type=int, default=24)
+                mean_nsum = request.form.get('mean_nsum') == 'on'  # True if checked
+                
+                # Validate bin_hrs
+                if not bin_hrs or bin_hrs < 1 or bin_hrs > 24:
+                    flash('Bin hours must be between 1 and 24.', 'error')
+                    return redirect(url_for('accounts.account_plots', account_url=account_url))
+                    
+                config.update({
+                    'bin_hrs': bin_hrs,
+                    'mean_nsum': mean_nsum
+                })
+                
         elif plot.type in ['box', 'bar', 'table']:
             y_data = request.form.get('y_data')
             if not y_data:

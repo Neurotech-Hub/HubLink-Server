@@ -55,6 +55,8 @@
                                     <h6 class="card-title mb-0 text-truncate">
                                         {% if plot.type == 'timeline' %}
                                             <i class="bi bi-graph-up"></i>
+                                        {% elif plot.type == 'timebin' %}
+                                            <i class="bi bi-bar-chart-steps"></i>
                                         {% elif plot.type == 'box' %}
                                             <i class="bi bi-box"></i>
                                         {% elif plot.type == 'bar' %}

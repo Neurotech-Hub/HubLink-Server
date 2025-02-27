@@ -74,6 +74,8 @@ def get_plot_data(plot, source, account):
 
         if plot.type == 'timeline':
             return process_timeseries_plot(plot, csv_content)
+        elif plot.type == 'timebin':
+            return process_timebin_plot(plot, csv_content)
         elif plot.type == 'box':
             return process_box_plot(plot, csv_content)
         elif plot.type == 'bar':
@@ -114,6 +116,8 @@ def get_plot_info(plot, source_data=None):
         # Generate plot data using the source data
         if plot.type == 'timeline':
             plot_data = process_timeseries_plot(plot, source_data)
+        elif plot.type == 'timebin':
+            plot_data = process_timebin_plot(plot, source_data)
         elif plot.type == 'box':
             plot_data = process_box_plot(plot, source_data)
         elif plot.type == 'bar':
@@ -559,4 +563,148 @@ def process_table_plot(plot, csv_content):
         }
     except Exception as e:
         logger.error(f"Error processing table plot: {e}", exc_info=True)
+        return {'error': f'Error processing plot data: {str(e)}'}
+
+def process_timebin_plot(plot, csv_content):
+    try:
+        logger.info(f"Processing timebin plot {plot.id}")
+        config = json.loads(plot.config)
+        x_data = plot.source.datetime_column if hasattr(plot, 'source') else None
+        y_data = config['y_data']
+        bin_hrs = config.get('bin_hrs', 24)  # Default to 24 hours if not specified
+        mean_nsum = config.get('mean_nsum', True)  # Default to mean if not specified
+        
+        if not x_data:
+            return {'error': 'No datetime column configured for this source'}
+        
+        # Use early decimation during CSV reading
+        df = read_and_decimate_csv(csv_content, x_data, y_data)
+        logger.debug(f"DataFrame shape after early decimation: {df.shape}")
+        
+        try:
+            df[x_data] = pd.to_datetime(df[x_data], errors='coerce')
+            logger.debug(f"Successfully parsed datetime column {x_data}")
+        except Exception as e:
+            logger.error(f"Failed to parse datetime column {x_data}: {str(e)}")
+            return {'error': f'Could not parse datetime column {x_data}'}
+        
+        # Convert y_data to numeric, handling non-numeric values
+        df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
+        df = df.dropna(subset=[x_data, y_data])
+        
+        if len(df) == 0:
+            return {'error': 'No valid data points after cleaning'}
+
+        # Apply grouping if needed
+        if plot.group_by:
+            df = prepare_grouped_df(df, plot)
+            # Sort by datetime within each group
+            df = df.sort_values(['group', x_data])
+        else:
+            # Just sort by datetime if no grouping
+            df = df.sort_values(x_data)
+        
+        # Create time bins aligned to 00:00
+        min_time = df[x_data].min()
+        max_time = df[x_data].max()
+        
+        # Round down to nearest 00:00
+        start_time = min_time.normalize()
+        if min_time < start_time:
+            start_time -= pd.Timedelta(days=1)
+            
+        # Round up to next 00:00
+        end_time = max_time.normalize() + pd.Timedelta(days=1)
+        
+        # Create bins every bin_hrs hours
+        bins = pd.date_range(start=start_time, end=end_time, freq=f'{bin_hrs}h')
+        
+        # Function to process a dataframe into bins
+        def process_df_bins(df):
+            # Cut data into bins
+            df['bin'] = pd.cut(df[x_data], bins=bins, labels=bins[:-1], include_lowest=True)
+            
+            # Group by bin and calculate mean or sum, with observed=True to silence warning
+            if mean_nsum:
+                binned = df.groupby('bin', observed=True)[y_data].mean()
+            else:
+                binned = df.groupby('bin', observed=True)[y_data].sum()
+                
+            # Count points per bin for hover text
+            counts = df.groupby('bin', observed=True)[y_data].count()
+            
+            return binned, counts
+        
+        # Create figure
+        fig = go.Figure()
+        colors = px.colors.qualitative.Plotly
+        
+        if plot.group_by:
+            # Process each group separately
+            for idx, group in enumerate(sorted(df['group'].unique())):
+                group_data = df[df['group'] == group]
+                binned, counts = process_df_bins(group_data)
+                color = colors[idx % len(colors)]
+                
+                # Create hover text
+                hover_text = [f"Group: {group}<br>"
+                            f"Time: {bin.strftime('%Y-%m-%d %H:%M')}<br>"
+                            f"{'Mean' if mean_nsum else 'Sum'}: {value:.2f}<br>"
+                            f"Points in bin: {counts[bin]}"
+                            for bin, value in binned.items()]
+                
+                # Add lines with markers for this group
+                fig.add_trace(go.Scatter(
+                    x=binned.index,
+                    y=binned.values,
+                    name=group,
+                    mode='lines+markers',
+                    marker=dict(size=6, opacity=0.7, color=color),
+                    line=dict(width=2, shape='linear', color=color),
+                    fill='tozeroy',
+                    fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}',
+                    hovertext=hover_text,
+                    hoverinfo='text'
+                ))
+        else:
+            # Process all data together
+            binned, counts = process_df_bins(df)
+            color = colors[0]
+            
+            # Create hover text
+            hover_text = [f"Time: {bin.strftime('%Y-%m-%d %H:%M')}<br>"
+                         f"{'Mean' if mean_nsum else 'Sum'}: {value:.2f}<br>"
+                         f"Points in bin: {counts[bin]}"
+                         for bin, value in binned.items()]
+            
+            # Add single line with markers
+            fig.add_trace(go.Scatter(
+                x=binned.index,
+                y=binned.values,
+                name=y_data,
+                mode='lines+markers',
+                marker=dict(size=6, opacity=0.7, color=color),
+                line=dict(width=2, shape='linear', color=color),
+                fill='tozeroy',
+                fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}',
+                hovertext=hover_text,
+                hoverinfo='text'
+            ))
+        
+        # Update layout
+        layout = get_default_layout(get_plot_title(plot))
+        layout.update({
+            'xaxis_title': x_data,
+            'yaxis_title': f"{y_data} ({'Mean' if mean_nsum else 'Sum'} per {bin_hrs}h bin)",
+            'showlegend': bool(plot.group_by)  # Only show legend if grouped
+        })
+        fig.update_layout(layout)
+        
+        return {
+            'plotly_json': fig.to_json(),
+            'error': None
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing timebin plot: {e}", exc_info=True)
         return {'error': f'Error processing plot data: {str(e)}'} 
