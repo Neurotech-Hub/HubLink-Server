@@ -1618,11 +1618,36 @@ def source_callback(account_url, source_id):
     """Endpoint for Lambda function to update source status and file information."""
     try:
         data = request.get_json()
-        if not data or 'key' not in data or 'size' not in data:
+        if not data:
             return jsonify({
-                'error': 'Missing required fields (key or size)',
+                'error': 'No data provided',
                 'status': 400
             }), 400
+            
+        # Validate key and error fields
+        key = data.get('key', '').strip()
+        error = data.get('error', '').strip()
+        
+        if not key:
+            return jsonify({
+                'error': 'Empty or missing key field',
+                'status': 400
+            }), 400
+            
+        if error:
+            # If there's an error, update source state but don't create/update file
+            account = Account.query.filter_by(url=account_url).first_or_404()
+            source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+            
+            source.state = 'error'
+            source.error = error
+            source.last_updated = datetime.now(timezone.utc)
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Source error state updated',
+                'status': 200
+            })
         
         # Get account and source directly using URL and ID
         account = Account.query.filter_by(url=account_url).first_or_404()
@@ -1631,41 +1656,40 @@ def source_callback(account_url, source_id):
         logging.info(f"Processing Lambda callback for source: {source.name} (ID: {source.id})")
         
         # Update source fields
-        is_success = not data.get('error')  # Success if no error field or error is empty
-        source.state = 'success' if is_success else 'error'
-        source.error = data.get('error')  # Store error message if present
+        source.state = 'success'
+        source.error = None  # Clear any previous error
         source.last_updated = datetime.now(timezone.utc)
         
         # Get matching files and calculate max_path_level
         matching_files = list_source_files(account, source)
         max_level = 0
         for file in matching_files:
-            # Split path and count segments (including root)
             path_segments = file.key.strip('/').split('/')
             max_level = max(max_level, len(path_segments))
         
         source.max_path_level = max_level
         
-        # Handle file record
-        file = File.query.filter_by(account_id=account.id, key=data['key']).first()
-        if not file:
-            logging.info(f"Creating new file record for key: {data['key']}")
-            file = File(
-                account_id=account.id,
-                key=data['key'],
-                url=generate_s3_url(account.settings.bucket_name, data['key']),
-                size=data['size'],
-                last_modified=datetime.now(timezone.utc),
-                version=1
-            )
-            db.session.add(file)
-            db.session.flush()
-        else:
-            file.size = data['size']
-            file.version += 1
-            file.last_modified = datetime.now(timezone.utc)
-        
-        source.file_id = file.id
+        # Handle file record only if we have a valid key and size
+        if 'size' in data:
+            file = File.query.filter_by(account_id=account.id, key=key).first()
+            if not file:
+                logging.info(f"Creating new file record for key: {key}")
+                file = File(
+                    account_id=account.id,
+                    key=key,
+                    url=generate_s3_url(account.settings.bucket_name, key),
+                    size=data['size'],
+                    last_modified=datetime.now(timezone.utc),
+                    version=1
+                )
+                db.session.add(file)
+                db.session.flush()
+            else:
+                file.size = data['size']
+                file.version += 1
+                file.last_modified = datetime.now(timezone.utc)
+            
+            source.file_id = file.id
         
         db.session.commit()
         

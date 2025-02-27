@@ -621,17 +621,20 @@ def process_timebin_plot(plot, csv_content):
         
         # Function to process a dataframe into bins
         def process_df_bins(df):
+            # Create a copy of the dataframe to avoid SettingWithCopyWarning
+            df_copy = df.copy()
+            
             # Cut data into bins
-            df['bin'] = pd.cut(df[x_data], bins=bins, labels=bins[:-1], include_lowest=True)
+            df_copy.loc[:, 'bin'] = pd.cut(df_copy[x_data], bins=bins, labels=bins[:-1], include_lowest=True)
             
             # Group by bin and calculate mean or sum, with observed=True to silence warning
             if mean_nsum:
-                binned = df.groupby('bin', observed=True)[y_data].mean()
+                binned = df_copy.groupby('bin', observed=True)[y_data].mean()
             else:
-                binned = df.groupby('bin', observed=True)[y_data].sum()
+                binned = df_copy.groupby('bin', observed=True)[y_data].sum()
                 
             # Count points per bin for hover text
-            counts = df.groupby('bin', observed=True)[y_data].count()
+            counts = df_copy.groupby('bin', observed=True)[y_data].count()
             
             return binned, counts
         
@@ -642,7 +645,7 @@ def process_timebin_plot(plot, csv_content):
         if plot.group_by:
             # Process each group separately
             for idx, group in enumerate(sorted(df['group'].unique())):
-                group_data = df[df['group'] == group]
+                group_data = df[df['group'] == group].copy()  # Create a copy here
                 binned, counts = process_df_bins(group_data)
                 color = colors[idx % len(colors)]
                 
