@@ -1624,24 +1624,21 @@ def source_callback(account_url, source_id):
                 'status': 400
             }), 400
             
-        # Validate key and error fields
+        # Get account and source directly using URL and ID
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
+        
+        # Get key and error fields, with empty string defaults
         key = data.get('key', '').strip()
         error = data.get('error', '').strip()
         
-        if not key:
-            return jsonify({
-                'error': 'Empty or missing key field',
-                'status': 400
-            }), 400
-            
-        if error:
-            # If there's an error, update source state but don't create/update file
-            account = Account.query.filter_by(url=account_url).first_or_404()
-            source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
-            
+        # Update source timestamp
+        source.last_updated = datetime.now(timezone.utc)
+        
+        # Handle error state (including empty key)
+        if error or not key:
             source.state = 'error'
-            source.error = error
-            source.last_updated = datetime.now(timezone.utc)
+            source.error = error if error else 'Empty or missing key field'
             db.session.commit()
             
             return jsonify({
@@ -1649,16 +1646,11 @@ def source_callback(account_url, source_id):
                 'status': 200
             })
         
-        # Get account and source directly using URL and ID
-        account = Account.query.filter_by(url=account_url).first_or_404()
-        source = Source.query.filter_by(id=source_id, account_id=account.id).first_or_404()
-        
         logging.info(f"Processing Lambda callback for source: {source.name} (ID: {source.id})")
         
-        # Update source fields
+        # Update source fields for success case
         source.state = 'success'
         source.error = None  # Clear any previous error
-        source.last_updated = datetime.now(timezone.utc)
         
         # Get matching files and calculate max_path_level
         matching_files = list_source_files(account, source)
