@@ -1835,3 +1835,14 @@ table td code {
         padding-right: 0;
     }
 }
+
+/* Archive Toggle Switch Styling */
+.form-check-input-danger:checked {
+    background-color: #fd0d0d;
+    border-color: #fd0d0d;
+}
+
+.form-check-input-danger:focus {
+    border-color: #fd0d0d;
+    box-shadow: 0 0 0 0.25rem rgba(253, 13, 13, 0.25);
+}

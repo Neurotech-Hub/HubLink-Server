@@ -181,7 +181,7 @@ def get_directory_paths(account_id, include_all_subpaths=False):
         .filter(~File.key.like('.%'))\
         .filter(~File.key.contains('/.')) \
         .all()
-    directories = set()
+    directories = {}
     
     for file in files:
         # Get the directory path by removing the file name
@@ -192,15 +192,23 @@ def get_directory_paths(account_id, include_all_subpaths=False):
                 for i in range(1, len(path_parts)):
                     dir_path = '/'.join(path_parts[:i])
                     if not any(part.startswith('.') for part in path_parts[:i]):
-                        directories.add(dir_path)
+                        if dir_path not in directories:
+                            directories[dir_path] = {'total_files': 0, 'total_archived': 0}
+                        directories[dir_path]['total_files'] += 1
+                        if file.archived:
+                            directories[dir_path]['total_archived'] += 1
             else:
                 # Just add the immediate parent directory (original behavior)
                 dir_path = '/'.join(path_parts[:-1])
                 if not any(part.startswith('.') for part in path_parts):
-                    directories.add(dir_path)
+                    if dir_path not in directories:
+                        directories[dir_path] = {'total_files': 0, 'total_archived': 0}
+                    directories[dir_path]['total_files'] += 1
+                    if file.archived:
+                        directories[dir_path]['total_archived'] += 1
     
-    # Convert to sorted list
-    return sorted(list(directories))
+    # Convert to sorted list of dictionaries
+    return sorted([{'path': path, **data} for path, data in directories.items()], key=lambda x: x['path'])
 
 @accounts_bp.route('/<account_url>/data', methods=['GET'])
 @accounts_bp.route('/<account_url>/data/<path:directory>', methods=['GET'])
@@ -1320,38 +1328,42 @@ def account_data_content(account_url):
             not_(File.key.like('__MACOSX%'))
         )
         
-        # Initialize files_query with base filters
-        files_query = File.query.filter(base_filters)
-        
-        # Add archived filter
-        if not show_archived:
-            files_query = files_query.filter(File.archived == False)
+        # Initialize base query with base filters
+        base_query = File.query.filter(base_filters)
         
         # Add directory-specific filters if needed
         if directory:
             if directory == '/':
                 # For root directory, add filter for files without slashes
-                files_query = files_query.filter(not_(File.key.contains('/')))
+                base_query = base_query.filter(not_(File.key.contains('/')))
             else:
                 # Remove leading slash if present for consistency
                 directory = directory.lstrip('/')
                 # Match files that are directly in this directory
-                files_query = files_query.filter(
+                base_query = base_query.filter(
                     and_(
                         File.key.like(f"{directory}/%"),
                         not_(File.key.like(f"{directory}/%/%"))
                     )
                 )
-
+        
+        # Get total count of files in current view (before any archived filtering)
+        total_files = base_query.count()
+        
+        # Get total archived count for the current filter (before any archived filtering)
+        total_archived = base_query.filter_by(archived=True).count()
+        
+        # Create display query with archived filter if needed
+        display_query = base_query
+        if not show_archived:
+            display_query = display_query.filter(File.archived == False)
+        
         # Order by last modified and paginate
-        pagination = files_query.order_by(File.last_modified.desc()).paginate(
+        pagination = display_query.order_by(File.last_modified.desc()).paginate(
             page=page, 
             per_page=per_page,
             error_out=False
         )
-        
-        # Get total count of files in current view
-        total_files = files_query.count()
         
         # Get directories for dropdown
         directories = get_directory_paths(account.id, include_all_subpaths=False)
@@ -1371,6 +1383,7 @@ def account_data_content(account_url):
                              now=now,
                              pagination=pagination,
                              total_files=total_files,
+                             total_archived=total_archived,
                              directories=directories,
                              current_directory=directory,
                              show_archived=show_archived)
@@ -1601,6 +1614,7 @@ def edit_plot(account_url, source_id, plot_id):
             advanced_options.append('accumulate')
         if request.form.get('last_value') == 'on':
             advanced_options.append('last_value')
+        
         plot.advanced = json.dumps(advanced_options)
         
         db.session.commit()

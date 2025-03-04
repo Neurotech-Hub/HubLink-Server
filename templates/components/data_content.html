@@ -4,20 +4,22 @@
     <div class="d-flex gap-2 align-items-center mb-3">
         <!-- Directory Filter -->
         <div class="dropdown">
-            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <button class="btn btn-outline-secondary btn-sm dropdown-toggle{% if current_directory and total_files == total_archived %} text-danger{% endif %}" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                 {% if current_directory %}{{ current_directory }}{% else %}All Files{% endif %}
             </button>
             <ul class="dropdown-menu">
                 <li><a class="dropdown-item{% if not current_directory %} active{% endif %}" href="{{ url_for('accounts.account_data', account_url=account.url, archived='true' if show_archived else 'false') }}">All Files</a></li>
                 {% for directory in directories %}
-                <li><a class="dropdown-item{% if directory == current_directory %} active{% endif %}" href="{{ url_for('accounts.account_data', account_url=account.url, directory=directory, archived='true' if show_archived else 'false') }}">{{ directory }}</a></li>
+                    {% if show_archived or directory.path == current_directory or directory.total_files != directory.total_archived %}
+                    <li><a class="dropdown-item{% if directory.path == current_directory %} active{% endif %}{% if directory.total_files == directory.total_archived %} text-danger{% endif %}" href="{{ url_for('accounts.account_data', account_url=account.url, directory=directory.path, archived='true' if show_archived else 'false') }}">{{ directory.path }}</a></li>
+                    {% endif %}
                 {% endfor %}
             </ul>
         </div>
         
         <!-- Archive Toggle -->
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="showArchivedToggle" {% if show_archived %}checked{% endif %}
+            <input class="form-check-input form-check-input-danger" type="checkbox" role="switch" id="showArchivedToggle" {% if show_archived %}checked{% endif %}
                    onchange="const params = new URLSearchParams(window.location.search);
                             params.set('archived', this.checked ? 'true' : 'false');
                             {% if current_directory %}params.set('directory', '{{ current_directory }}');{% endif %}
@@ -51,7 +53,9 @@
 <!-- Limit Notice and Legend -->
 <div class="d-flex justify-content-between align-items-center mb-3">
     {% if pagination and pagination.pages %}
-    <p class="small text-muted mb-0"><strong>Page {{ pagination.page }} of {{ pagination.pages }}</strong> ({{ total_files|number_format }} files)</p>
+    <p class="small text-muted mb-0"><strong>Page {{ pagination.page }} of {{ pagination.pages }}</strong> ({{ total_files|default(0)|number_format }} total, <span class="text-danger">{{ total_archived|default(0)|number_format }} archived</span>)</p>
+    {% else %}
+    <p class="small text-muted mb-0"><strong>No Pages</strong> ({{ total_files|default(0)|number_format }} total, <span class="text-danger">{{ total_archived|default(0)|number_format }} archived</span>)</p>
     {% endif %}
     <div class="small">
         <span class="fileActive text-muted rounded px-2 py-1">modified &lt;30 min ago</span>
