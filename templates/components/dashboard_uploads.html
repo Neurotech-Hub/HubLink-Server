@@ -10,12 +10,7 @@
     function createFileUploadsChart() {
         var dates = {{ file_uploads | tojson | safe }};
         var counts = {{ daily_counts | tojson | safe }};
-        
-        console.log('[DEBUG RAW JS] dates:', dates);
-        console.log('[DEBUG RAW JS] counts:', counts);
-        
         var yValues = dates.map(date => counts[date] || 0);
-        console.log('[DEBUG RAW JS] final yValues:', yValues);
         
         var trace = {
             x: dates,
