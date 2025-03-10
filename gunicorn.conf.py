@@ -5,11 +5,11 @@ import multiprocessing
 # Binding
 bind = "0.0.0.0:10000"
 
-# Worker configuration - optimized for 1 CPU, 2GB RAM
-workers = 2  # Fixed number for 1 CPU instead of dynamic calculation
+# Worker configuration - single worker for SQLite compatibility
+workers = 1  # Reduced from 2 to prevent SQLite locking issues
 worker_class = "sync"
 threads = 1
-worker_connections = 250  # Reduced from 1000
+worker_connections = 250
 
 # Timeout configuration
 timeout = 120
@@ -23,9 +23,9 @@ loglevel = "info"
 capture_output = True
 
 # Performance tuning - reduced for memory constraints
-max_requests = 500  # Reduced from 1000
-max_requests_jitter = 50  # Reduced from 100
-backlog = 512  # Reduced from 2048
+max_requests = 500
+max_requests_jitter = 50
+backlog = 512
 
 def on_starting(server):
     # Configure root logger to use stdout
