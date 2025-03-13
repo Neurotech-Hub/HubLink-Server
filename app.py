@@ -428,17 +428,17 @@ def cronjob():
             # Clean up old gateways that have no node associations
             days_ago = current_time - timedelta(days=7)
             # Find gateways older than days_ago that don't have any nodes
-            old_gateways = Gateway.query.filter(
-                Gateway.created_at <= days_ago,
-                ~Gateway.id.in_(db.session.query(Node.gateway_id))
-            ).all()
+            # old_gateways = Gateway.query.filter(
+            #     Gateway.created_at <= days_ago,
+            #     ~Gateway.id.in_(db.session.query(Node.gateway_id))
+            # ).all()
             
-            if old_gateways:
-                app.logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
-                print(f"/cronjob: Deleting {len(old_gateways)} old gateways with no nodes")
-                for gateway in old_gateways:
-                    db.session.delete(gateway)
-                db.session.commit()
+            # if old_gateways:
+            #     app.logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
+            #     print(f"/cronjob: Deleting {len(old_gateways)} old gateways with no nodes")
+            #     for gateway in old_gateways:
+            #         db.session.delete(gateway)
+            #     db.session.commit()
 
             # Update last cron run time
             admin.last_daily_cron = current_time
