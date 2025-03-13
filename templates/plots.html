@@ -164,7 +164,7 @@
                         <select class="form-select form-control" id="directory_filter" name="directory_filter" required>
                             <option value="">Select a directory...</option>
                             {% for dir in directories %}
-                            <option value="{{ dir }}" {% if dir == current_directory %}selected{% endif %}>{{ dir }}</option>
+                            <option value="{{ dir.path }}" {% if dir.path == current_directory %}selected{% endif %}>{{ dir.path }}</option>
                             {% endfor %}
                         </select>
                         <div class="form-check mt-2">
