@@ -90,7 +90,8 @@ def get_plot_data(plot, source, account):
         return {}
 
 def get_plot_info(plot, source_data=None):
-    config = json.loads(plot.config) if plot.config else {}
+    # Get config - it will already be deserialized from JSONB
+    config = plot.config if plot.config else {}
     
     try:
         # Use provided source data or fetch it if not provided
@@ -220,10 +221,10 @@ def read_and_decimate_csv(csv_content, datetime_col, value_col, max_points=2000)
 def process_timeseries_plot(plot, csv_content):
     try:
         logger.info(f"Processing timeseries plot {plot.id}")
-        config = json.loads(plot.config)
+        config = plot.config
         x_data = plot.source.datetime_column if hasattr(plot, 'source') else None
         y_data = config['y_data']
-        advanced_options = json.loads(plot.advanced) if plot.advanced else []
+        advanced_options = plot.advanced if plot.advanced else []
         should_accumulate = 'accumulate' in advanced_options
         
         if not x_data:
@@ -361,7 +362,7 @@ def process_timeseries_plot(plot, csv_content):
 def process_box_plot(plot, csv_content):
     try:
         logger.info(f"Processing box plot {plot.id}")
-        config = json.loads(plot.config)
+        config = plot.config
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content), low_memory=False)
@@ -419,9 +420,9 @@ def process_box_plot(plot, csv_content):
 def process_bar_plot(plot, csv_content):
     try:
         logger.info(f"Processing bar plot {plot.id}")
-        config = json.loads(plot.config)
+        config = plot.config
         y_data = config['y_data']
-        advanced_options = json.loads(plot.advanced) if plot.advanced else []
+        advanced_options = plot.advanced if plot.advanced else []
         take_last_value = 'last_value' in advanced_options
         
         df = pd.read_csv(StringIO(csv_content), low_memory=False)
@@ -502,7 +503,7 @@ def process_bar_plot(plot, csv_content):
 def process_table_plot(plot, csv_content):
     try:
         logger.info(f"Processing table plot {plot.id}")
-        config = json.loads(plot.config)
+        config = plot.config
         y_data = config['y_data']
         
         df = pd.read_csv(StringIO(csv_content), low_memory=False)
@@ -568,7 +569,7 @@ def process_table_plot(plot, csv_content):
 def process_timebin_plot(plot, csv_content):
     try:
         logger.info(f"Processing timebin plot {plot.id}")
-        config = json.loads(plot.config)
+        config = plot.config
         x_data = plot.source.datetime_column if hasattr(plot, 'source') else None
         y_data = config['y_data']
         bin_hrs = config.get('bin_hrs', 24)  # Default to 24 hours if not specified

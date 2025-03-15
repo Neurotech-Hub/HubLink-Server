@@ -5,11 +5,11 @@ import multiprocessing
 # Binding
 bind = "0.0.0.0:10000"
 
-# Worker configuration - single worker for SQLite compatibility
-workers = 1  # Reduced from 2 to prevent SQLite locking issues
+# Worker configuration for PostgreSQL with 1CPU 2GB constraints
+workers = 2  # (1 CPU * 2) + 1 would be 3, but keeping 2 for memory constraints
 worker_class = "sync"
-threads = 1
-worker_connections = 250
+threads = 4  # Increased from 1 since PostgreSQL can handle concurrent connections
+worker_connections = 100  # Reduced from 250 to be more memory-conscious
 
 # Timeout configuration
 timeout = 120
@@ -22,10 +22,10 @@ errorlog = "-"
 loglevel = "info"
 capture_output = True
 
-# Performance tuning - reduced for memory constraints
-max_requests = 500
-max_requests_jitter = 50
-backlog = 512
+# Performance tuning for PostgreSQL
+max_requests = 1000  # Increased since we don't have SQLite locking issues
+max_requests_jitter = 100  # Increased jitter to prevent all workers restarting simultaneously
+backlog = 256  # Reduced from 512 to be more memory-conscious
 
 def on_starting(server):
     # Configure root logger to use stdout

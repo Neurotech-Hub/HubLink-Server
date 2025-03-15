@@ -152,11 +152,19 @@ def update_settings(account_url):
             original_bucket_name != settings.bucket_name
         )
 
+        print(f"aws_settings_changed: {aws_settings_changed}")
+        print(f"original_access_key: {original_access_key}")
+        print(f"settings.aws_access_key_id: {settings.aws_access_key_id}")
+        print(f"original_secret_key: {original_secret_key}")
+        print(f"settings.aws_secret_access_key: {settings.aws_secret_access_key}")
+        print(f"original_bucket_name: {original_bucket_name}")
+        print(f"settings.bucket_name: {settings.bucket_name}")
+
         # we would need to rebuild if AWS settings changed
 
         db.session.commit()
 
-        if aws_settings_changed:
+        if aws_settings_changed and g.user and g.user.is_admin:
             flash("AWS settings updated successfully!", "success")
         else:
             flash("Settings updated successfully!", "success")
@@ -787,8 +795,10 @@ def update_layout(account_url, layout_id):
 def _get_layout_data(account, layout):
     """Helper function to get layout data and plots consistently."""
     try:
-        # Parse layout config
-        config = json.loads(layout.config)
+        # Get config from layout - it will already be deserialized from JSONB
+        config = layout.config
+        
+        # Ensure config is a list
         if not isinstance(config, list):
             logging.error(f"Invalid layout config format for layout {layout.id}: expected list, got {type(config)}")
             return None, "Invalid layout configuration format"
@@ -848,16 +858,13 @@ def _get_layout_data(account, layout):
         layout_data = {
             'id': layout.id,
             'name': layout.name,
-            'config': config,
+            'config': config,  # Use the config directly since it's already deserialized
             'is_default': layout.is_default,
             'show_nav': layout.show_nav,
             'time_range': layout.time_range
         }
         
         return layout_data, plot_info_arr
-    except json.JSONDecodeError as e:
-        logging.error(f"Error parsing layout config JSON for layout {layout.id}: {e}")
-        return None, "Invalid layout configuration JSON"
     except Exception as e:
         logging.error(f"Error getting layout data: {e}")
         return None, str(e)
