@@ -3,7 +3,8 @@ from datetime import datetime, timezone
 import logging
 import json
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, text
+from sqlalchemy.dialects.postgresql import JSONB
 
 logger = logging.getLogger(__name__)
 
@@ -17,27 +18,25 @@ class Account(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, server_default='')
     url = db.Column(db.String(200), nullable=False, unique=True, server_default='')
-    updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now())
+    updated_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Plan and storage tracking fields
     plan_uploads_mo = db.Column(db.Integer, nullable=False, server_default='500')
     plan_storage_gb = db.Column(db.Integer, nullable=False, server_default='10')
-    plan_versioned_backups = db.Column(db.Boolean, nullable=False, server_default='1')
+    plan_versioned_backups = db.Column(db.Boolean, nullable=False, server_default=text('true'))
     plan_version_days = db.Column(db.Integer, nullable=False, server_default='7')
-    plan_start_date = db.Column(db.DateTime, nullable=False, server_default=func.now())
-    # we should set storage_current_bytes using S3Manager.get_storage_usage()
-    # we can then compare it to sum(file.size) to determine if we need to re-run
-    storage_current_bytes = db.Column(db.Integer, nullable=False, server_default='0')
-    storage_versioned_bytes = db.Column(db.Integer, nullable=False, server_default='0')
+    plan_start_date = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
+    storage_current_bytes = db.Column(db.BigInteger, nullable=False, server_default='0')
+    storage_versioned_bytes = db.Column(db.BigInteger, nullable=False, server_default='0')
 
     # Add new tracking columns with default value of 0
     count_gateway_pings = db.Column(db.Integer, nullable=False, server_default='0')
     count_uploaded_files = db.Column(db.Integer, nullable=False, server_default='0')
     count_uploaded_files_mo = db.Column(db.Integer, nullable=False, server_default='0')
     count_file_downloads = db.Column(db.Integer, nullable=False, server_default='0')
-    is_admin = db.Column(db.Boolean, nullable=False, server_default='0')
-    password_hash = db.Column(db.String(256), nullable=True, server_default=None)
-    use_password = db.Column(db.Boolean, nullable=False, server_default='0')
+    is_admin = db.Column(db.Boolean, nullable=False, server_default=text('false'))
+    password_hash = db.Column(db.String(256), nullable=True)
+    use_password = db.Column(db.Boolean, nullable=False, server_default=text('false'))
 
     # Define relationship with settings
     settings = db.relationship('Setting', backref='account', uselist=False, 
@@ -75,8 +74,8 @@ class Account(db.Model):
 class Admin(db.Model):
     __tablename__ = 'admin'
     id = db.Column(db.Integer, primary_key=True)
-    last_daily_cron = db.Column(db.DateTime, nullable=False, 
-                               server_default=func.datetime('2024-01-01 00:00:00'))
+    last_daily_cron = db.Column(db.DateTime(timezone=True), nullable=False, 
+                               server_default=func.now())
 
     def __repr__(self):
         return f"<Admin {self.id}>"
@@ -85,15 +84,15 @@ class Admin(db.Model):
 class Setting(db.Model):
     __tablename__ = 'setting'
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id', ondelete='CASCADE'), nullable=False)
     aws_access_key_id = db.Column(db.String(200), nullable=True, server_default='')
     aws_secret_access_key = db.Column(db.String(200), nullable=True, server_default='')
     bucket_name = db.Column(db.String(200), nullable=True, server_default='')
-    max_file_size = db.Column(db.Integer, nullable=False, server_default='1073741824')
-    use_cloud = db.Column(db.Boolean, nullable=False, server_default='0')
+    max_file_size = db.Column(db.BigInteger, nullable=False, server_default='1073741824')
+    use_cloud = db.Column(db.Boolean, nullable=False, server_default=text('false'))
     device_name_includes = db.Column(db.String(100), nullable=True, server_default='HUBLINK')
     alert_email = db.Column(db.String(100), nullable=True, server_default='')
-    gateway_manages_memory = db.Column(db.Boolean, nullable=False, server_default='1')
+    gateway_manages_memory = db.Column(db.Boolean, nullable=False, server_default=text('true'))
     timezone = db.Column(db.String(50), nullable=False, server_default='America/Chicago')
 
     def __repr__(self):
@@ -116,14 +115,15 @@ class Setting(db.Model):
 class File(db.Model):
     __tablename__ = 'file'
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id', ondelete='CASCADE'), nullable=False)
     key = db.Column(db.String(200), nullable=False, server_default='')
     url = db.Column(db.String(500), nullable=False, server_default='')
-    size = db.Column(db.Integer, nullable=False, server_default='0')
-    last_modified = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    size = db.Column(db.BigInteger, nullable=False, server_default='0')
+    last_modified = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
     version = db.Column(db.Integer, nullable=False, server_default='1')
-    last_checked = db.Column(db.DateTime, nullable=True)
-    archived = db.Column(db.Boolean, nullable=False, server_default='0')
+    last_checked = db.Column(db.DateTime(timezone=True), nullable=True)
+    archived = db.Column(db.Boolean, nullable=False, server_default=text('false'))
+    sources = db.relationship('Source', backref=db.backref('file', lazy=True), cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<File {self.key} for Account {self.account_id}>"
@@ -147,10 +147,10 @@ class File(db.Model):
 class Gateway(db.Model):
     __tablename__ = 'gateway'
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id', ondelete='CASCADE'), nullable=False)
     ip_address = db.Column(db.String(45), nullable=False, server_default='')  # IPv4 is 15 characters max, IPv6 is up to 45 characters
     name = db.Column(db.String(100), nullable=True, server_default='')
-    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Add relationship with nodes
     nodes = db.relationship('Node', backref='gateway', cascade="all, delete-orphan")
@@ -173,7 +173,7 @@ class Node(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     gateway_id = db.Column(db.Integer, db.ForeignKey('gateway.id', ondelete='CASCADE'), nullable=False)
     uuid = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, server_default=func.now(), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     def __repr__(self):
         return f'<Node {self.uuid}>'
@@ -191,20 +191,19 @@ class Source(db.Model):
     __tablename__ = 'source'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False, server_default='')
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id', ondelete='CASCADE'), nullable=False)
     directory_filter = db.Column(db.String(200), nullable=False, server_default='*')
-    include_subdirs = db.Column(db.Boolean, nullable=False, server_default='0')
+    include_subdirs = db.Column(db.Boolean, nullable=False, server_default=text('false'))
     include_columns = db.Column(db.String(500), nullable=False, server_default='')
     data_points = db.Column(db.Integer, nullable=False, server_default='0')
-    tail_only = db.Column(db.Boolean, nullable=False, server_default='0')
-    datetime_column = db.Column(db.String(100), nullable=False, server_default='')  # New field for datetime column selection
-    last_updated = db.Column(db.DateTime, nullable=True)
+    tail_only = db.Column(db.Boolean, nullable=False, server_default=text('false'))
+    datetime_column = db.Column(db.String(100), nullable=False, server_default='')
+    last_updated = db.Column(db.DateTime(timezone=True), nullable=True)
     error = db.Column(db.String(500), nullable=True, server_default='')
-    file_id = db.Column(db.Integer, db.ForeignKey('file.id', name='fk_source_file'), nullable=True)
+    file_id = db.Column(db.Integer, db.ForeignKey('file.id', ondelete='SET NULL', name='fk_source_file'), nullable=True)
     state = db.Column(db.String(50), nullable=False, server_default='created')
-    file = db.relationship('File', backref=db.backref('sources', lazy=True))
-    max_path_level = db.Column(db.Integer, nullable=False, server_default='0')  # Store the maximum path level for grouping
-    do_update = db.Column(db.Boolean, nullable=False, server_default='0')  # New field for deferred updates
+    max_path_level = db.Column(db.Integer, nullable=False, server_default='0')
+    do_update = db.Column(db.Boolean, nullable=False, server_default=text('false'))
 
     def __repr__(self):
         return f"<Source {self.name} for Account {self.account_id}>"
@@ -243,9 +242,9 @@ class Plot(db.Model):
     source_id = db.Column(db.Integer, db.ForeignKey('source.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100), nullable=False, server_default='')
     type = db.Column(db.String(50), nullable=False, server_default='timeline')
-    config = db.Column(db.String(500), nullable=False, server_default='{}')  # JSON string
-    group_by = db.Column(db.Integer, nullable=True)  # Add group_by field
-    advanced = db.Column(db.String(500), nullable=False, server_default='[]')  # JSON string for advanced options
+    config = db.Column(JSONB, nullable=False, server_default='{}')
+    group_by = db.Column(db.Integer, nullable=True)
+    advanced = db.Column(JSONB, nullable=False, server_default='[]')
     
     # Add relationship to Source
     source = db.relationship('Source', backref=db.backref('plots', lazy=True, cascade="all, delete-orphan"))
@@ -259,21 +258,21 @@ class Plot(db.Model):
             'source_id': self.source_id,
             'name': self.name,
             'type': self.type,
-            'config': json.loads(self.config),
-            'group_by': self.group_by,  # Add group_by to dict output
-            'advanced': json.loads(self.advanced)  # Add advanced options to dict output
+            'config': json.loads(self.config) if isinstance(self.config, str) else self.config,
+            'group_by': self.group_by,
+            'advanced': json.loads(self.advanced) if isinstance(self.advanced, str) else self.advanced
         }
 
 # Define the layout model
 class Layout(db.Model):
     __tablename__ = 'layout'
     id = db.Column(db.Integer, primary_key=True)
-    account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
+    account_id = db.Column(db.Integer, db.ForeignKey('account.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100), nullable=False, server_default='')
-    config = db.Column(db.Text, nullable=False, server_default='{}')  # JSON string storing grid layout
-    created_at = db.Column(db.DateTime, server_default=func.now())
-    is_default = db.Column(db.Boolean, nullable=False, server_default='0')
-    show_nav = db.Column(db.Boolean, nullable=False, server_default='0')
+    config = db.Column(JSONB, nullable=False, server_default='{}')
+    created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    is_default = db.Column(db.Boolean, nullable=False, server_default=text('false'))
+    show_nav = db.Column(db.Boolean, nullable=False, server_default=text('false'))
     time_range = db.Column(db.String(20), nullable=False, server_default='all')
     
     def __repr__(self):
@@ -283,7 +282,7 @@ class Layout(db.Model):
         return {
             'id': self.id,
             'name': self.name,
-            'config': json.loads(self.config),
+            'config': json.loads(self.config) if isinstance(self.config, str) else self.config,
             'created_at': self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
             'is_default': self.is_default,
             'show_nav': self.show_nav

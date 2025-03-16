@@ -67,20 +67,36 @@ app.logger.info(f"ENVIRONMENT: {app.config['ENVIRONMENT']}")
 
 # Essential Flask and SQLAlchemy configuration
 app.config['SECRET_KEY'] = os.urandom(24)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL', 
-    f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
-)
 
-# Configure SQLAlchemy connection pooling
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'poolclass': QueuePool,
-    'pool_size': 2,
-    'max_overflow': 3,
-    'pool_timeout': 20,
-    'pool_recycle': 1800,
-    'pool_pre_ping': True
-}
+# Database Configuration
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL and DATABASE_URL.startswith('postgres://'):
+    # Render uses 'postgres://', but SQLAlchemy needs 'postgresql://'
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or \
+    f'sqlite:///{os.path.abspath(os.path.join(app.instance_path, "accounts.db"))}'
+
+# Configure SQLAlchemy connection pooling based on database type
+if DATABASE_URL and ('postgresql://' in DATABASE_URL or 'postgres://' in DATABASE_URL):
+    # PostgreSQL-specific configuration
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 5,
+        'max_overflow': 10,
+        'pool_timeout': 30,
+        'pool_recycle': 1800,
+        'pool_pre_ping': True
+    }
+else:
+    # SQLite-specific configuration
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'poolclass': QueuePool,
+        'pool_size': 2,
+        'max_overflow': 3,
+        'pool_timeout': 20,
+        'pool_recycle': 1800,
+        'pool_pre_ping': True
+    }
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -94,7 +110,17 @@ def cleanup_alembic_tables():
     """Clean up any temporary tables left behind from failed migrations."""
     try:
         with db.engine.connect() as conn:
-            tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '_alembic_tmp_%'"))
+            if 'postgresql' in str(db.engine.url):
+                # PostgreSQL version
+                tables = conn.execute(text(
+                    "SELECT tablename FROM pg_tables WHERE tablename LIKE '_alembic_tmp_%'"
+                ))
+            else:
+                # SQLite version
+                tables = conn.execute(text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '_alembic_tmp_%'"
+                ))
+            
             for table in tables:
                 app.logger.info(f"Dropping temporary table: {table[0]}")
                 conn.execute(text(f"DROP TABLE IF EXISTS {table[0]}"))
@@ -105,16 +131,21 @@ def cleanup_alembic_tables():
 if os.environ.get('WERKZEUG_RUN_MAIN') != 'true':
     with app.app_context():
         try:
-            # Clean up any temporary tables first
-            cleanup_alembic_tables()
-            
-            # Run migrations
-            app.logger.info("Running database migrations...")
-            try:
-                upgrade()
-                app.logger.info("Database migrations completed successfully")
-            except Exception as e:
-                app.logger.error(f"Error during migrations: {e}")
+            # Only run migrations if the directory exists
+            migrations_dir = os.path.join(os.path.dirname(__file__), 'migrations')
+            if os.path.exists(migrations_dir):
+                # Clean up any temporary tables first
+                cleanup_alembic_tables()
+                
+                # Run migrations
+                app.logger.info("Running database migrations...")
+                try:
+                    upgrade()
+                    app.logger.info("Database migrations completed successfully")
+                except Exception as e:
+                    app.logger.error(f"Error during migrations: {e}")
+            else:
+                app.logger.info("Migrations directory not found. Please run 'flask db init' first.")
                 
         except Exception as e:
             app.logger.error(f"Error during application initialization: {e}")
@@ -226,11 +257,11 @@ def admin():
                 return submit()
 
     # Auto-login for localhost only if not already logged in
-    if request.remote_addr in ['127.0.0.1', 'localhost'] and 'admin_id' not in session:
-        admin_account = Account.query.filter_by(is_admin=True).first()
-        if admin_account:
-            session['admin_id'] = admin_account.id
-            return redirect(url_for('admin'))
+    # if request.remote_addr in ['127.0.0.1', 'localhost'] and 'admin_id' not in session:
+    #     admin_account = Account.query.filter_by(is_admin=True).first()
+    #     if admin_account:
+    #         session['admin_id'] = admin_account.id
+    #         return redirect(url_for('admin'))
     
     # If not logged in or not admin, handle login
     if request.method == 'POST':
@@ -432,6 +463,8 @@ def cronjob():
             #     Gateway.created_at <= days_ago,
             #     ~Gateway.id.in_(db.session.query(Node.gateway_id))
             # ).all()
+
+            # !! is there a better way to bulk delete?
             
             # if old_gateways:
             #     app.logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
@@ -439,6 +472,8 @@ def cronjob():
             #     for gateway in old_gateways:
             #         db.session.delete(gateway)
             #     db.session.commit()
+
+            # [ ] delete nodes > 30 days but always keep one row for each unique node so count is correct
 
             # Update last cron run time
             admin.last_daily_cron = current_time
