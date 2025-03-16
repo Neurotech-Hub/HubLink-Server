@@ -5,27 +5,27 @@ import multiprocessing
 # Binding
 bind = "0.0.0.0:10000"
 
-# Worker configuration optimized for 256MB memory and 0.1 CPU
-workers = 1  # Single worker due to very limited CPU
+# Worker configuration optimized for 1GB memory
+workers = 2                  # Increased for better CPU utilization
 worker_class = "sync"
-threads = 2  # Reduced from 4 to limit memory usage
-worker_connections = 50  # Reduced from 100 for memory constraints
+threads = 4                  # Increased for better concurrent processing
+worker_connections = 100     # Increased for more concurrent connections
 
 # Timeout configuration
-timeout = 30  # Reduced from 120 to fail faster
-keepalive = 2  # Reduced from 5 to free up resources faster
+timeout = 30
+keepalive = 2
 graceful_timeout = 30
 
 # Logging configuration
 accesslog = "-"
 errorlog = "-"
-loglevel = "warning"  # Changed from info to reduce log volume
+loglevel = "warning"
 capture_output = True
 
-# Performance tuning for low resource environment
-max_requests = 500  # Reduced from 1000 to recycle workers more frequently
-max_requests_jitter = 50  # Reduced jitter proportionally
-backlog = 64  # Reduced from 256 for memory constraints
+# Performance tuning for higher resource environment
+max_requests = 1000         # Increased since memory isn't a constraint
+max_requests_jitter = 100   # Increased proportionally
+backlog = 128              # Increased for more queued connections
 
 # Memory optimization
 worker_tmp_dir = "/dev/shm"  # Use RAM for temp files
