@@ -60,3 +60,4 @@ coverage/
 # SSH keys
 *.pub
 *.psd
+/backups
