@@ -119,10 +119,4 @@ SELECT COUNT(*) FROM source;
 3. **Cascading Deletes**: All relationships are set up with `ondelete='CASCADE'` where appropriate
 4. **Transaction Safety**: Each table migration is wrapped in its own transaction
 5. **Error Handling**: The script includes comprehensive error logging and rollback capabilities
-
-### Troubleshooting
-If you encounter issues:
-1. Check the migration.log file for detailed error messages
-2. Verify PostgreSQL version compatibility
-3. Ensure all tables are properly created before data migration
-4. Check for any orphaned records in the source database
+6. **Revert**: Use `DATABASE_URL=sqlite:////var/data/accounts.db `.

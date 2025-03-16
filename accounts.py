@@ -1102,23 +1102,46 @@ def download_files(account_url):
     data = request.get_json()
     file_ids = data.get('file_ids', [])
     directory = data.get('directory')
+    time_filter = data.get('time_filter')  # '24h' or '7d'
     
-    # If directory is provided, get all file IDs in that directory
-    if directory:
-        files = File.query.filter_by(account_id=account.id)\
-            .filter(File.key.like(f"{directory}/%"))\
+    # Handle time-based filtering
+    if time_filter:
+        cutoff_time = datetime.now(timezone.utc)
+        if time_filter == '24h':
+            cutoff_time = cutoff_time - timedelta(hours=24)
+        elif time_filter == '7d':
+            cutoff_time = cutoff_time - timedelta(days=7)
+            
+        # Query files based on time filter
+        query = File.query.filter_by(account_id=account.id)\
+            .filter(File.last_modified >= cutoff_time)\
             .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.'))\
-            .all()
-        file_ids = [f.id for f in files]
-    
-    if not file_ids:
-        return jsonify({'error': 'No files selected'}), 400
-    
-    # Get all selected files
-    files = File.query.filter(File.id.in_(file_ids)).all()
-    if not files:
-        return jsonify({'error': 'No files found'}), 404
+            .filter(~File.key.contains('/.'))
+            
+        # Add directory filter if specified
+        if directory:
+            query = query.filter(File.key.like(f"{directory}/%"))
+            
+        files = query.all()
+        if not files:
+            return jsonify({'error': 'No files found in the selected time range'}), 404
+    else:
+        # If directory is provided, get all file IDs in that directory
+        if directory:
+            files = File.query.filter_by(account_id=account.id)\
+                .filter(File.key.like(f"{directory}/%"))\
+                .filter(~File.key.like('.%'))\
+                .filter(~File.key.contains('/.'))\
+                .all()
+            file_ids = [f.id for f in files]
+        
+        if not file_ids:
+            return jsonify({'error': 'No files selected'}), 400
+        
+        # Get all selected files
+        files = File.query.filter(File.id.in_(file_ids)).all()
+        if not files:
+            return jsonify({'error': 'No files found'}), 404
     
     # For single file, download directly
     if len(files) == 1:

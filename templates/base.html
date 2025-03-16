@@ -149,21 +149,112 @@
     <!-- Layout loading script -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize modal
-            const layoutLoadingModal = new bootstrap.Modal(document.getElementById('layoutLoadingModal'), {
-                backdrop: 'static',
-                keyboard: false
-            });
-
+            // Get the modal element
+            const layoutLoadingModalEl = document.getElementById('layoutLoadingModal');
+            
+            if (!layoutLoadingModalEl) {
+                console.error('Layout loading modal not found');
+                return;
+            }
+            
+            // Detect Safari browser
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            console.log('Browser detected as Safari:', isSafari);
+            
             // Add click handlers to all layout links
             document.querySelectorAll('a[href*="/layout/"]').forEach(link => {
                 link.addEventListener('click', function(e) {
                     // Don't show modal for layout edit pages
                     if (!this.href.includes('/edit')) {
-                        layoutLoadingModal.show();
+                        // For Safari, we'll use a different approach
+                        if (isSafari) {
+                            // Create a manual backdrop for Safari
+                            let backdrop = document.querySelector('.manual-backdrop');
+                            if (!backdrop) {
+                                backdrop = document.createElement('div');
+                                backdrop.className = 'manual-backdrop show';
+                                backdrop.style.position = 'fixed';
+                                backdrop.style.top = '0';
+                                backdrop.style.right = '0';
+                                backdrop.style.bottom = '0';
+                                backdrop.style.left = '0';
+                                backdrop.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                                backdrop.style.zIndex = '1040';
+                                document.body.appendChild(backdrop);
+                            } else {
+                                backdrop.style.display = 'block';
+                                backdrop.classList.add('show');
+                            }
+                            
+                            // Show the modal content directly
+                            layoutLoadingModalEl.style.display = 'block';
+                            layoutLoadingModalEl.style.zIndex = '1050';
+                            layoutLoadingModalEl.classList.add('show');
+                            layoutLoadingModalEl.removeAttribute('aria-hidden');
+                            layoutLoadingModalEl.setAttribute('aria-modal', 'true');
+                            layoutLoadingModalEl.setAttribute('role', 'dialog');
+                            
+                            // Prevent body scrolling
+                            document.body.style.overflow = 'hidden';
+                            document.body.style.paddingRight = '15px'; // Compensate for scrollbar
+                            
+                            // Refresh spinner
+                            const modalBody = layoutLoadingModalEl.querySelector('.modal-body');
+                            modalBody.innerHTML = `
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <h5 class="mb-3">Loading Layout</h5>
+                                <p class="text-muted mb-0">Please wait while we prepare your layout...</p>
+                            `;
+                        } else {
+                            // For other browsers, use Bootstrap's modal API
+                            // Clean up any existing modal state
+                            const backdropElements = document.querySelectorAll('.modal-backdrop');
+                            backdropElements.forEach(el => el.remove());
+                            
+                            // Reset the modal element
+                            layoutLoadingModalEl.style.display = 'none';
+                            layoutLoadingModalEl.classList.remove('show');
+                            layoutLoadingModalEl.setAttribute('aria-hidden', 'true');
+                            
+                            // Create a new modal instance
+                            const layoutLoadingModal = new bootstrap.Modal(layoutLoadingModalEl, {
+                                backdrop: 'static',
+                                keyboard: false
+                            });
+                            
+                            // Refresh spinner
+                            const modalBody = layoutLoadingModalEl.querySelector('.modal-body');
+                            modalBody.innerHTML = `
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <h5 class="mb-3">Loading Layout</h5>
+                                <p class="text-muted mb-0">Please wait while we prepare your layout...</p>
+                            `;
+                            
+                            // Show the modal
+                            layoutLoadingModal.show();
+                        }
                     }
                 });
             });
+            
+            // Add CSS for Safari manual backdrop
+            if (isSafari) {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .manual-backdrop {
+                        opacity: 0;
+                        transition: opacity 0.15s linear;
+                    }
+                    .manual-backdrop.show {
+                        opacity: 1;
+                    }
+                `;
+                document.head.appendChild(style);
+            }
         });
     </script>
 </body>

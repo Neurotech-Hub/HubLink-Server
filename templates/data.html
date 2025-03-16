@@ -211,6 +211,15 @@
             };
         }
         
+        // Add click handler for main download button
+        const downloadBtn = document.getElementById('downloadSelectedBtn');
+        if (downloadBtn) {
+            downloadBtn.onclick = function() {
+                if (selectedFiles.size === 0) return;
+                downloadSelected(); // Call without timeFilter for regular download
+            };
+        }
+        
         // Clear selection button
         const clearBtn = document.getElementById('clearSelectionBtn');
         if (clearBtn) {
@@ -287,71 +296,6 @@
                 } catch (error) {
                     console.error('Error:', error);
                     alert('Error archiving files');
-                }
-            };
-        }
-        
-        // Download selected files
-        const downloadBtn = document.getElementById('downloadSelectedBtn');
-        if (downloadBtn) {
-            downloadBtn.onclick = async function() {
-                if (selectedFiles.size === 0) return;
-                
-                const fileIds = Array.from(selectedFiles.keys());
-                
-                if (fileIds.length > 1) {
-                    if (!downloadModal) {
-                        console.error('Download modal element not found');
-                        return;
-                    }
-                    const modal = bootstrap.Modal.getOrCreateInstance(downloadModal);
-                    modal.show();
-                }
-                
-                try {
-                    const response = await fetch('{{ url_for("accounts.download_files", account_url=account.url) }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ file_ids: fileIds })
-                    });
-                    
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || 'Download failed');
-                    }
-                    
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    
-                    // Set filename based on number of files
-                    if (fileIds.length === 1) {
-                        const file = selectedFiles.get(fileIds[0]);
-                        a.download = file.key.split('/').pop();
-                    } else {
-                        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                        a.download = `hublink_${timestamp}.zip`;
-                    }
-                    
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    a.remove();
-                    
-                    if (fileIds.length > 1 && downloadModal) {
-                        bootstrap.Modal.getInstance(downloadModal)?.hide();
-                    }
-                } catch (error) {
-                    console.error('Download error:', error);
-                    document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
-                    if (fileIds.length > 1 && downloadModal) {
-                        setTimeout(() => {
-                            bootstrap.Modal.getInstance(downloadModal)?.hide();
-                        }, 2000);
-                    }
                 }
             };
         }
@@ -438,5 +382,101 @@
             initializeEventListeners();
         }
     });
+
+    // Function to handle time-based downloads - moved to global scope
+    async function downloadSelected(timeFilter) {
+        // Show download modal for all multi-file downloads
+        if (!downloadModal) {
+            console.error('Download modal element not found');
+            return;
+        }
+        
+        // Get or create modal instance
+        const modal = bootstrap.Modal.getOrCreateInstance(downloadModal);
+        
+        // Recreate spinner element to force animation restart
+        const modalBody = downloadModal.querySelector('.modal-body');
+        const oldSpinner = modalBody.querySelector('.spinner-border');
+        const newSpinner = document.createElement('div');
+        newSpinner.className = 'spinner-border text-primary mb-3';
+        newSpinner.innerHTML = '<span class="visually-hidden">Loading...</span>';
+        if (oldSpinner) {
+            oldSpinner.replaceWith(newSpinner);
+        }
+        
+        // Record start time
+        const startTime = Date.now();
+        modal.show();
+        
+        try {
+            // Get current directory from URL if it exists
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentDirectory = urlParams.get('directory') || '';
+            
+            const response = await fetch('{{ url_for("accounts.download_files", account_url=account.url) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    file_ids: timeFilter ? [] : Array.from(selectedFiles.keys()),
+                    directory: currentDirectory,
+                    time_filter: timeFilter
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Download failed');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Set filename based on time filter
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            if (timeFilter) {
+                a.download = `hublink_${timeFilter}_${timestamp}.zip`;
+            } else {
+                // Original filename logic for selected files
+                const fileIds = Array.from(selectedFiles.keys());
+                if (fileIds.length === 1) {
+                    const file = selectedFiles.get(fileIds[0]);
+                    a.download = file.key.split('/').pop();
+                } else {
+                    a.download = `hublink_${timestamp}.zip`;
+                }
+            }
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            
+            // Ensure modal stays visible for at least 500ms
+            const elapsedTime = Date.now() - startTime;
+            const minDisplayTime = 500; // minimum display time in milliseconds
+            
+            if (elapsedTime < minDisplayTime) {
+                await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
+            }
+            
+            modal.hide();
+            // Reset the download status text for next time
+            document.getElementById('downloadStatus').textContent = 'Compiling selected files...';
+        } catch (error) {
+            console.error('Download error:', error);
+            document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
+            setTimeout(() => {
+                modal.hide();
+                // Reset the download status text after error
+                setTimeout(() => {
+                    document.getElementById('downloadStatus').textContent = 'Compiling selected files...';
+                }, 300);
+            }, 2000);
+        }
+    }
 </script>
 {% endblock scripts %}
