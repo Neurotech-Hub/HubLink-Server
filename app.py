@@ -463,6 +463,8 @@ def cronjob():
             #     Gateway.created_at <= days_ago,
             #     ~Gateway.id.in_(db.session.query(Node.gateway_id))
             # ).all()
+
+            # !! is there a better way to bulk delete?
             
             # if old_gateways:
             #     app.logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
@@ -470,6 +472,8 @@ def cronjob():
             #     for gateway in old_gateways:
             #         db.session.delete(gateway)
             #     db.session.commit()
+
+            # [ ] delete nodes > 30 days but always keep one row for each unique node so count is correct
 
             # Update last cron run time
             admin.last_daily_cron = current_time
