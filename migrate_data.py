@@ -38,23 +38,6 @@ TABLES_TO_MIGRATE = [
     'layout'       # Depends on account
 ]
 
-def backup_sqlite_db():
-    """Create a backup of the SQLite database."""
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    backup_dir = 'backups'
-    if not os.path.exists(backup_dir):
-        os.makedirs(backup_dir)
-    
-    backup_path = f"{backup_dir}/accounts_{timestamp}.db"
-    try:
-        import shutil
-        shutil.copy2(SQLITE_DB_PATH, backup_path)
-        logging.info(f"Created backup at {backup_path}")
-        return True
-    except Exception as e:
-        logging.error(f"Failed to create backup: {e}")
-        return False
-
 def get_table_columns(sqlite_cur, table_name):
     """Get column names and types for a table."""
     sqlite_cur.execute(f"PRAGMA table_info({table_name})")
@@ -286,9 +269,6 @@ def run_flask_migrations():
 
 def migrate_data():
     """Main migration function."""
-    if not backup_sqlite_db():
-        logging.error("Failed to create backup. Aborting migration.")
-        return False
         
     # Run Flask migrations first to create schema
     if not run_flask_migrations():

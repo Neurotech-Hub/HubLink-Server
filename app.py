@@ -79,13 +79,17 @@ app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL or \
 
 # Configure SQLAlchemy connection pooling based on database type
 if DATABASE_URL and ('postgresql://' in DATABASE_URL or 'postgres://' in DATABASE_URL):
-    # PostgreSQL-specific configuration
+    # PostgreSQL-specific configuration - optimized for 256MB memory, 0.1 CPU
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 5,
-        'max_overflow': 10,
-        'pool_timeout': 30,
-        'pool_recycle': 1800,
-        'pool_pre_ping': True
+        'pool_size': 2,  # Reduced from 5 to minimize memory usage
+        'max_overflow': 3,  # Reduced from 10 to limit peak memory usage
+        'pool_timeout': 20,  # Reduced from 30 to fail faster if pool is full
+        'pool_recycle': 300,  # Reduced from 1800 to recycle connections more frequently
+        'pool_pre_ping': True,  # Keep this to detect stale connections
+        'connect_args': {
+            'connect_timeout': 10,  # Add timeout for connection attempts
+            'application_name': 'hublink'  # Add app name for better monitoring
+        }
     }
 else:
     # SQLite-specific configuration
