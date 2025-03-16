@@ -64,7 +64,7 @@
                                     {% set versioned_display = (versioned_bytes / (1024 * 1024 * 1024))|round(2) %}
                                     {% set versioned_unit = "GB" %}
                                 {% endif %}
-                                <small class="text-muted">Version backups occupy {{ versioned_display }}{{ versioned_unit }}</small>
+                                {# <small class="text-muted">Version backups occupy {{ versioned_display }}{{ versioned_unit }}</small> #}
                             {% endif %}
                         </div>
                         <div class="col-md-6 mb-3">
