@@ -688,15 +688,16 @@ def create_plot(account_url, source_id):
         if request.form.get('last_value') == 'on':
             advanced_options.append('last_value')
         
-        # Create new plot with JSON config
+        # Create new plot without manually serializing config and advanced_options
         plot = Plot(
             source_id=source_id,
             name=plot_name,
             type=plot_type,
-            config=json.dumps(config),
-            group_by=request.form.get('group_by', type=int, default=None),  # Handle group_by field
-            advanced=json.dumps(advanced_options)  # Add advanced options
+            group_by=request.form.get('group_by', type=int, default=None)
         )
+        # Set JSON fields using the new properties
+        plot.config_json = config
+        plot.advanced_json = advanced_options
         
         # Add to session to set up relationships
         db.session.add(plot)
@@ -779,7 +780,7 @@ def update_layout(account_url, layout_id):
             }), 400
             
         layout.name = name
-        layout.config = json.dumps(data['config'])
+        layout.config_json = data['config']  # Use the new property
         layout.time_range = data['time_range']
         
         db.session.commit()
@@ -795,8 +796,8 @@ def update_layout(account_url, layout_id):
 def _get_layout_data(account, layout):
     """Helper function to get layout data and plots consistently."""
     try:
-        # Get config from layout - it will already be deserialized from JSONB
-        config = layout.config
+        # Get config using the new property
+        config = layout.config_json
         
         # Ensure config is a list
         if not isinstance(config, list):
@@ -858,7 +859,7 @@ def _get_layout_data(account, layout):
         layout_data = {
             'id': layout.id,
             'name': layout.name,
-            'config': config,  # Use the config directly since it's already deserialized
+            'config': config,  # Already using parsed config from config_json
             'is_default': layout.is_default,
             'show_nav': layout.show_nav,
             'time_range': layout.time_range
@@ -882,7 +883,7 @@ def layout_view(account_url, layout_id):
         # Get layout data and plots using the helper function
         layout_data, plot_info_arr = _get_layout_data(account, layout)
         if not layout_data:
-            flash("Error loading layout", "error")
+            flash("Error loading layout", "danger")
             return redirect(url_for('accounts.account_plots', account_url=account_url))
         
         # Render the full layout page
@@ -894,7 +895,7 @@ def layout_view(account_url, layout_id):
     except Exception as e:
         logging.error(f"Error loading layout view for {account_url}: {e}")
         traceback.print_exc()
-        flash("Error loading layout view", "error")
+        flash("Error loading layout view", "danger")
         return redirect(url_for('accounts.account_plots', account_url=account_url))
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>/grid', methods=['GET'])
@@ -996,11 +997,13 @@ def create_layout(account_url):
         layout = Layout(
             account_id=account.id,
             name=layout_name,
-            config=json.dumps([]),
             is_default=should_be_default,  # Set based on first layout or form input
             show_nav=request.form.get('show_nav') == 'on',
             time_range='all'  # Default time range
         )
+        # Set empty config using the new property
+        layout.config_json = []
+        
         db.session.add(layout)
         db.session.commit()
         
@@ -1035,7 +1038,7 @@ def update_layout_settings(account_url, layout_id):
         
         # Optionally update config if present
         if 'config' in request.form:
-            layout.config = request.form['config']
+            layout.config_json = request.form['config']
         
         db.session.commit()
         flash('Layout settings updated successfully.', 'success')
@@ -1636,16 +1639,17 @@ def edit_plot(account_url, source_id, plot_id):
                 'y_data': y_data
             }
             
-        plot.config = json.dumps(config)
+        # Update config using the new property
+        plot.config_json = config
         
-        # Update advanced options
+        # Update advanced options using the new property
         advanced_options = []
         if request.form.get('accumulate') == 'on':
             advanced_options.append('accumulate')
         if request.form.get('last_value') == 'on':
             advanced_options.append('last_value')
         
-        plot.advanced = json.dumps(advanced_options)
+        plot.advanced_json = advanced_options
         
         db.session.commit()
         flash('Plot updated successfully', 'success')

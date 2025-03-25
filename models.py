@@ -252,15 +252,55 @@ class Plot(db.Model):
     def __repr__(self):
         return f"<Plot {self.name} ({self.type}) for Source {self.source_id}>"
 
+    @property
+    def config_json(self):
+        """Ensure config is always returned as a dict."""
+        if isinstance(self.config, str):
+            try:
+                return json.loads(self.config)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return self.config or {}
+
+    @config_json.setter
+    def config_json(self, value):
+        """Ensure config is stored as proper JSON."""
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                value = {}
+        self.config = value
+
+    @property
+    def advanced_json(self):
+        """Ensure advanced is always returned as a list."""
+        if isinstance(self.advanced, str):
+            try:
+                return json.loads(self.advanced)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return self.advanced or []
+
+    @advanced_json.setter
+    def advanced_json(self, value):
+        """Ensure advanced is stored as proper JSON."""
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                value = []
+        self.advanced = value
+
     def to_dict(self):
         return {
             'id': self.id,
             'source_id': self.source_id,
             'name': self.name,
             'type': self.type,
-            'config': json.loads(self.config) if isinstance(self.config, str) else self.config,
+            'config': self.config_json,
             'group_by': self.group_by,
-            'advanced': json.loads(self.advanced) if isinstance(self.advanced, str) else self.advanced
+            'advanced': self.advanced_json
         }
 
 # Define the layout model
@@ -269,7 +309,7 @@ class Layout(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     account_id = db.Column(db.Integer, db.ForeignKey('account.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100), nullable=False, server_default='')
-    config = db.Column(JSONB, nullable=False, server_default='{}')
+    config = db.Column(JSONB, nullable=False, server_default='[]')
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now())
     is_default = db.Column(db.Boolean, nullable=False, server_default=text('false'))
     show_nav = db.Column(db.Boolean, nullable=False, server_default=text('false'))
@@ -278,11 +318,31 @@ class Layout(db.Model):
     def __repr__(self):
         return f"<Layout {self.name} for Account {self.account_id}>"
 
+    @property
+    def config_json(self):
+        """Ensure config is always returned as a list."""
+        if isinstance(self.config, str):
+            try:
+                return json.loads(self.config)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return self.config or []
+
+    @config_json.setter
+    def config_json(self, value):
+        """Ensure config is stored as proper JSON."""
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                value = []
+        self.config = value
+
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
-            'config': json.loads(self.config) if isinstance(self.config, str) else self.config,
+            'config': self.config_json,
             'created_at': self.created_at.replace(tzinfo=timezone.utc).isoformat() if self.created_at else None,
             'is_default': self.is_default,
             'show_nav': self.show_nav

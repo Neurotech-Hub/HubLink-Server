@@ -98,7 +98,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadEditMode() {
-    const layout = {{ layout.config | safe }};
+    // Get layout config and ensure it's a proper JavaScript object
+    let layout = {{ layout.config | tojson | safe }};
+    if (typeof layout === 'string') {
+        layout = JSON.parse(layout);
+    }
+    
     const template = document.getElementById('widget-template').innerHTML;
     
     layout.forEach(item => {
