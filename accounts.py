@@ -400,7 +400,7 @@ def account_plots(account_url):
         layout_plot_names = {}
         for layout in account.layouts:
             try:
-                config = json.loads(layout.config)
+                config = layout.config_json  # Use config_json property
                 plot_names = []
                 for item in config:
                     if 'plotId' in item:
@@ -552,16 +552,16 @@ def delete_source(account_url, source_id):
         for layout in layouts:
             if layout.config:
                 try:
-                    config = json.loads(layout.config)
+                    config = layout.config_json  # Use config_json property
                     if not isinstance(config, list):
                         logging.error(f"Invalid layout config format for layout {layout.id}: expected list")
                         continue
                         
                     # Remove any widgets that reference any plot from this source
                     config = [widget for widget in config if str(widget.get('plotId', '')) not in plot_ids]
-                    layout.config = json.dumps(config)
-                except json.JSONDecodeError as e:
-                    logging.error(f"Invalid JSON in layout {layout.id} config: {e}")
+                    layout.config_json = config  # Use config_json property
+                except Exception as e:
+                    logging.error(f"Error updating layout {layout.id} config: {e}")
                     continue  # Skip this layout instead of resetting it
         
         # Delete the source (this will cascade delete all its plots)
@@ -737,18 +737,19 @@ def delete_plot(account_url, plot_id):
     # Clean up layout configurations
     layouts = Layout.query.filter_by(account_id=account.id).all()
     for layout in layouts:
-        if layout.config:
+        if layout.config_json:  # Use config_json property
             try:
-                config = json.loads(layout.config)
+                # Config is already a list from JSONB, no need for json.loads
+                config = layout.config_json
                 if not isinstance(config, list):
                     logging.error(f"Invalid layout config format for layout {layout.id}: expected list")
                     continue
                     
                 # Remove any widgets that reference this plot
                 config = [widget for widget in config if str(widget.get('plotId', '')) != str(plot_id)]
-                layout.config = json.dumps(config)
-            except json.JSONDecodeError as e:
-                logging.error(f"Invalid JSON in layout {layout.id} config: {e}")
+                layout.config_json = config  # Use config_json property
+            except Exception as e:
+                logging.error(f"Error updating layout {layout.id} config: {e}")
                 continue  # Skip this layout instead of resetting it
     
     # Delete the plot
