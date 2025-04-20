@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 logger.info("Plot utils module initialized")
 
-def get_group_name(file_path, group_by_level):
+def get_group_name(file_path, group_by_level, preserve_full_name=False):
     """
     Get the group name for a file path based on the grouping level.
     If the level points to a directory with only files, use the full file name.
@@ -21,6 +21,7 @@ def get_group_name(file_path, group_by_level):
     Args:
         file_path (str): The full file path
         group_by_level (int): The level to group by (0-based) or None for no grouping
+        preserve_full_name (bool): If True, don't truncate long names (useful for tables)
     
     Returns:
         str: The group name to use
@@ -38,18 +39,20 @@ def get_group_name(file_path, group_by_level):
     group_path = '/'.join(parts[:group_by_level + 1])
     
     # For long names, just take the last 20 characters with ellipsis
-    if len(group_path) > 20:
+    # unless preserve_full_name is True
+    if len(group_path) > 20 and not preserve_full_name:
         return f"...{group_path[-20:]}"
     
     return group_path
 
-def prepare_grouped_df(df, plot):
+def prepare_grouped_df(df, plot, preserve_full_name=False):
     """
     Prepare a DataFrame with proper grouping based on plot.group_by level.
     
     Args:
         df (pd.DataFrame): The input DataFrame
         plot: The plot object containing group_by and other settings
+        preserve_full_name (bool): If True, don't truncate long group names
     
     Returns:
         pd.DataFrame: DataFrame with a 'group' column for plotting
@@ -60,7 +63,7 @@ def prepare_grouped_df(df, plot):
             return df
             
         # Add group column based on file paths
-        df['group'] = df['file_path'].apply(lambda x: get_group_name(x, plot.group_by))
+        df['group'] = df['file_path'].apply(lambda x: get_group_name(x, plot.group_by, preserve_full_name))
         
         return df
     except Exception as e:
@@ -327,6 +330,20 @@ def process_timeseries_plot(plot, csv_content):
                 group_data = df[df['group'] == group]
                 color = colors[idx % len(colors)]
                 
+                # Create custom hover text for each point
+                hover_texts = []
+                for _, row in group_data.iterrows():
+                    date_str = row[x_data].strftime('%Y-%m-%d %H:%M:%S')
+                    value = row[y_data]
+                    file_path = row['file_path']
+                    # Format file path - get just the filename if it's too long
+                    if len(file_path) > 30:
+                        file_parts = file_path.split('/')
+                        file_path = ".../" + '/'.join(file_parts[-2:]) if len(file_parts) > 1 else file_parts[-1]
+                    
+                    hover_text = f"Group: {group}<br>Date: {date_str}<br>Value: {value:.2f}<br>File: {file_path}"
+                    hover_texts.append(hover_text)
+                
                 fig.add_trace(go.Scatter(
                     x=group_data[x_data],
                     y=group_data[y_data],
@@ -335,11 +352,28 @@ def process_timeseries_plot(plot, csv_content):
                     marker=dict(size=6, opacity=0.7, color=color),
                     line=dict(width=2, shape='linear', color=color),
                     fill='tozeroy',
-                    fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}'
+                    fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}',
+                    hovertext=hover_texts,
+                    hoverinfo='text'
                 ))
         else:
             # Plot single line for non-grouped data
             color = colors[0]
+            
+            # Create custom hover text for each point
+            hover_texts = []
+            for _, row in df.iterrows():
+                date_str = row[x_data].strftime('%Y-%m-%d %H:%M:%S')
+                value = row[y_data]
+                file_path = row['file_path']
+                # Format file path - get just the filename if it's too long
+                if len(file_path) > 30:
+                    file_parts = file_path.split('/')
+                    file_path = ".../" + '/'.join(file_parts[-2:]) if len(file_parts) > 1 else file_parts[-1]
+                
+                hover_text = f"Date: {date_str}<br>Value: {value:.2f}<br>File: {file_path}"
+                hover_texts.append(hover_text)
+            
             fig.add_trace(go.Scatter(
                 x=df[x_data],
                 y=df[y_data],
@@ -348,7 +382,9 @@ def process_timeseries_plot(plot, csv_content):
                 marker=dict(size=6, opacity=0.7, color=color),
                 line=dict(width=2, shape='linear', color=color),
                 fill='tozeroy',
-                fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}'
+                fillcolor=f'rgba{tuple(list(px.colors.hex_to_rgb(color)) + [0.1])}',
+                hovertext=hover_texts,
+                hoverinfo='text'
             ))
         
         # Update layout
@@ -450,10 +486,22 @@ def process_bar_plot(plot, csv_content):
             logger.error("No y_data found in config")
             return {'error': 'No y_data configuration found'}
             
+        # Get datetime column from the source
+        x_data = plot.source.datetime_column if hasattr(plot, 'source') else None
+        
         advanced_options = plot.advanced_json
         take_last_value = 'last_value' in advanced_options
         
         df = pd.read_csv(StringIO(csv_content), low_memory=False)
+        
+        # Convert datetime column if available
+        if x_data and x_data in df.columns:
+            try:
+                df[x_data] = pd.to_datetime(df[x_data], errors='coerce')
+                logger.debug(f"Successfully parsed datetime column {x_data}")
+            except Exception as e:
+                logger.error(f"Failed to parse datetime column {x_data}: {str(e)}")
+        
         df[y_data] = pd.to_numeric(df[y_data], errors='coerce')
         df = df.dropna(subset=[y_data])
         
@@ -463,6 +511,15 @@ def process_bar_plot(plot, csv_content):
         # Apply grouping if needed
         if plot.group_by:
             df = prepare_grouped_df(df, plot)
+            
+            # Store last datetime for each group if available
+            last_dates = {}
+            if x_data and x_data in df.columns:
+                for group_name, group_df in df.groupby('group'):
+                    group_df = group_df.sort_values(x_data)
+                    if not group_df.empty:
+                        last_dates[group_name] = group_df[x_data].iloc[-1]
+            
             if take_last_value:
                 # Get the last value for each group
                 stats = (df.groupby('group', observed=True)[y_data]
@@ -475,6 +532,13 @@ def process_bar_plot(plot, csv_content):
                         .agg(['mean', 'std', 'count'])
                         .round(2))
         else:
+            # Get the last datetime if available
+            last_date = None
+            if x_data and x_data in df.columns:
+                df = df.sort_values(x_data)
+                if not df.empty:
+                    last_date = df[x_data].iloc[-1]
+            
             if take_last_value:
                 # Get the last value overall
                 stats = pd.DataFrame({
@@ -492,12 +556,51 @@ def process_bar_plot(plot, csv_content):
         fig = go.Figure()
         colors = px.colors.qualitative.Plotly
         
-        # Add bars with or without error bars based on mode
+        # Create hover texts
+        hover_texts = []
+        
+        if plot.group_by:
+            for group in stats.index:
+                if take_last_value:
+                    value = stats.loc[group, 'value']
+                    hover_text = f"Group: {group}<br>Value: {value:.2f}"
+                else:
+                    mean_val = stats.loc[group, 'mean']
+                    std_val = stats.loc[group, 'std']
+                    count_val = stats.loc[group, 'count']
+                    hover_text = f"Group: {group}<br>Mean: {mean_val:.2f}<br>Std: {std_val:.2f}<br>Count: {count_val}"
+                
+                # Add date information if available
+                if group in last_dates:
+                    date_str = last_dates[group].strftime('%Y-%m-%d %H:%M:%S')
+                    hover_text += f"<br>Last Date: {date_str}"
+                
+                hover_texts.append(hover_text)
+        else:
+            if take_last_value:
+                value = stats.loc['all', 'value']
+                hover_text = f"Value: {value:.2f}"
+            else:
+                mean_val = stats.loc['all', 'mean']
+                std_val = stats.loc['all', 'std']
+                count_val = stats.loc['all', 'count']
+                hover_text = f"Mean: {mean_val:.2f}<br>Std: {std_val:.2f}<br>Count: {count_val}"
+            
+            # Add date information if available
+            if last_date:
+                date_str = last_date.strftime('%Y-%m-%d %H:%M:%S')
+                hover_text += f"<br>Last Date: {date_str}"
+            
+            hover_texts = [hover_text]
+        
+        # Add bars with hover text
         if take_last_value:
             fig.add_trace(go.Bar(
                 x=stats.index,
                 y=stats['value'],
-                marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))]
+                marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))],
+                hovertext=hover_texts,
+                hoverinfo='text'
             ))
         else:
             fig.add_trace(go.Bar(
@@ -508,7 +611,9 @@ def process_bar_plot(plot, csv_content):
                     array=stats['std'],
                     visible=True
                 ),
-                marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))]
+                marker_color=colors[0] if not plot.group_by else [colors[i % len(colors)] for i in range(len(stats))],
+                hovertext=hover_texts,
+                hoverinfo='text'
             ))
         
         # Update layout
@@ -543,7 +648,8 @@ def process_table_plot(plot, csv_content):
             
         # Apply grouping if needed
         if plot.group_by:
-            df = prepare_grouped_df(df, plot)
+            # Use preserve_full_name=True to show complete group names in tables
+            df = prepare_grouped_df(df, plot, preserve_full_name=True)
             # Calculate statistics by group, including last value
             stats = (df.groupby('group', observed=True)[y_data]
                     .agg(['count', 'mean', 'std', 'min', 'max', ('last', 'last')])
@@ -562,27 +668,56 @@ def process_table_plot(plot, csv_content):
         # Reorder columns to put 'last' after 'count'
         stats = stats.reindex(columns=['count', 'last', 'mean', 'std', 'min', 'max'])
         
-        # Create figure
+        # Determine column widths - allocate more width to the group column
+        # Calculate max length of group names to determine width
+        max_group_len = max([len(str(g)) for g in stats.index])
+        
+        # Adjust column widths based on content
+        # Group column gets proportionally more width for longer text
+        # For Plotly, we need to use relative numeric values, not percentages
+        group_width = min(max(30, max_group_len * 2), 60)  # Increase max width to 60
+        numeric_width = 10  # Default width for numeric columns
+        
+        # Set column widths as numeric values proportional to desired width
+        # Use fixed values that match the proportions we want
+        col_widths = [group_width] + [numeric_width] * len(stats.columns)
+        
+        # Format numeric values with fewer decimal places for better display
+        formatted_values = []
+        for col in stats.columns:
+            if col in ['count']:
+                # Integers don't need decimal places
+                formatted_values.append(stats[col].astype(int))
+            else:
+                # Use 2 decimal places for other numerics
+                formatted_values.append(stats[col].round(2))
+        
+        # Create figure with customized table
         fig = go.Figure(data=[go.Table(
             header=dict(
                 values=['Group'] + list(stats.columns),
                 fill_color='#f0f0f0',  # Light gray
-                align='left',
-                font=dict(color='black', size=12)
+                align=['left'] + ['right'] * len(stats.columns),  # Align group left, numbers right
+                font=dict(color='black', size=12),
+                height=35  # Slightly taller header for better readability
             ),
             cells=dict(
-                values=[stats.index] + [stats[col] for col in stats.columns],
+                values=[stats.index] + formatted_values,
                 fill_color='white',
-                align='left',
-                font=dict(color='#333333', size=12)  # Dark gray text
-            )
+                align=['left'] + ['right'] * len(stats.columns),  # Align group left, numbers right
+                font=dict(color='#333333', size=12),  # Dark gray text
+                height=30,  # Consistent cell height
+                format=None  # Let us handle formatting above
+            ),
+            columnwidth=col_widths
         )])
         
         # Update layout
         layout = get_default_layout(get_plot_title(plot))
         layout.update({
             'paper_bgcolor': 'white',
-            'plot_bgcolor': 'white'
+            'plot_bgcolor': 'white',
+            'margin': {'t': 50, 'b': 30, 'l': 10, 'r': 10}  # Tighter margins for more table space
         })
         fig.update_layout(layout)
         
