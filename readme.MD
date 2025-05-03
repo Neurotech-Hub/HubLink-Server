@@ -132,14 +132,3 @@ Using this workflow, you can effectively maintain database schema compatibility 
 ```bash
 purgecss --css static/css/style.css --content templates/**/*.html --output static/css/style.cleaned.css
 ```
-
----
-
-python3 -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-
-### Render Config
-Disks > /var/data
-Environment > DATABASE_URL = sqlite:////var/data/accounts.db

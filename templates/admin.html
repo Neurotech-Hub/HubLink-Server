@@ -114,7 +114,7 @@
                     <h5 class="card-title mb-0">Create New Account</h5>
                 </div>
                 <div class="card-body">
-                    <form action="/{{ admin_route }}" method="POST">
+                    <form action="{{ url_for('create_account') }}" method="post">
                         <div class="form-group mb-3">
                             <label for="name" class="form-label">Account Name</label>
                             <input type="text" id="name" name="name" class="form-control"
@@ -394,6 +394,12 @@
                         </div>
                         <div class="mb-3">
                             <div class="form-check">
+                                <input type="checkbox" name="is_admin" class="form-check-input" id="isAdmin">
+                                <label class="form-check-label" for="isAdmin">Admin Access</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
                                 <input type="checkbox" name="use_password" class="form-check-input" id="usePassword">
                                 <label class="form-check-label" for="usePassword">Password Protected</label>
                             </div>
@@ -483,20 +489,26 @@
             const form = document.getElementById('editAccountForm');
             form.action = `/admin/account/${id}/edit`;
             
-            // Set basic fields
+            // Convert the date string to YYYY-MM-DD format for the input field
+            const dateObj = new Date(plan_start_date);
+            const formattedDate = dateObj.toISOString().split('T')[0];
+            
+            // Set form field values
             form.querySelector('[name="name"]').value = name;
             form.querySelector('[name="url"]').value = url;
             form.querySelector('[name="is_admin"]').checked = isAdmin;
-            form.querySelector('[name="use_password"]').checked = usePassword;
             form.querySelector('[name="plan_storage_gb"]').value = plan_storage_gb;
             form.querySelector('[name="plan_uploads_mo"]').value = plan_uploads_mo;
             form.querySelector('[name="plan_versioned_backups"]').checked = plan_versioned_backups;
             form.querySelector('[name="plan_version_days"]').value = plan_version_days;
-            form.querySelector('[name="plan_start_date"]').value = plan_start_date;
+            form.querySelector('[name="plan_start_date"]').value = formattedDate;
+            form.querySelector('[name="use_password"]').checked = usePassword;
             
             // Show/hide password field based on usePassword
-            document.getElementById('passwordField').style.display = 
-                usePassword ? 'block' : 'none';
+            document.getElementById('passwordField').style.display = usePassword ? 'block' : 'none';
+            
+            // Show/hide version days field based on plan_versioned_backups
+            document.getElementById('versionDaysField').style.display = plan_versioned_backups ? 'block' : 'none';
             
             // Show the modal
             new bootstrap.Modal(document.getElementById('editAccountModal')).show();

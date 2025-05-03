@@ -235,43 +235,15 @@ def index():
         app.logger.error(f"Error loading index: {e}")
         return "There was an issue loading the homepage.", 500
 
-@app.route('/admin', methods=['GET', 'POST'])
-def admin():
-    g.title = "Admin"
+# Route to handle admin login
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
     # Check if already logged in first
     if 'admin_id' in session:
         account = db.session.get(Account, session['admin_id'])
         if account and account.is_admin:
-            # Handle GET request - show dashboard
-            if request.method == 'GET':
-                try:
-                    all_accounts = Account.query.all()
-                    analytics = get_analytics()  # Get analytics for all accounts
-                    
-                    if not analytics:
-                        flash('Error loading analytics', 'error')
-                        analytics = {}
-                    
-                    return render_template('admin.html', 
-                                         accounts=all_accounts,
-                                         admin_route='admin',
-                                         analytics=analytics)
-                except Exception as e:
-                    app.logger.error(f"Error loading admin dashboard: {e}")
-                    return "There was an issue loading the page.", 500
-            
-            # Handle POST request - create new account
-            else:
-                return submit()
-
-    # Auto-login for localhost only if not already logged in
-    # if request.remote_addr in ['127.0.0.1', 'localhost'] and 'admin_id' not in session:
-    #     admin_account = Account.query.filter_by(is_admin=True).first()
-    #     if admin_account:
-    #         session['admin_id'] = admin_account.id
-    #         return redirect(url_for('admin'))
+            return redirect(url_for('admin'))
     
-    # If not logged in or not admin, handle login
     if request.method == 'POST':
         name = request.form.get('name')
         password = request.form.get('password')
@@ -287,19 +259,37 @@ def admin():
     # Show login page
     return render_template('admin_login.html')
 
+# Route to display admin dashboard
+@app.route('/admin')
+@admin_required
+def admin():
+    g.title = "Admin"
+    try:
+        all_accounts = Account.query.all()
+        analytics = get_analytics()  # Get analytics for all accounts
+        
+        if not analytics:
+            flash('Error loading analytics', 'error')
+            analytics = {}
+        
+        return render_template('admin.html', 
+                             accounts=all_accounts,
+                             analytics=analytics)
+    except Exception as e:
+        app.logger.error(f"Error loading admin dashboard: {e}")
+        return "There was an issue loading the page.", 500
+
+# Route to handle admin logout
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_id', None)
     flash('Successfully logged out', 'success')
-    return redirect(url_for('admin'))
+    return redirect(url_for('admin_login'))
 
-# Route to submit a new account
-@app.route('/admin', methods=['POST'])
-def submit():
-    if 'admin_id' not in session:
-        flash('Admin access required', 'danger')
-        return redirect(url_for('admin'))
-
+# Route to create a new account
+@app.route('/admin/account/create', methods=['POST'])
+@admin_required
+def create_account():
     user_name = request.form.get('name')
     aws_user_name = request.form.get('aws_user_name')
     bucket_name = request.form.get('bucket_name')
