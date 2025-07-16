@@ -8,6 +8,12 @@ import shutil
 from pathlib import Path
 import tarfile
 
+# Add PostgreSQL 16 tools to PATH
+pg16_bin_path = "/opt/homebrew/opt/postgresql@16/bin"
+if os.path.exists(pg16_bin_path):
+    current_path = os.environ.get('PATH', '')
+    os.environ['PATH'] = f"{pg16_bin_path}:{current_path}"
+
 def check_postgres_tools():
     """Verify that required PostgreSQL tools are available."""
     required_tools = ['psql', 'createdb', 'dropdb', 'pg_restore']
@@ -15,7 +21,8 @@ def check_postgres_tools():
     
     for tool in required_tools:
         try:
-            subprocess.run([tool, '--version'], capture_output=True)
+            result = subprocess.run([tool, '--version'], capture_output=True, text=True)
+            print(f"Using {tool}: {result.stdout.strip()}")
         except FileNotFoundError:
             missing_tools.append(tool)
     
