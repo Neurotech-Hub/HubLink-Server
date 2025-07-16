@@ -1,0 +1,59 @@
+<style>
+.node-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+.node-battery-progress {
+    width: 60px;
+    height: 8px;
+}
+</style>
+
+<div class="card h-100">
+    <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-cpu"></i> Node Activity</h5>
+        <div class="table-responsive node-table-container">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>MAC Address</th>
+                        <th>Name</th>
+                        <th>Battery</th>
+                        <th>Last Scanned</th>
+                        <th>Last Connected</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for node in nodes %}
+                    <tr>
+                        <td><code>{{ node.mac_address }}</code></td>
+                        <td>{{ node.name }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="progress me-2 flex-shrink-0 node-battery-progress">
+                                    <div class="progress-bar 
+                                        {% if node.battery >= 80 %}bg-success
+                                        {% elif node.battery >= 50 %}bg-warning
+                                        {% else %}bg-danger{% endif %}" 
+                                        role="progressbar" 
+                                        aria-valuenow="{{ node.battery }}" 
+                                        aria-valuemin="0" 
+                                        aria-valuemax="100" 
+                                        style="width: {{ node.battery }}%"></div>
+                                </div>
+                                <small class="text-muted">{{ node.battery }}%</small>
+                            </div>
+                        </td>
+                        <td class="node-time" data-time="{{ node.last_scanned.isoformat() }}">
+                            {{ node.last_scanned|datetime }}
+                        </td>
+                        <td class="node-time" data-time="{{ node.last_connected.isoformat() }}">
+                            {{ node.last_connected|datetime }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div> 

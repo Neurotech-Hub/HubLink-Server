@@ -1,7 +1,14 @@
+<style>
+.gateway-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+}
+</style>
+
 <div class="card h-100">
     <div class="card-body">
         <h5 class="card-title"><i class="bi bi-router"></i> Gateway Activity</h5>
-        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+        <div class="table-responsive gateway-table-container">
             <table class="table table-sm table-hover">
                 <thead>
                     <tr>
@@ -13,7 +20,7 @@
                 <tbody>
                     {% for gateway in gateways %}
                     <tr>
-                        <td>{{ gateway.ip_address }}</td>
+                        <td><code>{{ gateway.ip_address }}</code></td>
                         <td>{{ gateway.name }}</td>
                         <td class="gateway-time" data-time="{{ gateway.created_at.isoformat() }}">
                             {{ gateway.created_at|datetime }}

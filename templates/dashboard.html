@@ -41,25 +41,9 @@
         </div>
     </div>
 
-    <!-- Directory and Gateway Row -->
+    <!-- Gateway Activity -->
     <div class="row">
-        <!-- Directory Distribution -->
-        <div class="col-md-6 mb-4" id="dashboardDirs" 
-             hx-get="{{ url_for('accounts.dashboard_dirs', account_url=account.url) }}" 
-             hx-trigger="load, every 300s"
-             hx-swap="innerHTML transition:true"
-             hx-preserve>
-            <div class="fade-me">
-                <div class="text-center py-5">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Loading directory chart...</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Gateway Activity -->
-        <div class="col-md-6 mb-4" id="dashboardGateways" 
+        <div class="col-12 mb-4" id="dashboardGateways" 
              hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" 
              hx-trigger="load, every 300s"
              hx-swap="innerHTML transition:true">
@@ -67,6 +51,22 @@
                 <div class="text-center py-5">
                     <div class="spinner-border" role="status">
                         <span class="visually-hidden">Loading gateway activity...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Node Activity -->
+    <div class="row">
+        <div class="col-12 mb-4" id="dashboardNodes" 
+             hx-get="{{ url_for('accounts.dashboard_nodes', account_url=account.url) }}" 
+             hx-trigger="load, every 300s"
+             hx-swap="innerHTML transition:true">
+            <div class="fade-me">
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Loading node activity...</span>
                     </div>
                 </div>
             </div>

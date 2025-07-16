@@ -1435,10 +1435,18 @@ def dashboard_gateways(account_url):
         if not analytics:
             return "Error loading analytics", 500
             
-        # Get recent gateway activity
+        # Get the most recent ping from each unique gateway name
+        from sqlalchemy.sql import func
+        subquery = db.session.query(
+            Gateway.name,
+            func.max(Gateway.created_at).label('max_created_at')
+        ).filter_by(account_id=account.id).group_by(Gateway.name).subquery()
+        
         gateways = Gateway.query.filter_by(account_id=account.id)\
+            .join(subquery, 
+                  and_(Gateway.name == subquery.c.name, 
+                       Gateway.created_at == subquery.c.max_created_at))\
             .order_by(Gateway.created_at.desc())\
-            .limit(100)\
             .all()
             
         return render_template('components/dashboard_gateways.html',
@@ -1448,6 +1456,57 @@ def dashboard_gateways(account_url):
     except Exception as e:
         logging.error(f"Error loading dashboard gateways for {account_url}: {e}")
         return "Error loading gateway activity", 500
+
+@accounts_bp.route('/<account_url>/nodes', methods=['GET'])
+def dashboard_nodes(account_url):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Mock node data for now
+        mock_nodes = [
+            {
+                'mac_address': '00:1B:44:11:3A:B7',
+                'name': 'Sensor Node 1',
+                'battery': 85,
+                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=5),
+                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=2)
+            },
+            {
+                'mac_address': '00:1B:44:11:3A:C8',
+                'name': 'Sensor Node 2',
+                'battery': 92,
+                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=12),
+                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=8)
+            },
+            {
+                'mac_address': '00:1B:44:11:3A:D9',
+                'name': 'Sensor Node 3',
+                'battery': 67,
+                'last_scanned': datetime.now(timezone.utc) - timedelta(hours=2),
+                'last_connected': datetime.now(timezone.utc) - timedelta(hours=1, minutes=30)
+            },
+            {
+                'mac_address': '00:1B:44:11:3A:EA',
+                'name': 'Sensor Node 4',
+                'battery': 43,
+                'last_scanned': datetime.now(timezone.utc) - timedelta(hours=6),
+                'last_connected': datetime.now(timezone.utc) - timedelta(hours=8)
+            },
+            {
+                'mac_address': '00:1B:44:11:3A:FB',
+                'name': 'Sensor Node 5',
+                'battery': 78,
+                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=30),
+                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=15)
+            }
+        ]
+        
+        return render_template('components/dashboard_nodes.html',
+                             account=account,
+                             nodes=mock_nodes)
+    except Exception as e:
+        logging.error(f"Error loading dashboard nodes for {account_url}: {e}")
+        return "Error loading node activity", 500
     
 @accounts_bp.route('/<account_url>/dashboard/stats', methods=['GET'])
 def dashboard_stats(account_url):
