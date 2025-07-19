@@ -22,6 +22,7 @@ from sqlalchemy import and_, not_
 import pytz
 from sqlalchemy import func, cast, Date
 from sqlalchemy.dialects.postgresql import INTERVAL
+import random
 
 # Create logger for this module
 logger = logging.getLogger(__name__)
@@ -1518,6 +1519,10 @@ def dashboard_gateways(account_url):
         if not analytics:
             return "Error loading analytics", 500
             
+        # Get current time and 30 days ago
+        now = datetime.now(timezone.utc)
+        thirty_days_ago = now - timedelta(days=30)
+        
         # Optimized query to get the most recent ping from each unique gateway name
         # This uses the indexes we just created
         from sqlalchemy import func
@@ -1528,8 +1533,10 @@ def dashboard_gateways(account_url):
             Gateway.ip_address,
             Gateway.name,
             Gateway.created_at
-        ).filter_by(account_id=account.id)\
-         .order_by(Gateway.name, Gateway.created_at.desc())\
+        ).filter(
+            Gateway.account_id == account.id,
+            Gateway.created_at >= thirty_days_ago
+        ).order_by(Gateway.name, Gateway.created_at.desc())\
          .distinct(Gateway.name)\
          .limit(20)\
          .all()
@@ -1547,48 +1554,55 @@ def dashboard_nodes(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         
-        # Mock node data for now
-        mock_nodes = [
-            {
-                'mac_address': '00:1B:44:11:3A:B7',
-                'name': 'Sensor Node 1',
-                'battery': 85,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=5),
-                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=2)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:C8',
-                'name': 'Sensor Node 2',
-                'battery': 92,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=12),
-                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=8)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:D9',
-                'name': 'Sensor Node 3',
-                'battery': 67,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(hours=2),
-                'last_connected': datetime.now(timezone.utc) - timedelta(hours=1, minutes=30)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:EA',
-                'name': 'Sensor Node 4',
-                'battery': 43,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(hours=6),
-                'last_connected': datetime.now(timezone.utc) - timedelta(hours=8)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:FB',
-                'name': 'Sensor Node 5',
-                'battery': 78,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=30),
-                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=15)
-            }
-        ]
+        # Get current time and 30 days ago
+        now = datetime.now(timezone.utc)
+        thirty_days_ago = now - timedelta(days=30)
+        
+        # Get unique nodes with their most recent entry from last 30 days
+        # Using a window function to get the latest entry per UUID
+        from sqlalchemy import func
+        
+        latest_nodes = db.session.query(
+            Node.uuid,
+            Node.created_at,
+            Gateway.name.label('gateway_name'),
+            Gateway.ip_address.label('gateway_ip')
+        ).join(Gateway).filter(
+            Gateway.account_id == account.id,
+            Node.created_at >= thirty_days_ago
+        ).order_by(Node.uuid, Node.created_at.desc()).all()
+        
+        # Group by UUID and take the most recent entry for each
+        unique_nodes = {}
+        for node in latest_nodes:
+            if node.uuid not in unique_nodes:
+                unique_nodes[node.uuid] = node
+        
+        # Convert to list and sort by created_at (most recent first)
+        nodes_list = list(unique_nodes.values())
+        nodes_list.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # Limit to 50 nodes to prevent performance issues
+        nodes_list = nodes_list[:50]
+        
+        # Format the data for the template
+        formatted_nodes = []
+        for node in nodes_list:
+            # Generate random battery percentage between 20-95%
+            battery_percentage = random.randint(20, 95)
+            
+            formatted_nodes.append({
+                'uuid': node.uuid,
+                'name': 'Coming Soon',  # Placeholder
+                'battery': battery_percentage,
+                'scanned_by': node.gateway_name if node.gateway_name else 'Unknown',
+                'last_scanned': node.created_at,
+                'last_connected': node.created_at  # Use created_at for now
+            })
         
         return render_template('components/dashboard_nodes.html',
                              account=account,
-                             nodes=mock_nodes)
+                             nodes=formatted_nodes)
     except Exception as e:
         logging.error(f"Error loading dashboard nodes for {account_url}: {e}")
         return "Error loading node activity", 500
@@ -1617,10 +1631,10 @@ def dashboard_uploads(account_url):
         
         # Calculate date range in account's timezone
         end_date = datetime.now(pytz.timezone(account_tz))
-        start_date = end_date - timedelta(days=14)  # 15 days ago
+        start_date = end_date - timedelta(days=29)  # 30 days ago
         
         # Create a list of all dates in range (including today)
-        date_range = [(start_date + timedelta(days=x)).date() for x in range(15)]
+        date_range = [(start_date + timedelta(days=x)).date() for x in range(30)]
         
         # Convert timestamps to UTC for database query
         start_date_utc = start_date.astimezone(timezone.utc)

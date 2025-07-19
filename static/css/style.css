@@ -1846,3 +1846,20 @@ table td code {
     border-color: #fd0d0d;
     box-shadow: 0 0 0 0.25rem rgba(253, 13, 13, 0.25);
 }
+
+/* Dashboard Nodes Table Mobile Responsive */
+@media (max-width: 768px) {
+
+    .node-uuid-column,
+    .node-scanned-by-column,
+    .node-last-scanned-column {
+        display: none;
+    }
+}
+
+/* Coming Soon styling for dashboard elements */
+.coming-soon {
+    opacity: 0.5;
+    font-style: italic;
+    color: #6c757d;
+}
