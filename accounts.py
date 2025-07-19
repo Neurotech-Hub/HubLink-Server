@@ -1107,6 +1107,7 @@ def download_files(account_url):
     file_ids = data.get('file_ids', [])
     directory = data.get('directory')
     time_filter = data.get('time_filter')  # '24h' or '7d'
+    custom_path = data.get('custom_path')  # New parameter for custom path downloads
     
     # Handle time-based filtering
     if time_filter:
@@ -1129,6 +1130,27 @@ def download_files(account_url):
         files = query.all()
         if not files:
             return jsonify({'error': 'No files found in the selected time range'}), 404
+    elif custom_path:
+        # Handle custom path downloads
+        if custom_path:
+            # Get files in this path and subpaths, excluding archived files
+            files = File.query.filter_by(account_id=account.id)\
+                .filter(File.key.like(f"{custom_path}/%"))\
+                .filter(~File.key.like('.%'))\
+                .filter(~File.key.contains('/.'))\
+                .filter(File.archived == False)\
+                .all()
+        else:
+            # Root level files
+            files = File.query.filter_by(account_id=account.id)\
+                .filter(~File.key.like('.%'))\
+                .filter(~File.key.contains('/.'))\
+                .filter(~File.key.contains('/'))\
+                .filter(File.archived == False)\
+                .all()
+        
+        if not files:
+            return jsonify({'error': 'No files found in the selected path'}), 404
     else:
         # If directory is provided, get all file IDs in that directory
         if directory:
@@ -1426,6 +1448,65 @@ def account_data_content(account_url):
         logger.error(f"Error loading data content: {str(e)}")
         logger.error(f"Traceback: {traceback.format_exc()}")
         return f"Error loading data content: {str(e)}", 500
+
+@accounts_bp.route('/<account_url>/paths', methods=['GET'])
+def get_all_paths(account_url):
+    """Get all possible paths for an account, including all subpaths."""
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get all paths including subpaths
+        all_paths = get_directory_paths(account.id, include_all_subpaths=True)
+        
+        # Calculate sizes for each path
+        for path_info in all_paths:
+            path = path_info['path']
+            if path:
+                # Get files in this path and subpaths
+                files = File.query.filter_by(account_id=account.id)\
+                    .filter(File.key.like(f"{path}/%"))\
+                    .filter(~File.key.like('.%'))\
+                    .filter(~File.key.contains('/.'))\
+                    .filter(File.archived == False)\
+                    .all()
+            else:
+                # Root level files
+                files = File.query.filter_by(account_id=account.id)\
+                    .filter(~File.key.like('.%'))\
+                    .filter(~File.key.contains('/.'))\
+                    .filter(~File.key.contains('/'))\
+                    .filter(File.archived == False)\
+                    .all()
+            
+            # Calculate total size
+            total_size = sum(file.size for file in files)
+            path_info['total_size'] = total_size
+        
+        # Add the root level (empty string) if there are files at root
+        root_files = File.query.filter_by(account_id=account.id)\
+            .filter(~File.key.like('.%'))\
+            .filter(~File.key.contains('/.'))\
+            .filter(~File.key.contains('/'))\
+            .filter(File.archived == False)\
+            .count()
+        
+        if root_files > 0:
+            root_size = File.query.filter_by(account_id=account.id)\
+                .filter(~File.key.like('.%'))\
+                .filter(~File.key.contains('/.'))\
+                .filter(~File.key.contains('/'))\
+                .filter(File.archived == False)\
+                .with_entities(db.func.sum(File.size))\
+                .scalar() or 0
+            all_paths.insert(0, {'path': '', 'total_files': root_files, 'total_archived': 0, 'total_size': root_size})
+        
+        return jsonify({
+            'paths': all_paths,
+            'success': True
+        })
+    except Exception as e:
+        logging.error(f"Error getting paths for {account_url}: {e}")
+        return jsonify({'error': str(e), 'success': False}), 500
     
 @accounts_bp.route('/<account_url>/gateways', methods=['GET'])
 def dashboard_gateways(account_url):
