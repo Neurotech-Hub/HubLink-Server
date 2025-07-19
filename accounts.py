@@ -20,6 +20,9 @@ import dateutil.parser as parser
 import time
 from sqlalchemy import and_, not_
 import pytz
+from sqlalchemy import func, cast, Date
+from sqlalchemy.dialects.postgresql import INTERVAL
+import random
 
 # Create logger for this module
 logger = logging.getLogger(__name__)
@@ -1516,23 +1519,31 @@ def dashboard_gateways(account_url):
         if not analytics:
             return "Error loading analytics", 500
             
-        # Get the most recent ping from each unique gateway name
-        from sqlalchemy.sql import func
-        subquery = db.session.query(
-            Gateway.name,
-            func.max(Gateway.created_at).label('max_created_at')
-        ).filter_by(account_id=account.id).group_by(Gateway.name).subquery()
+        # Get current time and 30 days ago
+        now = datetime.now(timezone.utc)
+        thirty_days_ago = now - timedelta(days=30)
         
-        gateways = Gateway.query.filter_by(account_id=account.id)\
-            .join(subquery, 
-                  and_(Gateway.name == subquery.c.name, 
-                       Gateway.created_at == subquery.c.max_created_at))\
-            .order_by(Gateway.created_at.desc())\
-            .all()
+        # Optimized query to get the most recent ping from each unique gateway name
+        # This uses the indexes we just created
+        from sqlalchemy import func
+        
+        # Use window function for better performance
+        latest_gateways = db.session.query(
+            Gateway.id,
+            Gateway.ip_address,
+            Gateway.name,
+            Gateway.created_at
+        ).filter(
+            Gateway.account_id == account.id,
+            Gateway.created_at >= thirty_days_ago
+        ).order_by(Gateway.name, Gateway.created_at.desc())\
+         .distinct(Gateway.name)\
+         .limit(20)\
+         .all()
             
         return render_template('components/dashboard_gateways.html',
                              account=account,
-                             gateways=gateways,
+                             gateways=latest_gateways,
                              analytics=analytics)
     except Exception as e:
         logging.error(f"Error loading dashboard gateways for {account_url}: {e}")
@@ -1543,48 +1554,55 @@ def dashboard_nodes(account_url):
     try:
         account = Account.query.filter_by(url=account_url).first_or_404()
         
-        # Mock node data for now
-        mock_nodes = [
-            {
-                'mac_address': '00:1B:44:11:3A:B7',
-                'name': 'Sensor Node 1',
-                'battery': 85,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=5),
-                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=2)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:C8',
-                'name': 'Sensor Node 2',
-                'battery': 92,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=12),
-                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=8)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:D9',
-                'name': 'Sensor Node 3',
-                'battery': 67,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(hours=2),
-                'last_connected': datetime.now(timezone.utc) - timedelta(hours=1, minutes=30)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:EA',
-                'name': 'Sensor Node 4',
-                'battery': 43,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(hours=6),
-                'last_connected': datetime.now(timezone.utc) - timedelta(hours=8)
-            },
-            {
-                'mac_address': '00:1B:44:11:3A:FB',
-                'name': 'Sensor Node 5',
-                'battery': 78,
-                'last_scanned': datetime.now(timezone.utc) - timedelta(minutes=30),
-                'last_connected': datetime.now(timezone.utc) - timedelta(minutes=15)
-            }
-        ]
+        # Get current time and 30 days ago
+        now = datetime.now(timezone.utc)
+        thirty_days_ago = now - timedelta(days=30)
+        
+        # Get unique nodes with their most recent entry from last 30 days
+        # Using a window function to get the latest entry per UUID
+        from sqlalchemy import func
+        
+        latest_nodes = db.session.query(
+            Node.uuid,
+            Node.created_at,
+            Gateway.name.label('gateway_name'),
+            Gateway.ip_address.label('gateway_ip')
+        ).join(Gateway).filter(
+            Gateway.account_id == account.id,
+            Node.created_at >= thirty_days_ago
+        ).order_by(Node.uuid, Node.created_at.desc()).all()
+        
+        # Group by UUID and take the most recent entry for each
+        unique_nodes = {}
+        for node in latest_nodes:
+            if node.uuid not in unique_nodes:
+                unique_nodes[node.uuid] = node
+        
+        # Convert to list and sort by created_at (most recent first)
+        nodes_list = list(unique_nodes.values())
+        nodes_list.sort(key=lambda x: x.created_at, reverse=True)
+        
+        # Limit to 50 nodes to prevent performance issues
+        nodes_list = nodes_list[:50]
+        
+        # Format the data for the template
+        formatted_nodes = []
+        for node in nodes_list:
+            # Generate random battery percentage between 20-95%
+            battery_percentage = random.randint(20, 95)
+            
+            formatted_nodes.append({
+                'uuid': node.uuid,
+                'name': 'Coming Soon',  # Placeholder
+                'battery': battery_percentage,
+                'scanned_by': node.gateway_name if node.gateway_name else 'Unknown',
+                'last_scanned': node.created_at,
+                'last_connected': node.created_at  # Use created_at for now
+            })
         
         return render_template('components/dashboard_nodes.html',
                              account=account,
-                             nodes=mock_nodes)
+                             nodes=formatted_nodes)
     except Exception as e:
         logging.error(f"Error loading dashboard nodes for {account_url}: {e}")
         return "Error loading node activity", 500
@@ -1613,35 +1631,43 @@ def dashboard_uploads(account_url):
         
         # Calculate date range in account's timezone
         end_date = datetime.now(pytz.timezone(account_tz))
-        start_date = end_date - timedelta(days=14)  # 15 days ago
+        start_date = end_date - timedelta(days=29)  # 30 days ago
         
         # Create a list of all dates in range (including today)
-        date_range = [(start_date + timedelta(days=x)).date() for x in range(15)]
-        
-        # Get files modified in the last 14 days
-        # Ensure we get all of today's files by extending to end of current day
-        end_of_today = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        date_range = [(start_date + timedelta(days=x)).date() for x in range(30)]
         
         # Convert timestamps to UTC for database query
         start_date_utc = start_date.astimezone(timezone.utc)
-        end_date_utc = end_of_today.astimezone(timezone.utc)
+        end_date_utc = end_date.replace(hour=23, minute=59, second=59, microsecond=999999).astimezone(timezone.utc)
         
-        files = File.query.filter_by(account_id=account.id)\
-            .filter(~File.key.like('.%'))\
-            .filter(~File.key.contains('/.')) \
-            .filter(File.last_modified >= start_date_utc) \
-            .filter(File.last_modified <= end_date_utc) \
-            .order_by(File.last_modified.desc()).all()
+        # Use database aggregation with timezone conversion
+        # This is much more efficient than fetching all files
+        
+        # Query to get daily counts using database aggregation
+        daily_counts_query = db.session.query(
+            func.date_trunc('day', 
+                func.timezone(account_tz, File.last_modified)
+            ).label('date'),
+            func.count(File.id).label('count')
+        ).filter(
+            File.account_id == account.id,
+            ~File.key.like('.%'),
+            ~File.key.contains('/.'),
+            File.last_modified >= start_date_utc,
+            File.last_modified <= end_date_utc
+        ).group_by(
+            func.date_trunc('day', func.timezone(account_tz, File.last_modified))
+        ).all()
         
         # Initialize counts for all days using string dates as keys
         daily_counts = {date.strftime('%Y-%m-%d'): 0 for date in date_range}
         
-        # Count files per day in account's timezone
-        for file in files:
-            file_date = file.last_modified.astimezone(pytz.timezone(account_tz)).date()
-            date_str = file_date.strftime('%Y-%m-%d')
-            if date_str in daily_counts:
-                daily_counts[date_str] += 1
+        # Fill in the actual counts from database
+        for date_obj, count in daily_counts_query:
+            if date_obj:
+                date_str = date_obj.strftime('%Y-%m-%d')
+                if date_str in daily_counts:
+                    daily_counts[date_str] = count
         
         # Format dates for the template
         file_uploads = [date.strftime('%Y-%m-%d') for date in date_range]

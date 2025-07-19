@@ -104,53 +104,63 @@ def get_analytics(account_id=None):
         # Get all relevant accounts
         accounts = accounts_query.all()
         
-        # Base query for gateways
-        gateways_query = Gateway.query
+        # Optimized queries using indexes
         if account_id:
-            gateways_query = gateways_query.filter_by(account_id=account_id)
-        
-        # Get unique gateway count by name only
-        total_gateways = db.session.query(
-            func.count(distinct(Gateway.name))
-        ).filter(
-            Gateway.id.in_(gateways_query.with_entities(Gateway.id))
-        ).scalar() or 0
-        
-        # Get 24h metrics
-        files_24h = File.query
-        gateways_24h = Gateway.query
-        nodes_24h = Node.query
-        
-        if account_id:
-            files_24h = files_24h.filter_by(account_id=account_id)
-            gateways_24h = gateways_24h.filter_by(account_id=account_id)
-            nodes_24h = nodes_24h.join(Gateway).filter(Gateway.account_id == account_id)
-        
-        # Count unique gateways in last 24h by name
-        gateways_24h_count = db.session.query(
-            func.count(distinct(Gateway.name))
-        ).filter(
-            Gateway.created_at >= last_24h,
-            Gateway.id.in_(gateways_24h.with_entities(Gateway.id))
-        ).scalar() or 0
-        
-        # Count unique nodes in last 24h by UUID
-        nodes_24h_count = db.session.query(
-            func.count(distinct(Node.uuid))
-        ).filter(
-            Node.created_at >= last_24h,
-            Node.id.in_(nodes_24h.with_entities(Node.id))
-        ).scalar() or 0
-        
-        # Count files in last 24h
-        files_24h_count = files_24h.filter(File.last_modified >= last_24h).count()
-        
-        # Get total nodes count (unique UUIDs)
-        total_nodes = db.session.query(
-            func.count(distinct(Node.uuid))
-        ).filter(
-            Node.id.in_(nodes_24h.with_entities(Node.id))
-        ).scalar() or 0
+            # Single account queries - much faster with indexes
+            total_gateways = db.session.query(
+                func.count(distinct(Gateway.name))
+            ).filter_by(account_id=account_id).scalar() or 0
+            
+            # 24h metrics for single account
+            gateways_24h_count = db.session.query(
+                func.count(distinct(Gateway.name))
+            ).filter(
+                Gateway.account_id == account_id,
+                Gateway.created_at >= last_24h
+            ).scalar() or 0
+            
+            nodes_24h_count = db.session.query(
+                func.count(distinct(Node.uuid))
+            ).join(Gateway).filter(
+                Gateway.account_id == account_id,
+                Node.created_at >= last_24h
+            ).scalar() or 0
+            
+            files_24h_count = db.session.query(
+                func.count(File.id)
+            ).filter(
+                File.account_id == account_id,
+                File.last_modified >= last_24h
+            ).scalar() or 0
+            
+            total_nodes = db.session.query(
+                func.count(distinct(Node.uuid))
+            ).join(Gateway).filter(
+                Gateway.account_id == account_id
+            ).scalar() or 0
+            
+        else:
+            # All accounts queries
+            total_gateways = db.session.query(
+                func.count(distinct(Gateway.name))
+            ).scalar() or 0
+            
+            # 24h metrics for all accounts
+            gateways_24h_count = db.session.query(
+                func.count(distinct(Gateway.name))
+            ).filter(Gateway.created_at >= last_24h).scalar() or 0
+            
+            nodes_24h_count = db.session.query(
+                func.count(distinct(Node.uuid))
+            ).filter(Node.created_at >= last_24h).scalar() or 0
+            
+            files_24h_count = db.session.query(
+                func.count(File.id)
+            ).filter(File.last_modified >= last_24h).scalar() or 0
+            
+            total_nodes = db.session.query(
+                func.count(distinct(Node.uuid))
+            ).scalar() or 0
         
         analytics = {
             'total_accounts': len(accounts),
