@@ -738,12 +738,19 @@ def process_timebin_plot(plot, csv_content):
         bin_hrs = config.get('bin_hrs', 24)  # Default to 24 hours if not specified
         mean_nsum = config.get('mean_nsum', True)  # Default to mean if not specified
         
+        # Validate bin_hrs parameter
+        if not isinstance(bin_hrs, (int, float)) or bin_hrs <= 0:
+            logger.warning(f"Invalid bin_hrs value: {bin_hrs}, using default 24")
+            bin_hrs = 24
+        if bin_hrs > 168:  # More than 1 week
+            logger.warning(f"bin_hrs value {bin_hrs} is very large, this may cause performance issues")
+        
         if not x_data:
             return {'error': 'No datetime column configured for this source'}
         
-        # Use early decimation during CSV reading
-        df = read_and_decimate_csv(csv_content, x_data, y_data)
-        logger.debug(f"DataFrame shape after early decimation: {df.shape}")
+        # Read all data points for timebin plots to ensure accurate sum/mean calculations
+        df = pd.read_csv(StringIO(csv_content), low_memory=False)
+        logger.debug(f"DataFrame shape: {df.shape}")
         
         try:
             df[x_data] = pd.to_datetime(df[x_data], errors='coerce')
@@ -772,9 +779,9 @@ def process_timebin_plot(plot, csv_content):
         min_time = df[x_data].min()
         max_time = df[x_data].max()
         
-        # Round down to nearest 00:00
+        # Fix bin alignment logic
         start_time = min_time.normalize()
-        if min_time < start_time:
+        if min_time.time() != pd.Timestamp('00:00:00').time():
             start_time -= pd.Timedelta(days=1)
             
         # Round up to next 00:00
@@ -783,13 +790,25 @@ def process_timebin_plot(plot, csv_content):
         # Create bins every bin_hrs hours
         bins = pd.date_range(start=start_time, end=end_time, freq=f'{bin_hrs}h')
         
+        # Debug bin creation
+        logger.debug(f"Created {len(bins)} bins from {start_time} to {end_time} with {bin_hrs}h intervals")
+        logger.debug(f"First few bins: {bins[:5]}")
+        logger.debug(f"Last few bins: {bins[-5:]}")
+        
         # Function to process a dataframe into bins
         def process_df_bins(df):
             # Create a copy of the dataframe to avoid SettingWithCopyWarning
             df_copy = df.copy()
             
-            # Cut data into bins
+            # Cut data into bins - use all bins for labels to avoid data loss
             df_copy.loc[:, 'bin'] = pd.cut(df_copy[x_data], bins=bins, labels=bins[:-1], include_lowest=True)
+            
+            # Remove any NaN bins (data outside the bin range)
+            df_copy = df_copy.dropna(subset=['bin'])
+            
+            if len(df_copy) == 0:
+                logger.warning("No data points fell within the bin range")
+                return pd.Series(dtype=float), pd.Series(dtype=int)
             
             # Group by bin and calculate mean or sum, with observed=True to silence warning
             if mean_nsum:
@@ -799,6 +818,11 @@ def process_timebin_plot(plot, csv_content):
                 
             # Count points per bin for hover text
             counts = df_copy.groupby('bin', observed=True)[y_data].count()
+            
+            # Ensure binned and counts have the same index
+            common_index = binned.index.intersection(counts.index)
+            binned = binned.loc[common_index]
+            counts = counts.loc[common_index]
             
             return binned, counts
         
@@ -811,14 +835,21 @@ def process_timebin_plot(plot, csv_content):
             for idx, group in enumerate(sorted(df['group'].unique())):
                 group_data = df[df['group'] == group].copy()  # Create a copy here
                 binned, counts = process_df_bins(group_data)
+                
+                if len(binned) == 0:
+                    logger.warning(f"No data for group {group} after binning")
+                    continue
+                    
                 color = colors[idx % len(colors)]
                 
-                # Create hover text
-                hover_text = [f"Group: {group}<br>"
-                            f"Time: {bin.strftime('%Y-%m-%d %H:%M')}<br>"
-                            f"{'Mean' if mean_nsum else 'Sum'}: {value:.2f}<br>"
-                            f"Points in bin: {counts[bin]}"
-                            for bin, value in binned.items()]
+                # Create hover text with proper index alignment
+                hover_text = []
+                for bin_time, value in binned.items():
+                    count = counts.get(bin_time, 0)
+                    hover_text.append(f"Group: {group}<br>"
+                                   f"Time: {bin_time.strftime('%Y-%m-%d %H:%M')}<br>"
+                                   f"{'Mean' if mean_nsum else 'Sum'}: {value:.2f}<br>"
+                                   f"Points in bin: {count}")
                 
                 # Add lines with markers for this group
                 fig.add_trace(go.Scatter(
@@ -836,13 +867,19 @@ def process_timebin_plot(plot, csv_content):
         else:
             # Process all data together
             binned, counts = process_df_bins(df)
+            
+            if len(binned) == 0:
+                return {'error': 'No data points fell within the bin range'}
+                
             color = colors[0]
             
-            # Create hover text
-            hover_text = [f"Time: {bin.strftime('%Y-%m-%d %H:%M')}<br>"
-                         f"{'Mean' if mean_nsum else 'Sum'}: {value:.2f}<br>"
-                         f"Points in bin: {counts[bin]}"
-                         for bin, value in binned.items()]
+            # Create hover text with proper index alignment
+            hover_text = []
+            for bin_time, value in binned.items():
+                count = counts.get(bin_time, 0)
+                hover_text.append(f"Time: {bin_time.strftime('%Y-%m-%d %H:%M')}<br>"
+                               f"{'Mean' if mean_nsum else 'Sum'}: {value:.2f}<br>"
+                               f"Points in bin: {count}")
             
             # Add single line with markers
             fig.add_trace(go.Scatter(

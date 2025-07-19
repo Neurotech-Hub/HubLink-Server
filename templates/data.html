@@ -102,14 +102,60 @@
         </div>
     </div>
 </div>
+
+<!-- Custom Path Download Modal -->
+<div class="modal fade" id="customPathModal" tabindex="-1" aria-labelledby="customPathModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customPathModalLabel">Download Custom Path</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="customPathSelect" class="form-label">Select Path:</label>
+                    <select class="form-select" id="customPathSelect">
+                        <option value="">Loading paths...</option>
+                    </select>
+                    <div class="form-text">Select a path to download all files within that directory and its subdirectories.</div>
+                </div>
+                <div class="alert alert-info" id="pathInfo" style="display: none;">
+                    <h6 class="alert-heading">Download Summary</h6>
+                    <small>
+                        <strong>Path:</strong> <span id="selectedPath"></span><br>
+                        <strong>Files:</strong> <span id="pathFileCount">0</span> (archived files excluded)<br>
+                        <strong>Size:</strong> <span id="pathSize">0 B</span><br>
+                        <span id="sizeWarning" class="text-warning" style="display: none;">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            Download size exceeds 100MB. Please select a more specific path.
+                        </span>
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="downloadCustomPathBtn" disabled>Download Path</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock modals %}
 
 {% block scripts %}
 <script>
     let selectedFiles = new Map();
     const ONE_GB = 1024 * 1024 * 1024;
-    let downloadModal, deleteModal, fileDetailsModal;
+    let downloadModal, deleteModal, fileDetailsModal, customPathModal;
     let dataContent = document.getElementById('dataContent');
+    
+    // File size formatting function
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
     
     // Initialize event listeners on page load
     document.addEventListener('DOMContentLoaded', function() {
@@ -126,12 +172,14 @@
         downloadModal = document.getElementById('downloadProgressModal');
         deleteModal = document.getElementById('deleteProgressModal');
         fileDetailsModal = document.getElementById('fileDetailsModal');
+        customPathModal = document.getElementById('customPathModal');
         
-        if (!downloadModal || !deleteModal || !fileDetailsModal) {
+        if (!downloadModal || !deleteModal || !fileDetailsModal || !customPathModal) {
             console.warn('Some modal elements not found:', {
                 downloadModal: !!downloadModal,
                 deleteModal: !!deleteModal,
-                fileDetailsModal: !!fileDetailsModal
+                fileDetailsModal: !!fileDetailsModal,
+                customPathModal: !!customPathModal
             });
         }
     }
@@ -449,6 +497,199 @@
                     a.download = `hublink_${timestamp}.zip`;
                 }
             }
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            
+            // Ensure modal stays visible for at least 500ms
+            const elapsedTime = Date.now() - startTime;
+            const minDisplayTime = 500; // minimum display time in milliseconds
+            
+            if (elapsedTime < minDisplayTime) {
+                await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
+            }
+            
+            modal.hide();
+            // Reset the download status text for next time
+            document.getElementById('downloadStatus').textContent = 'Compiling selected files...';
+        } catch (error) {
+            console.error('Download error:', error);
+            document.getElementById('downloadStatus').textContent = error.message || 'Download failed. Please try again.';
+            setTimeout(() => {
+                modal.hide();
+                // Reset the download status text after error
+                setTimeout(() => {
+                    document.getElementById('downloadStatus').textContent = 'Compiling selected files...';
+                }, 300);
+            }, 2000);
+        }
+    }
+
+    // Custom Path Modal Functions
+    function showCustomPathModal() {
+        if (!customPathModal) {
+            console.error('Custom path modal element not found');
+            return;
+        }
+        
+        const modal = bootstrap.Modal.getOrCreateInstance(customPathModal);
+        modal.show();
+        
+        // Load paths when modal is shown
+        loadCustomPaths();
+    }
+
+    async function loadCustomPaths() {
+        const select = document.getElementById('customPathSelect');
+        const pathInfo = document.getElementById('pathInfo');
+        const downloadBtn = document.getElementById('downloadCustomPathBtn');
+        
+        // Reset UI
+        select.innerHTML = '<option value="">Loading paths...</option>';
+        pathInfo.style.display = 'none';
+        downloadBtn.disabled = true;
+        
+        try {
+            const response = await fetch('{{ url_for("accounts.get_all_paths", account_url=account.url) }}');
+            const data = await response.json();
+            
+            if (data.success) {
+                // Clear loading option
+                select.innerHTML = '<option value="">Select a path...</option>';
+                
+                // Add paths to dropdown
+                data.paths.forEach(path => {
+                    const option = document.createElement('option');
+                    option.value = path.path;
+                    option.textContent = path.path || '(Root Level)';
+                    option.dataset.fileCount = path.total_files;
+                    option.dataset.archivedCount = path.total_archived;
+                    option.dataset.totalSize = path.total_size || 0;
+                    select.appendChild(option);
+                });
+                
+                // Add change event listener
+                select.onchange = function() {
+                    updatePathInfo();
+                };
+            } else {
+                select.innerHTML = '<option value="">Error loading paths</option>';
+                console.error('Error loading paths:', data.error);
+            }
+        } catch (error) {
+            console.error('Error loading paths:', error);
+            select.innerHTML = '<option value="">Error loading paths</option>';
+        }
+    }
+
+    function updatePathInfo() {
+        const select = document.getElementById('customPathSelect');
+        const pathInfo = document.getElementById('pathInfo');
+        const downloadBtn = document.getElementById('downloadCustomPathBtn');
+        const sizeWarning = document.getElementById('sizeWarning');
+        const selectedOption = select.options[select.selectedIndex];
+        
+        if (select.value) {
+            const fileCount = parseInt(selectedOption.dataset.fileCount) || 0;
+            const totalSize = parseInt(selectedOption.dataset.totalSize) || 0;
+            const maxSize = 100 * 1024 * 1024; // 100MB in bytes
+            
+            // Show path info
+            document.getElementById('selectedPath').textContent = selectedOption.value || '(Root Level)';
+            document.getElementById('pathFileCount').textContent = fileCount;
+            document.getElementById('pathSize').textContent = formatFileSize(totalSize);
+            
+            // Show/hide size warning
+            if (totalSize > maxSize) {
+                sizeWarning.style.display = 'block';
+                downloadBtn.disabled = true;
+            } else {
+                sizeWarning.style.display = 'none';
+                downloadBtn.disabled = false;
+            }
+            
+            pathInfo.style.display = 'block';
+        } else {
+            // Hide path info
+            pathInfo.style.display = 'none';
+            downloadBtn.disabled = true;
+        }
+    }
+
+    // Add event listener for custom path download button
+    document.addEventListener('DOMContentLoaded', function() {
+        const downloadCustomPathBtn = document.getElementById('downloadCustomPathBtn');
+        if (downloadCustomPathBtn) {
+            downloadCustomPathBtn.onclick = function() {
+                const select = document.getElementById('customPathSelect');
+                if (select.value) {
+                    downloadCustomPath(select.value);
+                    
+                    // Close the modal
+                    const modal = bootstrap.Modal.getInstance(customPathModal);
+                    if (modal) {
+                        modal.hide();
+                    }
+                }
+            };
+        }
+    });
+
+    // Function to handle custom path downloads
+    async function downloadCustomPath(customPath) {
+        // Show download modal
+        if (!downloadModal) {
+            console.error('Download modal element not found');
+            return;
+        }
+        
+        // Get or create modal instance
+        const modal = bootstrap.Modal.getOrCreateInstance(downloadModal);
+        
+        // Recreate spinner element to force animation restart
+        const modalBody = downloadModal.querySelector('.modal-body');
+        const oldSpinner = modalBody.querySelector('.spinner-border');
+        const newSpinner = document.createElement('div');
+        newSpinner.className = 'spinner-border text-primary mb-3';
+        newSpinner.innerHTML = '<span class="visually-hidden">Loading...</span>';
+        if (oldSpinner) {
+            oldSpinner.replaceWith(newSpinner);
+        }
+        
+        // Update status text
+        document.getElementById('downloadStatus').textContent = 'Preparing custom path download...';
+        
+        // Record start time
+        const startTime = Date.now();
+        modal.show();
+        
+        try {
+            const response = await fetch('{{ url_for("accounts.download_files", account_url=account.url) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    custom_path: customPath
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Download failed');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Set filename based on custom path
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const pathName = customPath || 'root';
+            a.download = `hublink_${pathName.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.zip`;
             
             document.body.appendChild(a);
             a.click();
