@@ -475,7 +475,7 @@ def cronjob():
             print(f"/cronjob: Found {total_old_gateways} old gateways eligible for cleanup")
             
             # Conservative approach: limit to last 1000 records to avoid overwhelming the system
-            max_delete_count = 100
+            max_delete_count = 1000
             if total_old_gateways > max_delete_count:
                 app.logger.info(f"Limiting cleanup to {max_delete_count} records to avoid system overload")
                 print(f"/cronjob: Limiting cleanup to {max_delete_count} records to avoid system overload")
