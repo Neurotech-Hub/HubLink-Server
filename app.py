@@ -475,7 +475,7 @@ def cronjob():
             print(f"/cronjob: Found {total_old_gateways} old gateways eligible for cleanup")
             
             # Conservative approach: limit to last 1000 records to avoid overwhelming the system
-            max_delete_count = 1000
+            max_delete_count = 100
             if total_old_gateways > max_delete_count:
                 app.logger.info(f"Limiting cleanup to {max_delete_count} records to avoid system overload")
                 print(f"/cronjob: Limiting cleanup to {max_delete_count} records to avoid system overload")
@@ -496,7 +496,7 @@ def cronjob():
                 ids_to_delete = [g[0] for g in gateway_ids_to_delete]
                 
                 # Delete in efficient batches
-                batch_size = 100
+                batch_size = 10
                 total_deleted = 0
                 
                 for i in range(0, len(ids_to_delete), batch_size):
@@ -520,8 +520,8 @@ def cronjob():
                 
                 app.logger.info(f"Total deleted: {total_deleted} old gateways with no nodes")
                 print(f"/cronjob: Total deleted: {total_deleted} old gateways with no nodes")
-
-        # [ ] delete nodes > 30 days but always keep one row for each unique node so count is correct
+        else:
+            total_deleted = 0
         
         updated_count = 0
         sources = []  # Initialize sources list
@@ -557,16 +557,20 @@ def cronjob():
         
             return jsonify({
                 'success': True,
-                'message': f'Processed {len(sources)} sources, updated {updated_count}',
+                'message': f'Processed {len(sources)} sources, updated {updated_count}, cleaned {total_deleted} gateways',
                 'processed': len(sources),
-                'updated': updated_count
+                'updated': updated_count,
+                'gateways_cleaned': total_deleted,
+                'total_old_gateways': total_old_gateways
             })
         else:
             return jsonify({
                 'success': True,
-                'message': 'Cronjob completed successfully (non-production environment)',
+                'message': f'Cronjob completed successfully (non-production environment), cleaned {total_deleted} gateways',
                 'processed': 0,
-                'updated': 0
+                'updated': 0,
+                'gateways_cleaned': total_deleted,
+                'total_old_gateways': total_old_gateways
             })
         
     except Exception as e:
