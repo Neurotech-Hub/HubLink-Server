@@ -454,28 +454,74 @@ def cronjob():
                     account.count_uploaded_files_mo = 0
                     db.session.commit()
 
-            # Clean up old gateways that have no node associations
-            days_ago = current_time - timedelta(days=7)
-            # Find gateways older than days_ago that don't have any nodes
-            # old_gateways = Gateway.query.filter(
-            #     Gateway.created_at <= days_ago,
-            #     ~Gateway.id.in_(db.session.query(Node.gateway_id))
-            # ).all()
-
-            # !! is there a better way to bulk delete?
-            
-            # if old_gateways:
-            #     app.logger.info(f"Deleting {len(old_gateways)} old gateways with no nodes")
-            #     print(f"/cronjob: Deleting {len(old_gateways)} old gateways with no nodes")
-            #     for gateway in old_gateways:
-            #         db.session.delete(gateway)
-            #     db.session.commit()
-
-            # [ ] delete nodes > 30 days but always keep one row for each unique node so count is correct
-
             # Update last cron run time
             admin.last_daily_cron = current_time
             db.session.commit()
+        
+        # Clean up old gateways that have no node associations (runs on every cronjob)
+        days_ago = current_time - timedelta(days=30)
+        app.logger.info(f"Checking for gateways older than {days_ago}")
+        
+        # First, get a count to assess the scope
+        total_old_gateways = Gateway.query.filter(
+            Gateway.created_at <= days_ago,
+            ~Gateway.id.in_(
+                db.session.query(Node.gateway_id).distinct()
+            )
+        ).count()
+        
+        if total_old_gateways > 0:
+            app.logger.info(f"Found {total_old_gateways} old gateways eligible for cleanup")
+            print(f"/cronjob: Found {total_old_gateways} old gateways eligible for cleanup")
+            
+            # Conservative approach: limit to last 1000 records to avoid overwhelming the system
+            max_delete_count = 1000
+            if total_old_gateways > max_delete_count:
+                app.logger.info(f"Limiting cleanup to {max_delete_count} records to avoid system overload")
+                print(f"/cronjob: Limiting cleanup to {max_delete_count} records to avoid system overload")
+            
+            # Get IDs of the oldest records (limit to max_delete_count)
+            gateway_ids_to_delete = db.session.query(Gateway.id).filter(
+                Gateway.created_at <= days_ago,
+                ~Gateway.id.in_(
+                    db.session.query(Node.gateway_id).distinct()
+                )
+            ).order_by(Gateway.created_at.asc()).limit(max_delete_count).all()
+            
+            app.logger.info(f"Retrieved {len(gateway_ids_to_delete)} gateway IDs for deletion")
+            print(f"/cronjob: Retrieved {len(gateway_ids_to_delete)} gateway IDs for deletion")
+            
+            if gateway_ids_to_delete:
+                # Extract IDs from the result tuples
+                ids_to_delete = [g[0] for g in gateway_ids_to_delete]
+                
+                # Delete in efficient batches
+                batch_size = 100
+                total_deleted = 0
+                
+                for i in range(0, len(ids_to_delete), batch_size):
+                    batch_ids = ids_to_delete[i:i + batch_size]
+                    
+                    try:
+                        deleted_count = Gateway.query.filter(
+                            Gateway.id.in_(batch_ids)
+                        ).delete(synchronize_session=False)
+                        
+                        total_deleted += deleted_count
+                        db.session.commit()
+                        
+                        app.logger.info(f"Deleted batch {i//batch_size + 1}: {deleted_count} gateways")
+                        print(f"/cronjob: Deleted batch {i//batch_size + 1}: {deleted_count} gateways")
+                    except Exception as e:
+                        app.logger.error(f"Error in bulk DELETE for batch {i//batch_size + 1}: {e}")
+                        print(f"/cronjob: Error in bulk DELETE for batch {i//batch_size + 1}: {e}")
+                        db.session.rollback()
+                        continue
+                
+                app.logger.info(f"Total deleted: {total_deleted} old gateways with no nodes")
+                print(f"/cronjob: Total deleted: {total_deleted} old gateways with no nodes")
+
+        # [ ] delete nodes > 30 days but always keep one row for each unique node so count is correct
         
         updated_count = 0
         sources = []  # Initialize sources list
