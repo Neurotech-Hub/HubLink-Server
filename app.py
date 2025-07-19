@@ -462,12 +462,9 @@ def cronjob():
         days_ago = current_time - timedelta(days=30)
         app.logger.info(f"Checking for gateways older than {days_ago}")
         
-        # First, get a count to assess the scope
+        # First, get a count to assess the scope - delete ALL old gateways (nodes will cascade)
         total_old_gateways = Gateway.query.filter(
-            Gateway.created_at <= days_ago,
-            ~Gateway.id.in_(
-                db.session.query(Node.gateway_id).distinct()
-            )
+            Gateway.created_at <= days_ago
         ).count()
         
         if total_old_gateways > 0:
@@ -482,10 +479,7 @@ def cronjob():
             
             # Get IDs of the oldest records (limit to max_delete_count)
             gateway_ids_to_delete = db.session.query(Gateway.id).filter(
-                Gateway.created_at <= days_ago,
-                ~Gateway.id.in_(
-                    db.session.query(Node.gateway_id).distinct()
-                )
+                Gateway.created_at <= days_ago
             ).order_by(Gateway.created_at.asc()).limit(max_delete_count).all()
             
             app.logger.info(f"Retrieved {len(gateway_ids_to_delete)} gateway IDs for deletion")
@@ -496,7 +490,7 @@ def cronjob():
                 ids_to_delete = [g[0] for g in gateway_ids_to_delete]
                 
                 # Delete in efficient batches
-                batch_size = 10
+                batch_size = 100
                 total_deleted = 0
                 
                 for i in range(0, len(ids_to_delete), batch_size):
