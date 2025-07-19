@@ -67,6 +67,7 @@
                         <th class="sortable node-uuid-column" data-sort="uuid">Node UUID</th>
                         <th class="sortable" data-sort="battery">Battery</th>
                         <th class="sortable node-scanned-by-column" data-sort="scanned-by">Scanned By</th>
+                        <th class="sortable" data-sort="last-seen">Last Seen</th>
                         <th class="sortable" data-sort="last-connected">Last Connected</th>
                     </tr>
                 </thead>
@@ -74,16 +75,23 @@
                     {% for node in nodes %}
                     <tr>
                         <td data-name="{{ node.name }}">
-                            <span class="coming-soon" 
-                                  data-bs-toggle="tooltip" 
-                                  data-bs-placement="top" 
-                                  title="Node naming feature coming soon">
-                                {{ node.name }}
-                            </span>
+                            {% if node.device_id %}
+                                <span class="fw-bold">{{ node.name }}</span>
+                            {% else %}
+                                <span>{{ node.name }}</span>
+                            {% endif %}
+                            {% if node.alert %}
+                                <i class="bi bi-exclamation-triangle-fill text-warning ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Alert: {{ node.alert }}"
+                                   style="cursor: pointer;"
+                                   onclick="showAlertModal('{{ node.uuid }}', '{{ node.name }}', '{{ node.alert }}')"></i>
+                            {% endif %}
                         </td>
                         <td class="node-uuid-column" data-uuid="{{ node.uuid }}"><code>{{ node.uuid }}</code></td>
                         <td data-battery="{{ node.battery }}">
-                            <div class="d-flex align-items-center coming-soon-battery">
+                            <div class="d-flex align-items-center {% if not node.device_id %}coming-soon-battery{% endif %}">
                                 <div class="progress me-2 flex-shrink-0 node-battery-progress">
                                     <div class="progress-bar 
                                         {% if node.battery >= 80 %}bg-success
@@ -99,8 +107,15 @@
                             </div>
                         </td>
                         <td class="node-scanned-by-column" data-scanned-by="{{ node.scanned_by }}">{{ node.scanned_by }}</td>
-                        <td data-last-connected="{{ node.last_connected.isoformat() }}">
-                            {{ node.last_connected|datetime }}
+                        <td data-last-seen="{{ node.last_seen.isoformat() }}">
+                            {{ node.last_seen|datetime }}
+                        </td>
+                        <td data-last-connected="{{ node.last_connected.isoformat() if node.last_connected else '' }}">
+                            {% if node.last_connected %}
+                                {{ node.last_connected|datetime }}
+                            {% else %}
+                                <span class="text-muted">Waiting...</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -126,7 +141,7 @@ if (document.readyState === 'loading') {
 }
 
 function initializeNodesTable() {
-    // Initialize tooltips for Coming Soon elements
+    // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
@@ -135,6 +150,46 @@ function initializeNodesTable() {
     // Initialize table sorting
     initTableSorting();
 }
+
+// Make these functions globally accessible
+window.currentAlertNodeUuid = null;
+
+window.showAlertModal = function(nodeUuid, nodeName, alertText) {
+    window.currentAlertNodeUuid = nodeUuid;
+    document.getElementById('modalNodeName').textContent = nodeName;
+    document.getElementById('modalAlertText').textContent = alertText;
+    
+    const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+    modal.show();
+};
+
+window.clearNodeAlert = function() {
+    if (!window.currentAlertNodeUuid) return;
+    
+    fetch('/{{ account.url }}/nodes/' + window.currentAlertNodeUuid + '/clear-alerts', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('alertModal'));
+            modal.hide();
+            
+            // Refresh the dashboard nodes component
+            htmx.ajax('GET', '/{{ account.url }}/nodes', {target: '#dashboardNodes'});
+        } else {
+            alert('Error clearing alerts: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error clearing alerts');
+    });
+};
 
 function initTableSorting() {
     const table = document.getElementById('nodesTable');
@@ -174,9 +229,12 @@ function sortTable(table, column, ascending) {
         if (column === 'battery') {
             aVal = parseInt(aVal);
             bVal = parseInt(bVal);
-        } else if (column === 'last-connected') {
-            aVal = new Date(aVal);
-            bVal = new Date(bVal);
+        } else if (column === 'last-connected' || column === 'last-seen') {
+            // Handle empty "Waiting..." values
+            if (aVal === '') aVal = new Date(0);
+            else aVal = new Date(aVal);
+            if (bVal === '') bVal = new Date(0);
+            else bVal = new Date(bVal);
         } else {
             aVal = aVal.toLowerCase();
             bVal = bVal.toLowerCase();

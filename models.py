@@ -174,6 +174,12 @@ class Node(db.Model):
     gateway_id = db.Column(db.Integer, db.ForeignKey('gateway.id', ondelete='CASCADE'), nullable=False)
     uuid = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    # New fields for enhanced node tracking
+    device_id = db.Column(db.String(50), nullable=True, server_default='')  # Device identifier (e.g., "046")
+    battery_level = db.Column(db.Integer, nullable=True)  # Battery percentage (0-100)
+    alert = db.Column(db.String(500), nullable=True, server_default='')  # Alert message from node
+    was_connected = db.Column(db.Boolean, nullable=False, server_default=text('false'))  # Whether this node was connected to during this gateway ping
 
     def __repr__(self):
         return f'<Node {self.uuid}>'
@@ -183,7 +189,11 @@ class Node(db.Model):
             'id': self.id,
             'gateway_id': self.gateway_id,
             'uuid': self.uuid,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'device_id': self.device_id,
+            'battery_level': self.battery_level,
+            'alert': self.alert,
+            'was_connected': self.was_connected
         }
 
 # Define the source model
