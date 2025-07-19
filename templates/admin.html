@@ -108,6 +108,59 @@
                 </div>
             </div>
 
+            <!-- Database Statistics Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Database Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Table</th>
+                                    <th class="text-end">Record Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Accounts</strong></td>
+                                    <td class="text-end">{{ db_stats.total_accounts|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Files</strong></td>
+                                    <td class="text-end">{{ db_stats.total_files|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Gateways</strong></td>
+                                    <td class="text-end">{{ db_stats.total_gateways|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Nodes</strong></td>
+                                    <td class="text-end">{{ db_stats.total_nodes|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Sources</strong></td>
+                                    <td class="text-end">{{ db_stats.total_sources|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Plots</strong></td>
+                                    <td class="text-end">{{ db_stats.total_plots|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Layouts</strong></td>
+                                    <td class="text-end">{{ db_stats.total_layouts|number_format }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Settings</strong></td>
+                                    <td class="text-end">{{ db_stats.total_settings|number_format }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- Create Account Card -->
             <div class="card shadow-sm">
                 <div class="card-header bg-white">

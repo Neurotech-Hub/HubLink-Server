@@ -170,6 +170,35 @@ def get_analytics(account_id=None):
     except Exception as e:
         print(f"Error getting analytics: {e}")
         return None
+
+def get_database_statistics():
+    """
+    Get global database statistics showing total record counts for all tables.
+    This is for admin dashboard use only.
+    
+    Returns:
+        Dictionary containing database table statistics.
+    """
+    try:
+        from models import Setting, Source, Plot, Layout
+        
+        # Get total counts for all tables (no filtering by account)
+        statistics = {
+            'total_accounts': Account.query.count(),
+            'total_files': File.query.count(),
+            'total_gateways': Gateway.query.count(),
+            'total_nodes': Node.query.count(),
+            'total_sources': Source.query.count(),
+            'total_plots': Plot.query.count(),
+            'total_layouts': Layout.query.count(),
+            'total_settings': Setting.query.count()
+        }
+        
+        return statistics
+        
+    except Exception as e:
+        print(f"Error getting database statistics: {e}")
+        return None
     
 def list_source_files(account, source):
     """Returns a list of files that match the source's directory filter pattern.
