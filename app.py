@@ -13,7 +13,7 @@ import json
 from sqlalchemy import text
 from sqlalchemy.pool import QueuePool
 from functools import wraps
-from utils import admin_required, get_analytics, initiate_source_refresh, format_datetime, format_file_size, format_datetime
+from utils import admin_required, get_analytics, get_database_statistics, initiate_source_refresh, format_datetime, format_file_size, format_datetime
 
 load_dotenv(override=True)
 
@@ -267,14 +267,20 @@ def admin():
     try:
         all_accounts = Account.query.all()
         analytics = get_analytics()  # Get analytics for all accounts
+        db_stats = get_database_statistics()  # Get database statistics
         
         if not analytics:
             flash('Error loading analytics', 'error')
             analytics = {}
         
+        if not db_stats:
+            flash('Error loading database statistics', 'error')
+            db_stats = {}
+        
         return render_template('admin.html', 
                              accounts=all_accounts,
-                             analytics=analytics)
+                             analytics=analytics,
+                             db_stats=db_stats)
     except Exception as e:
         app.logger.error(f"Error loading admin dashboard: {e}")
         return "There was an issue loading the page.", 500
