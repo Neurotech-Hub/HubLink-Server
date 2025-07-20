@@ -91,7 +91,7 @@
                         </td>
                         <td class="node-uuid-column" data-uuid="{{ node.uuid }}"><code>{{ node.uuid }}</code></td>
                         <td data-battery="{{ node.battery }}">
-                            <div class="d-flex align-items-center {% if not node.device_id %}coming-soon-battery{% endif %}">
+                            <div class="d-flex align-items-center {% if node.battery == 0 %}coming-soon-battery{% endif %}">
                                 <div class="progress me-2 flex-shrink-0 node-battery-progress">
                                     <div class="progress-bar 
                                         {% if node.battery >= 80 %}bg-success
