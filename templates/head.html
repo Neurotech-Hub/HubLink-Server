@@ -11,9 +11,9 @@
 
 <title>
     {% if g.title %}
-    h | {{ g.title }}
+    {% if config.ENVIRONMENT != 'production' %}{{ config.ENVIRONMENT[:4] }} | {% endif %}h | {{ g.title }}
     {% else %}
-    hublink.cloud™
+    {% if config.ENVIRONMENT != 'production' %}{{ config.ENVIRONMENT[:4] }} | {% endif %}hublink.cloud™
     {% endif %}
 </title>
 
