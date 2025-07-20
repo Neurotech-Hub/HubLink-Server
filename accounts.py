@@ -1645,6 +1645,47 @@ def dashboard_nodes(account_url):
         logging.error(f"Error loading dashboard nodes for {account_url}: {e}")
         return "Error loading node activity", 500
 
+@accounts_bp.route('/<account_url>/nodes/<uuid>/battery-history', methods=['GET'])
+def node_battery_history(account_url, uuid):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get battery history for this node UUID
+        # Only include entries where battery_level is not None and not 0
+        battery_history = db.session.query(
+            Node.created_at,
+            Node.battery_level
+        ).join(Gateway).filter(
+            Gateway.account_id == account.id,
+            Node.uuid == uuid,
+            Node.battery_level.isnot(None),
+            Node.battery_level > 0
+        ).order_by(Node.created_at.asc()).all()
+        
+        if not battery_history:
+            return jsonify({
+                'success': False,
+                'error': 'No battery history available'
+            })
+        
+        # Format data for plotting
+        data = {
+            'timestamps': [entry.created_at.isoformat() for entry in battery_history],
+            'battery_levels': [entry.battery_level for entry in battery_history]
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        logging.error(f"Error loading battery history for {account_url}/{uuid}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Error loading battery history'
+        }), 500
+
 @accounts_bp.route('/<account_url>/nodes/<node_uuid>/clear-alerts', methods=['POST'])
 def clear_node_alerts(account_url, node_uuid):
     try:

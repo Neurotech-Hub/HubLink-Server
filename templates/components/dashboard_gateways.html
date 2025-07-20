@@ -28,11 +28,19 @@
 
 <div class="card h-100">
     <div class="card-body">
-        <div class="d-flex align-items-baseline">
-            <h5 class="card-title"><i class="bi bi-router"></i> Gateway Activity</h5>
-            <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center">
-                <i class="bi bi-clock me-1"></i>Last 30d
+        <div class="d-flex align-items-baseline justify-content-between">
+            <div class="d-flex align-items-baseline">
+                <h5 class="card-title"><i class="bi bi-router"></i> Gateway Activity</h5>
+                <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center ms-2">
+                    <i class="bi bi-clock me-1"></i>Last 30d
+                </div>
             </div>
+            <i class="bi bi-info-circle text-muted" 
+               data-bs-toggle="popover" 
+               data-bs-placement="left" 
+               data-bs-trigger="hover"
+               title="Gateway Information"
+               data-bs-content="Gateway names are set on the USB key of your gateway device and can be changed. The IP address may change if you are within an instutional setting or VPN. The Last Ping indicates when the gateway last reached out to the server (typically, once per minute)."></i>
         </div>
         <div class="table-responsive">
             <table class="table table-sm table-hover" id="gatewaysTable">
@@ -75,6 +83,12 @@ if (document.readyState === 'loading') {
 }
 
 function initializeGatewayTable() {
+    // Initialize popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+    
     // Initialize table sorting
     initGatewayTableSorting();
 }
