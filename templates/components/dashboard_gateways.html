@@ -114,6 +114,13 @@ function initGatewayTableSorting() {
             sortGatewayTable(table, column, !isAsc);
         });
     });
+
+    // Apply default sort on Last Ping column (descending order)
+    const lastPingHeader = Array.from(headers).find(h => h.dataset.sort === 'last-ping');
+    if (lastPingHeader) {
+        lastPingHeader.classList.add('desc');
+        sortGatewayTable(table, 'last-ping', false);
+    }
 }
 
 function sortGatewayTable(table, column, ascending) {
