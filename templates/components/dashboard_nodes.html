@@ -117,7 +117,7 @@
                                    data-bs-placement="top" 
                                    title="Alert: {{ node.alert }}"
                                    style="cursor: pointer;"
-                                   onclick="showAlertModal('{{ node.uuid }}', '{{ node.device_id or 'Not set' }}', '{{ node.alert }}')"></i>
+                                   onclick="showAlertModal('{{ node.uuid }}', '{{ node.device_id }}', '{{ node.alert }}')"></i>
                             {% endif %}
                         </td>
                         <td class="node-uuid-column" data-uuid="{{ node.uuid }}"><code>{{ node.uuid }}</code></td>
@@ -195,9 +195,9 @@ function initializeNodesTable() {
 // Make these functions globally accessible
 window.currentAlertNodeUuid = null;
 
-window.showAlertModal = function(nodeUuid, nodeName, alertText) {
+window.showAlertModal = function(nodeUuid, deviceId, alertText) {
     window.currentAlertNodeUuid = nodeUuid;
-    document.getElementById('modalNodeName').textContent = nodeName;
+    document.getElementById('modalNodeName').textContent = deviceId || 'Not set';
     document.getElementById('modalAlertText').textContent = alertText;
     
     const modal = new bootstrap.Modal(document.getElementById('alertModal'));

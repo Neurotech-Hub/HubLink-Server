@@ -1604,13 +1604,12 @@ def dashboard_nodes(account_url):
             if latest_seen:
                 nodes_list.append({
                     'uuid': uuid,
-                    'last_seen': latest_seen.created_at,
-                    'last_connected': latest_connected.created_at if latest_connected else None,
-                    'device_id': latest_connected.device_id if latest_connected else latest_seen.device_id,
-                    'battery_level': latest_connected.battery_level if latest_connected else latest_seen.battery_level,
+                    'device_id': latest_connected.device_id if latest_connected else latest_seen.device_id,  # Pass raw device_id
+                    'battery': latest_connected.battery_level if latest_connected else latest_seen.battery_level,
                     'alert': latest_connected.alert if latest_connected else latest_seen.alert,
-                    'gateway_name': latest_seen.gateway_name,
-                    'gateway_ip': latest_seen.gateway_ip
+                    'scanned_by': latest_seen.gateway_name,
+                    'last_seen': latest_seen.created_at,
+                    'last_connected': latest_connected.created_at if latest_connected else None
                 })
         
         # Sort by last seen (most recent first)
@@ -1623,17 +1622,14 @@ def dashboard_nodes(account_url):
         formatted_nodes = []
         for node in nodes_list:
             # Use real battery level if available, otherwise use 0
-            battery_percentage = node['battery_level'] if node['battery_level'] is not None else 0
-            
-            # Use device_id as name if available, otherwise use last 4 of UUID without colons
-            node_name = node['device_id'] if node['device_id'] else node['uuid'].replace(':', '')[-4:]
+            battery_percentage = node['battery'] if node['battery'] is not None else 0
             
             formatted_nodes.append({
                 'uuid': node['uuid'],
-                'name': node_name,
+                'device_id': node['device_id'],
                 'battery': battery_percentage,
                 'alert': node['alert'],
-                'scanned_by': node['gateway_name'] if node['gateway_name'] else 'Unknown',
+                'scanned_by': node['scanned_by'],
                 'last_seen': node['last_seen'],
                 'last_connected': node['last_connected']
             })
@@ -2145,7 +2141,7 @@ def create_gateway(account_url):
                 
                 if 'battery_level' in data:
                     battery_level = data['battery_level']
-                    if isinstance(battery_level, int) and 0 <= battery_level <= 100:
+                    if isinstance(battery_level, int) and 0 <= battery_level <= 255:
                         connected_node.battery_level = battery_level
                         node_data_updated = True
                 
