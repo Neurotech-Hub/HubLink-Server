@@ -1562,25 +1562,58 @@ def dashboard_nodes(account_url):
         # Using a window function to get the latest entry per UUID
         from sqlalchemy import func
         
-        latest_nodes = db.session.query(
-            Node.uuid,
-            Node.created_at,
-            Gateway.name.label('gateway_name'),
-            Gateway.ip_address.label('gateway_ip')
-        ).join(Gateway).filter(
+        # Get unique nodes with their most recent seen and connected entries from last 30 days
+        from sqlalchemy import func
+        
+        # Get all unique UUIDs that have been seen in the last 30 days
+        unique_uuids = db.session.query(Node.uuid).join(Gateway).filter(
             Gateway.account_id == account.id,
             Node.created_at >= thirty_days_ago
-        ).order_by(Node.uuid, Node.created_at.desc()).all()
+        ).distinct().all()
         
-        # Group by UUID and take the most recent entry for each
-        unique_nodes = {}
-        for node in latest_nodes:
-            if node.uuid not in unique_nodes:
-                unique_nodes[node.uuid] = node
+        nodes_list = []
+        for (uuid,) in unique_uuids:
+            # Get the most recent seen entry for this UUID
+            latest_seen = db.session.query(
+                Node.uuid,
+                Node.created_at,
+                Node.device_id,
+                Node.battery_level,
+                Node.alert,
+                Gateway.name.label('gateway_name'),
+                Gateway.ip_address.label('gateway_ip')
+            ).join(Gateway).filter(
+                Gateway.account_id == account.id,
+                Node.uuid == uuid,
+                Node.created_at >= thirty_days_ago
+            ).order_by(Node.created_at.desc()).first()
+            
+            # Get the most recent connected entry for this UUID
+            latest_connected = db.session.query(
+                Node.created_at,
+                Node.device_id,
+                Node.battery_level,
+                Node.alert
+            ).join(Gateway).filter(
+                Gateway.account_id == account.id,
+                Node.uuid == uuid,
+                Node.created_at >= thirty_days_ago,
+                Node.was_connected == True
+            ).order_by(Node.created_at.desc()).first()
+            
+            if latest_seen:
+                nodes_list.append({
+                    'uuid': uuid,
+                    'device_id': latest_connected.device_id if latest_connected else latest_seen.device_id,  # Pass raw device_id
+                    'battery': latest_connected.battery_level if latest_connected else latest_seen.battery_level,
+                    'alert': latest_connected.alert if latest_connected else latest_seen.alert,
+                    'scanned_by': latest_seen.gateway_name,
+                    'last_seen': latest_seen.created_at,
+                    'last_connected': latest_connected.created_at if latest_connected else None
+                })
         
-        # Convert to list and sort by created_at (most recent first)
-        nodes_list = list(unique_nodes.values())
-        nodes_list.sort(key=lambda x: x.created_at, reverse=True)
+        # Sort by last seen (most recent first)
+        nodes_list.sort(key=lambda x: x['last_seen'], reverse=True)
         
         # Limit to 50 nodes to prevent performance issues
         nodes_list = nodes_list[:50]
@@ -1588,16 +1621,17 @@ def dashboard_nodes(account_url):
         # Format the data for the template
         formatted_nodes = []
         for node in nodes_list:
-            # Generate random battery percentage between 20-95%
-            battery_percentage = random.randint(20, 95)
+            # Use real battery level if available, otherwise use 0
+            battery_percentage = node['battery'] if node['battery'] is not None else 0
             
             formatted_nodes.append({
-                'uuid': node.uuid,
-                'name': 'Coming Soon',  # Placeholder
+                'uuid': node['uuid'],
+                'device_id': node['device_id'],
                 'battery': battery_percentage,
-                'scanned_by': node.gateway_name if node.gateway_name else 'Unknown',
-                'last_scanned': node.created_at,
-                'last_connected': node.created_at  # Use created_at for now
+                'alert': node['alert'],
+                'scanned_by': node['scanned_by'],
+                'last_seen': node['last_seen'],
+                'last_connected': node['last_connected']
             })
         
         return render_template('components/dashboard_nodes.html',
@@ -1606,6 +1640,80 @@ def dashboard_nodes(account_url):
     except Exception as e:
         logging.error(f"Error loading dashboard nodes for {account_url}: {e}")
         return "Error loading node activity", 500
+
+@accounts_bp.route('/<account_url>/nodes/<uuid>/battery-history', methods=['GET'])
+def node_battery_history(account_url, uuid):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Get battery history for this node UUID
+        # Only include entries where battery_level is not None and not 0
+        battery_history = db.session.query(
+            Node.created_at,
+            Node.battery_level
+        ).join(Gateway).filter(
+            Gateway.account_id == account.id,
+            Node.uuid == uuid,
+            Node.battery_level.isnot(None),
+            Node.battery_level > 0
+        ).order_by(Node.created_at.asc()).all()
+        
+        if not battery_history:
+            return jsonify({
+                'success': False,
+                'error': 'No battery history available'
+            })
+        
+        # Format data for plotting
+        data = {
+            'timestamps': [entry.created_at.isoformat() for entry in battery_history],
+            'battery_levels': [entry.battery_level for entry in battery_history]
+        }
+        
+        return jsonify({
+            'success': True,
+            'data': data
+        })
+        
+    except Exception as e:
+        logging.error(f"Error loading battery history for {account_url}/{uuid}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Error loading battery history'
+        }), 500
+
+@accounts_bp.route('/<account_url>/nodes/<node_uuid>/clear-alerts', methods=['POST'])
+def clear_node_alerts(account_url, node_uuid):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        
+        # Update all nodes with this UUID to clear their alerts
+        # First get the node IDs that belong to this account
+        node_ids = db.session.query(Node.id).join(Gateway).filter(
+            Gateway.account_id == account.id,
+            Node.uuid == node_uuid
+        ).all()
+        
+        # Then update those nodes
+        updated_count = Node.query.filter(Node.id.in_([n.id for n in node_ids])).update({
+            Node.alert: None
+        })
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleared alerts for {updated_count} node entries',
+            'updated_count': updated_count
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error clearing alerts for node {node_uuid} in {account_url}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
     
 @accounts_bp.route('/<account_url>/dashboard/stats', methods=['GET'])
 def dashboard_stats(account_url):
@@ -1916,26 +2024,51 @@ def source_callback(account_url, source_id):
 """
 Gateway POST endpoint documentation:
 
+## Base Structure (Always Present)
 Fields:
     name: string (required) - Name of the gateway
-    nodes: array of strings (optional) - Array of node UUIDs associated with this gateway
+    nodes: array of strings (required) - Array of node UUIDs associated with this gateway
+    connected_node: integer (optional) - 1-indexed position of successfully connected node in nodes array (0 if none)
 
-Example request body:
+## Optional Fields (Enhanced Node Data)
+The following fields are only included when the connected node's firmware supports them:
+    device_id: string (optional) - Device identifier for the connected node (e.g., "046")
+    battery_level: integer (optional) - Battery percentage (0-100) of the connected node
+    alert: string (optional) - Alert message from the connected node
+
+## Example Request Body (Backwards Compatible):
     {
         "name": "Gateway1",
         "nodes": ["550e8400-e29b-41d4-a716-446655440000", "550e8400-e29b-41d4-a716-446655440001"]
     }
 
-Example curl:
+## Example Request Body (Enhanced):
+    {
+        "name": "Gateway_12345",
+        "nodes": ["AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"],
+        "connected_node": 2,
+        "device_id": "046",
+        "battery_level": 15,
+        "alert": "Low battery warning!"
+    }
+
+## Example curl (Backwards Compatible):
     curl -X POST http://127.0.0.1:5000/<account_url>/gateway \
         -H "Content-Type: application/json" \
         -d '{"name": "Gateway1", "nodes": ["550e8400-e29b-41d4-a716-446655440000"]}'
 
-Response:
+## Example curl (Enhanced):
+    curl -X POST http://127.0.0.1:5000/<account_url>/gateway \
+        -H "Content-Type: application/json" \
+        -d '{"name": "Gateway_12345", "nodes": ["AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"], "connected_node": 2, "device_id": "046", "battery_level": 15, "alert": "Low battery warning!"}'
+
+## Response:
     {
         "message": "Gateway and nodes updated successfully",
         "gateway_id": 1,
-        "node_count": 1
+        "node_count": 2,
+        "connected_node_updated": true,
+        "node_data_updated": true
     }
 """
 
@@ -1970,8 +2103,12 @@ def create_gateway(account_url):
         # Commit to get gateway ID
         db.session.commit()
         
+        # Track connection updates
+        connected_node_updated = False
+        node_data_updated = False
+        
         # Create new node records for each UUID
-        for uuid in node_uuids:
+        for i, uuid in enumerate(node_uuids):
             node = Node(
                 gateway_id=gateway.id,
                 uuid=uuid,
@@ -1979,13 +2116,48 @@ def create_gateway(account_url):
             )
             db.session.add(node)
         
+        # Handle enhanced node data if provided
+        connected_node_index = data.get('connected_node', 0)
+        if connected_node_index > 0 and connected_node_index <= len(node_uuids):
+            # Get the connected node (1-indexed to 0-indexed conversion)
+            connected_node_uuid = node_uuids[connected_node_index - 1]
+            
+            # Find the node in the session (it was just added)
+            connected_node = None
+            for node in db.session.new:
+                if isinstance(node, Node) and node.uuid == connected_node_uuid:
+                    connected_node = node
+                    break
+            
+            if connected_node:
+                # Mark this node as the connected one
+                connected_node.was_connected = True
+                connected_node_updated = True
+                
+                # Update optional enhanced data
+                if 'device_id' in data:
+                    connected_node.device_id = data['device_id']
+                    node_data_updated = True
+                
+                if 'battery_level' in data:
+                    battery_level = data['battery_level']
+                    if isinstance(battery_level, int) and 0 <= battery_level <= 255:
+                        connected_node.battery_level = battery_level
+                        node_data_updated = True
+                
+                if 'alert' in data:
+                    connected_node.alert = data['alert']
+                    node_data_updated = True
+        
         # Final commit for all changes
         db.session.commit()
         
         return jsonify({
-            'message': 'Gateway and nodes created successfully',
+            'message': 'Gateway and nodes updated successfully',
             'gateway_id': gateway.id,
-            'node_count': len(node_uuids)
+            'node_count': len(node_uuids),
+            'connected_node_updated': connected_node_updated,
+            'node_data_updated': node_data_updated
         }), 200
         
     except Exception as e:

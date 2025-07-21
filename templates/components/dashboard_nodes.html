@@ -49,41 +49,81 @@
     content: ' ↓';
     opacity: 1;
 }
+
+/* Battery cell styling */
+.battery-cell {
+    cursor: pointer;
+}
+
+/* Battery history popover styling */
+.battery-history-popover {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 15px;
+    min-width: 320px;
+    max-width: 400px;
+}
+
+.battery-history-content {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 </style>
 
 <div class="card h-100">
     <div class="card-body">
-        <div class="d-flex align-items-baseline">
-            <h5 class="card-title"><i class="bi bi-cpu"></i> Node Activity</h5>
-            <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center">
-                <i class="bi bi-clock me-1"></i>Last 30d
+        <div class="d-flex align-items-baseline justify-content-between">
+            <div class="d-flex align-items-baseline">
+                <h5 class="card-title"><i class="bi bi-cpu"></i> Node Activity</h5>
+                <div class="badge bg-light text-secondary rounded-pill d-flex align-items-center ms-2">
+                    <i class="bi bi-clock me-1"></i>Last 30d
+                </div>
             </div>
+            <i class="bi bi-info-circle text-muted" 
+               data-bs-toggle="popover" 
+               data-bs-placement="left" 
+               data-bs-trigger="hover"
+               title="Node Information"
+               data-bs-content="Device IDs can be set using the meta.json file. MAC Addresses are specific to each pieces of hardware and will never change: the latest firmware will print the MAC in the hublink.begin() function. Last Seen is the last time any gateway observed a device in its initial scan; Last Connected is when the device was actually connected to."></i>
         </div>
         <div class="table-responsive">
             <table class="table table-sm table-hover" id="nodesTable">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="name">Name</th>
-                        <th class="sortable node-uuid-column" data-sort="uuid">Node UUID</th>
+                        <th class="sortable" data-sort="device-id">Device ID</th>
+                        <th class="sortable node-uuid-column" data-sort="uuid">MAC Address</th>
                         <th class="sortable" data-sort="battery">Battery</th>
                         <th class="sortable node-scanned-by-column" data-sort="scanned-by">Scanned By</th>
+                        <th class="sortable" data-sort="last-seen">Last Seen</th>
                         <th class="sortable" data-sort="last-connected">Last Connected</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for node in nodes %}
                     <tr>
-                        <td data-name="{{ node.name }}">
-                            <span class="coming-soon" 
-                                  data-bs-toggle="tooltip" 
-                                  data-bs-placement="top" 
-                                  title="Node naming feature coming soon">
-                                {{ node.name }}
-                            </span>
+                        <td data-device-id="{{ node.device_id or '' }}">
+                            {% if node.device_id %}
+                                <span class="fw-bold">{{ node.device_id }}</span>
+                            {% else %}
+                                <span class="text-muted">Not set</span>
+                            {% endif %}
+                            {% if node.alert %}
+                                <i class="bi bi-exclamation-triangle-fill text-warning ms-1" 
+                                   data-bs-toggle="tooltip" 
+                                   data-bs-placement="top" 
+                                   title="Alert: {{ node.alert }}"
+                                   style="cursor: pointer;"
+                                   onclick="showAlertModal('{{ node.uuid }}', '{{ node.device_id }}', '{{ node.alert }}')"></i>
+                            {% endif %}
                         </td>
                         <td class="node-uuid-column" data-uuid="{{ node.uuid }}"><code>{{ node.uuid }}</code></td>
                         <td data-battery="{{ node.battery }}">
-                            <div class="d-flex align-items-center coming-soon-battery">
+                            <div class="d-flex align-items-center {% if node.battery == 0 %}coming-soon-battery{% endif %} battery-cell" 
+                                 data-node-uuid="{{ node.uuid }}">
                                 <div class="progress me-2 flex-shrink-0 node-battery-progress">
                                     <div class="progress-bar 
                                         {% if node.battery >= 80 %}bg-success
@@ -99,8 +139,15 @@
                             </div>
                         </td>
                         <td class="node-scanned-by-column" data-scanned-by="{{ node.scanned_by }}">{{ node.scanned_by }}</td>
-                        <td data-last-connected="{{ node.last_connected.isoformat() }}">
-                            {{ node.last_connected|datetime }}
+                        <td data-last-seen="{{ node.last_seen.isoformat() }}">
+                            {{ node.last_seen|datetime }}
+                        </td>
+                        <td data-last-connected="{{ node.last_connected.isoformat() if node.last_connected else '' }}">
+                            {% if node.last_connected %}
+                                {{ node.last_connected|datetime }}
+                            {% else %}
+                                <span class="text-muted">Waiting...</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -126,15 +173,64 @@ if (document.readyState === 'loading') {
 }
 
 function initializeNodesTable() {
-    // Initialize tooltips for Coming Soon elements
+    // Initialize tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
     
+    // Initialize popovers
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+    
     // Initialize table sorting
     initTableSorting();
+    
+    // Initialize battery history functionality
+    initBatteryHistory();
 }
+
+// Make these functions globally accessible
+window.currentAlertNodeUuid = null;
+
+window.showAlertModal = function(nodeUuid, deviceId, alertText) {
+    window.currentAlertNodeUuid = nodeUuid;
+    document.getElementById('modalNodeName').textContent = deviceId || 'Not set';
+    document.getElementById('modalAlertText').textContent = alertText;
+    
+    const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+    modal.show();
+};
+
+window.clearNodeAlert = function() {
+    if (!window.currentAlertNodeUuid) return;
+    
+    fetch('/{{ account.url }}/nodes/' + window.currentAlertNodeUuid + '/clear-alerts', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Close the modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('alertModal'));
+            modal.hide();
+            
+            // Refresh the dashboard nodes component
+            htmx.ajax('GET', '/{{ account.url }}/nodes', {target: '#dashboardNodes'});
+        } else {
+            alert('Error clearing alerts: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error clearing alerts');
+    });
+};
 
 function initTableSorting() {
     const table = document.getElementById('nodesTable');
@@ -174,9 +270,18 @@ function sortTable(table, column, ascending) {
         if (column === 'battery') {
             aVal = parseInt(aVal);
             bVal = parseInt(bVal);
-        } else if (column === 'last-connected') {
-            aVal = new Date(aVal);
-            bVal = new Date(bVal);
+        } else if (column === 'last-connected' || column === 'last-seen') {
+            // Handle empty "Waiting..." values
+            if (aVal === '') aVal = new Date(0);
+            else aVal = new Date(aVal);
+            if (bVal === '') bVal = new Date(0);
+            else bVal = new Date(bVal);
+        } else if (column === 'device-id') {
+            // Handle "Not set" values for device ID sorting
+            if (aVal === '') aVal = 'zzz'; // Sort empty device IDs to the end
+            if (bVal === '') bVal = 'zzz';
+            aVal = aVal.toLowerCase();
+            bVal = bVal.toLowerCase();
         } else {
             aVal = aVal.toLowerCase();
             bVal = bVal.toLowerCase();
@@ -189,5 +294,141 @@ function sortTable(table, column, ascending) {
     
     // Reorder rows
     rows.forEach(row => tbody.appendChild(row));
+}
+
+function initBatteryHistory() {
+    const batteryCells = document.querySelectorAll('.battery-cell');
+    
+    batteryCells.forEach(cell => {
+        cell.addEventListener('mouseenter', function() {
+            const nodeUuid = this.dataset.nodeUuid;
+            showBatteryHistory(nodeUuid, this);
+        });
+        
+        cell.addEventListener('mouseleave', function() {
+            hideBatteryHistory();
+        });
+    });
+}
+
+function showBatteryHistory(nodeUuid, element) {
+    // Remove any existing battery history popover
+    hideBatteryHistory();
+    
+    // Create popover element
+    const popover = document.createElement('div');
+    popover.id = 'batteryHistoryPopover';
+    popover.className = 'battery-history-popover';
+    popover.innerHTML = `
+        <div class="battery-history-content">
+            <div class="text-center">
+                <div class="spinner-border spinner-border-sm" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div class="mt-2 small text-muted">Loading battery history...</div>
+            </div>
+        </div>
+    `;
+    
+    // Position the popover
+    const rect = element.getBoundingClientRect();
+    popover.style.position = 'fixed';
+    popover.style.left = (rect.right + 10) + 'px';
+    popover.style.top = (rect.top - 100) + 'px';
+    popover.style.zIndex = '9999';
+    
+    document.body.appendChild(popover);
+    
+    // Fetch battery history data
+    fetch('/{{ account.url }}/nodes/' + nodeUuid + '/battery-history')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                createBatteryHistoryPlot(data.data, popover);
+            } else {
+                popover.innerHTML = `
+                    <div class="battery-history-content">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            <div class="mt-1 small">No battery history available</div>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching battery history:', error);
+            popover.innerHTML = `
+                <div class="battery-history-content">
+                    <div class="text-center text-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <div class="mt-1 small">Error loading data</div>
+                    </div>
+                </div>
+            `;
+        });
+}
+
+function hideBatteryHistory() {
+    const popover = document.getElementById('batteryHistoryPopover');
+    if (popover) {
+        popover.remove();
+    }
+}
+
+function createBatteryHistoryPlot(data, container) {
+    const timestamps = data.timestamps.map(ts => new Date(ts));
+    const batteryLevels = data.battery_levels;
+    
+    // Calculate max battery level and set y-axis range accordingly
+    const maxBattery = Math.max(...batteryLevels);
+    const yAxisRange = maxBattery > 100 ? [0, Math.ceil(maxBattery)] : [0, 100];
+    
+    const trace = {
+        x: timestamps,
+        y: batteryLevels,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: {
+            color: '#28a745',
+            width: 2
+        },
+        marker: {
+            size: 4,
+            color: '#28a745'
+        },
+        hovertemplate: 
+            '<b>%{x}</b><br>' +
+            'Battery: %{y}%<br>' +
+            '<extra></extra>'
+    };
+    
+    const layout = {
+        width: 300,
+        height: 200,
+        margin: { t: 20, r: 20, b: 40, l: 40 },
+        xaxis: {
+            showgrid: true,
+            gridcolor: 'rgba(0,0,0,0.1)',
+            tickformat: '%H:%M<br>%m/%d'
+        },
+        yaxis: {
+            range: yAxisRange,
+            showgrid: true,
+            gridcolor: 'rgba(0,0,0,0.1)'
+        },
+        paper_bgcolor: 'rgba(255,255,255,0.95)',
+        plot_bgcolor: 'rgba(255,255,255,0.95)',
+        showlegend: false
+    };
+    
+    const config = {
+        responsive: true,
+        displayModeBar: false
+    };
+    
+    container.innerHTML = '<div id="batteryHistoryPlot"></div>';
+    
+    Plotly.newPlot('batteryHistoryPlot', [trace], layout, config);
 }
 </script> 

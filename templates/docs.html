@@ -138,6 +138,9 @@
   "experimenter": {
     "name": "john_doe"
   },
+  "device": {
+    "id": "046"
+  },
   "fed": {
     "program": "Classic",
     "program_options": [
@@ -207,12 +210,12 @@
                             <tr>
                                 <td><code>upload_path</code></td>
                                 <td>Base path for file uploads in S3</td>
-                                <td>/</td>
+                                <td>/FED</td>
                             </tr>
                             <tr>
                                 <td><code>append_path</code></td>
                                 <td>Dynamic path segments using nested JSON values (e.g., "subject:id/experimenter:name")</td>
-                                <td>none</td>
+                                <td>subject:id/experimenter:name</td>
                             </tr>
                             <tr>
                                 <td><code>disable</code></td>
@@ -221,6 +224,9 @@
                             </tr>
                         </tbody>
                     </table>
+
+                    <h5 class="mt-4">Device Identification</h5>
+                    <p>The <code>device.id</code> field provides a unique identifier for your node that appears in the dashboard. This helps distinguish between multiple nodes in your experiment.</p>
 
                     <h5 class="mt-4">Custom Metadata</h5>
                     <p>You can add any additional JSON objects to track metadata about your experiment. The example above shows:</p>
@@ -233,6 +239,36 @@
 
                     <div class="mt-4">
                         <small class="text-muted">Note: The configuration file is processed using the ArduinoJson library. The meta.json file will be uploaded along with your files.</small>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core Functions Section -->
+        <section class="mb-5">
+            <h2 class="border-bottom pb-2 mb-4">Core Library Functions</h2>
+            <div class="card mb-4">
+                <div class="card-body">
+                    <p>The Hublink library provides several key functions for managing BLE communication and file transfer:</p>
+                    
+                    <h5 class="mt-4">sync(uint32_t temporaryConnectFor = 0)</h5>
+                    <p>Manages BLE advertising and connection cycles. Returns true if a connection was established.</p>
+                    <ul>
+                        <li><code>temporaryConnectFor</code>: Optional duration in seconds to override the default advertising period</li>
+                        <li>Returns: boolean indicating if connection was successful</li>
+                    </ul>
+
+                    <h5 class="mt-4">sleep(uint64_t seconds)</h5>
+                    <p>Puts the ESP32 into light sleep mode for the specified duration to conserve battery.</p>
+
+                    <h5 class="mt-4">setBatteryLevel(uint8_t level)</h5>
+                    <p>Sets the battery level for the node characteristic. Range 0-255 (0 indicates not set).</p>
+
+                    <h5 class="mt-4">setAlert(const String &alert)</h5>
+                    <p>Sets an alert message that will be synced to the cloud. The user must persist the alert in their sketch—it is automatically cleared after the <code>hublink.sync()</code> completes. Alerts can also be cleared in the dashboard by a user.</p>
+
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> For complete API documentation and advanced usage examples, refer to the <a href="https://github.com/Neurotech-Hub/Hublink-Node" target="_blank">Hublink Node Library <i class="fa-solid fa-up-right-from-square"></i></a>.
                     </div>
                 </div>
             </div>
