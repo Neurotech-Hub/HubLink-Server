@@ -6,7 +6,7 @@ import multiprocessing
 bind = "0.0.0.0:10000"
 
 # Worker configuration optimized for 1GB memory
-workers = 2                  # Increased for better CPU utilization
+workers = 4                  # Increased from 2 for better concurrency
 worker_class = "sync"
 threads = 4                  # Increased for better concurrent processing
 worker_connections = 100     # Increased for more concurrent connections
