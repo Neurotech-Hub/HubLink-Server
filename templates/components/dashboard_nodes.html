@@ -380,6 +380,10 @@ function createBatteryHistoryPlot(data, container) {
     const timestamps = data.timestamps.map(ts => new Date(ts));
     const batteryLevels = data.battery_levels;
     
+    // Calculate max battery level and set y-axis range accordingly
+    const maxBattery = Math.max(...batteryLevels);
+    const yAxisRange = maxBattery > 100 ? [0, Math.ceil(maxBattery)] : [0, 100];
+    
     const trace = {
         x: timestamps,
         y: batteryLevels,
@@ -409,7 +413,7 @@ function createBatteryHistoryPlot(data, container) {
             tickformat: '%H:%M<br>%m/%d'
         },
         yaxis: {
-            range: [0, 100],
+            range: yAxisRange,
             showgrid: true,
             gridcolor: 'rgba(0,0,0,0.1)'
         },
