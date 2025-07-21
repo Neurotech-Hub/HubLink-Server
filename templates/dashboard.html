@@ -28,7 +28,7 @@
     <div class="row mb-4">
         <div class="col-12" id="dashboardUploads" 
              hx-get="{{ url_for('accounts.dashboard_uploads', account_url=account.url) }}" 
-             hx-trigger="load delay:0.1s, every 600s"
+             hx-trigger="load delay:0.2s, every 600s"
              hx-swap="innerHTML transition:true"
              hx-preserve>
             <div class="fade-me">
@@ -45,7 +45,7 @@
     <div class="row">
         <div class="col-12 mb-4" id="dashboardGateways" 
              hx-get="{{ url_for('accounts.dashboard_gateways', account_url=account.url) }}" 
-             hx-trigger="load delay:0.2s, every 600s"
+             hx-trigger="load delay:0.4s, every 600s"
              hx-swap="innerHTML transition:true">
             <div class="fade-me">
                 <div class="text-center py-5">
@@ -61,7 +61,7 @@
     <div class="row">
         <div class="col-12 mb-4" id="dashboardNodes" 
              hx-get="{{ url_for('accounts.dashboard_nodes', account_url=account.url) }}" 
-             hx-trigger="load delay:0.3s, every 600s"
+             hx-trigger="load delay:0.6s, every 600s"
              hx-swap="innerHTML transition:true">
             <div class="fade-me">
                 <div class="text-center py-5">
