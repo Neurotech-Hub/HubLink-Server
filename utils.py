@@ -266,7 +266,6 @@ def initiate_source_refresh(account, source):
         # Reset source status
         source.success = False
         source.error = None
-        source.file_id = None
         source.state = 'running'
         source.do_update = False  # Set do_update to False when refresh is initiated
         # Prepare payload for lambda
