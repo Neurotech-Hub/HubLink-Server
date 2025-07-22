@@ -1863,3 +1863,72 @@ table td code {
     font-style: italic;
     color: #6c757d;
 }
+
+/* Battery Progress Bar Styling */
+.node-battery-progress {
+    height: 8px;
+    flex-grow: 1;
+    margin-right: 0.5rem;
+}
+
+.battery-cell {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.battery-percentage {
+    white-space: nowrap;
+}
+
+/* Battery circle for mobile */
+.battery-circle {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Mobile responsive battery styling */
+@media (max-width: 768px) {
+    .battery-cell {
+        gap: 0.3rem;
+        /* Tighter spacing on mobile */
+    }
+
+    .battery-cell small {
+        font-size: 0.7rem;
+    }
+
+    .battery-circle {
+        width: 6px;
+        height: 6px;
+    }
+}
+
+/* Battery history popover styling */
+.battery-history-popover {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    padding: 15px;
+    min-width: 320px;
+    max-width: 400px;
+}
+
+.battery-history-content {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .battery-history-popover {
+        min-width: 280px;
+        /* Smaller popover on mobile */
+        max-width: 320px;
+    }
+}

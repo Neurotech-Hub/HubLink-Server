@@ -159,6 +159,36 @@
         </div>
     </div>
 
+    <!-- Gateway Deletion Modal -->
+    <div class="modal fade" id="gatewayDeletionModal" tabindex="-1" aria-labelledby="gatewayDeletionModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div id="gatewayDeletionSpinner">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h5 class="mb-3">Removing Gateway Entries</h5>
+                        <p class="text-muted mb-0">Please wait while we remove all entries for this gateway...</p>
+                    </div>
+                    <div id="gatewayDeletionSuccess" style="display: none;">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                        <h5 class="mb-3 mt-3">Gateway Entries Removed</h5>
+                        <p class="text-muted mb-0">All entries for this gateway have been successfully removed.</p>
+                    </div>
+                    <div id="gatewayDeletionError" style="display: none;">
+                        <i class="bi bi-x-circle text-danger" style="font-size: 2rem;"></i>
+                        <h5 class="mb-3 mt-3">Error</h5>
+                        <p class="text-muted mb-0">There was an error removing the gateway entries. Please try again.</p>
+                    </div>
+                </div>
+                <div class="modal-footer" style="display: none;">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% include 'footer.html' %}
 
     {% block scripts %}{% endblock %}
