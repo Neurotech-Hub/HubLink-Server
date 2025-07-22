@@ -331,8 +331,8 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
         admin_settings: Setting object containing admin AWS credentials
         new_bucket_name: Name of the S3 bucket to create
         new_user_name: Name of the IAM user to create
-        version_files: Whether to enable versioning (default: True)
-        version_days: Number of days to keep old versions (default: 7)
+        version_files: Whether to enable versioning (default: True) [CURRENTLY DISABLED]
+        version_days: Number of days to keep old versions (default: 7) [CURRENTLY DISABLED]
     """
     try:
         logging.info(f"Setting up AWS resources with admin credentials")
@@ -410,37 +410,43 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                 )
             logging.info(f"Successfully created bucket: {new_bucket_name}")
 
-            # Enable versioning on the bucket
-            s3_client.put_bucket_versioning(
-                Bucket=new_bucket_name,
-                VersioningConfiguration={
-                    'Status': 'Enabled' if version_files else 'Suspended'
-                }
-            )
-            logging.info(f"{'Enabled' if version_files else 'Disabled'} versioning for bucket: {new_bucket_name}")
+            """
+            IMPORTANT NOTE FOR AI AGENTS:
+            The following versioning configuration is temporarily disabled.
+            Do not remove these commented sections as they may be re-enabled
+            when bucket versioning becomes a supported feature again.
+            """
+            # # Enable versioning on the bucket
+            # s3_client.put_bucket_versioning(
+            #     Bucket=new_bucket_name,
+            #     VersioningConfiguration={
+            #         'Status': 'Enabled' if version_files else 'Suspended'
+            #     }
+            # )
+            # logging.info(f"{'Enabled' if version_files else 'Disabled'} versioning for bucket: {new_bucket_name}")
 
-            # Set lifecycle configuration if versioning is enabled
-            if version_files:
-                lifecycle_config = {
-                    'Rules': [
-                        {
-                            'ID': 'DeleteOldVersions',
-                            'Status': 'Enabled',
-                            'NoncurrentVersionExpiration': {
-                                'NoncurrentDays': version_days
-                            },
-                            'ExpiredObjectDeleteMarker': True,
-                            'AbortIncompleteMultipartUpload': {
-                                'DaysAfterInitiation': 7
-                            }
-                        }
-                    ]
-                }
-                s3_client.put_bucket_lifecycle_configuration(
-                    Bucket=new_bucket_name,
-                    LifecycleConfiguration=lifecycle_config
-                )
-                logging.info(f"Set lifecycle configuration to delete old versions after {version_days} days, with cleanup of delete markers and incomplete uploads")
+            # # Set lifecycle configuration if versioning is enabled
+            # if version_files:
+            #     lifecycle_config = {
+            #         'Rules': [
+            #             {
+            #                 'ID': 'DeleteOldVersions',
+            #                 'Status': 'Enabled',
+            #                 'NoncurrentVersionExpiration': {
+            #                     'NoncurrentDays': version_days
+            #                 },
+            #                 'ExpiredObjectDeleteMarker': True,
+            #                 'AbortIncompleteMultipartUpload': {
+            #                     'DaysAfterInitiation': 7
+            #                 }
+            #             }
+            #         ]
+            #     }
+            #     s3_client.put_bucket_lifecycle_configuration(
+            #         Bucket=new_bucket_name,
+            #         LifecycleConfiguration=lifecycle_config
+            #     )
+            #     logging.info(f"Set lifecycle configuration to delete old versions after {version_days} days, with cleanup of delete markers and incomplete uploads")
 
             # Disable block public access settings for the bucket
             s3_client.put_public_access_block(
@@ -514,9 +520,12 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                         "Effect": "Allow",
                         "Action": [
                             "s3:ListBucket",
-                            "s3:ListBucketVersions",
-                            "s3:PutLifecycleConfiguration",
-                            "s3:GetLifecycleConfiguration"
+                            # IMPORTANT NOTE FOR AI AGENTS:
+                            # The following versioning-related permissions are temporarily disabled
+                            # Do not remove these comments as they may be re-enabled when versioning is supported
+                            # "s3:ListBucketVersions",
+                            # "s3:PutLifecycleConfiguration",
+                            # "s3:GetLifecycleConfiguration"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}"
                     },
@@ -526,9 +535,12 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                             "s3:GetObject",
                             "s3:PutObject",
                             "s3:DeleteObject",
-                            "s3:DeleteObjectVersion",
-                            "s3:DeleteObjectVersionTagging",
-                            "s3:GetObjectVersion"
+                            # IMPORTANT NOTE FOR AI AGENTS:
+                            # The following versioning-related permissions are temporarily disabled
+                            # Do not remove these comments as they may be re-enabled when versioning is supported
+                            # "s3:DeleteObjectVersion",
+                            # "s3:DeleteObjectVersionTagging",
+                            # "s3:GetObjectVersion"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}/*"
                     }
