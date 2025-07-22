@@ -46,9 +46,10 @@
             <table class="table table-sm table-hover" id="gatewaysTable">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="name">Name</th>
-                        <th class="sortable" data-sort="ip-address">IP Address</th>
-                        <th class="sortable" data-sort="last-ping">Last Ping</th>
+                        <th class="sortable w-33" data-sort="name">Name</th>
+                        <th class="sortable w-33" data-sort="ip-address">IP Address</th>
+                        <th class="sortable w-33" data-sort="last-ping">Last Ping</th>
+                        <th style="width: 40px"><!-- Actions --></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -58,6 +59,13 @@
                         <td data-ip-address="{{ gateway.ip_address }}"><code>{{ gateway.ip_address }}</code></td>
                         <td class="gateway-time" data-last-ping="{{ gateway.created_at.isoformat() }}" data-time="{{ gateway.created_at.isoformat() }}">
                             {{ gateway.created_at|datetime }}
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-link text-danger p-0" 
+                                    onclick="deleteGateway({{ gateway.id }}, '{{ gateway.name }}')"
+                                    title="Remove Gateway">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -80,6 +88,47 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeGatewayTable);
 } else {
     initializeGatewayTable();
+}
+
+function deleteGateway(gatewayId, gatewayName) {
+    if (confirm(`Are you sure you want to remove all entries for gateway "${gatewayName}"?`)) {
+        // Show the deletion modal
+        const modalEl = document.getElementById('gatewayDeletionModal');
+        const modal = new bootstrap.Modal(modalEl);
+
+        // Reset modal state
+        document.getElementById('gatewayDeletionSpinner').style.display = 'block';
+        document.getElementById('gatewayDeletionSuccess').style.display = 'none';
+        document.getElementById('gatewayDeletionError').style.display = 'none';
+        document.querySelector('#gatewayDeletionModal .modal-footer').style.display = 'none';
+
+        // Add event listener for when modal is hidden
+        modalEl.addEventListener('hidden.bs.modal', function handler() {
+            window.location.reload();  // Refresh the entire page
+            modalEl.removeEventListener('hidden.bs.modal', handler);  // Clean up listener
+        });
+
+        modal.show();
+
+        fetch(`/{{ account.url }}/gateway/${gatewayId}/delete`, {
+            method: 'POST',
+        }).then(response => {
+            if (response.ok) {
+                // Show success state
+                document.getElementById('gatewayDeletionSpinner').style.display = 'none';
+                document.getElementById('gatewayDeletionSuccess').style.display = 'block';
+                document.querySelector('#gatewayDeletionModal .modal-footer').style.display = 'block';
+            } else {
+                throw new Error('Network response was not ok');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            // Show error state
+            document.getElementById('gatewayDeletionSpinner').style.display = 'none';
+            document.getElementById('gatewayDeletionError').style.display = 'block';
+            document.querySelector('#gatewayDeletionModal .modal-footer').style.display = 'block';
+        });
+    }
 }
 
 function initializeGatewayTable() {

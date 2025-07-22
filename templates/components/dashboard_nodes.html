@@ -124,7 +124,7 @@
                         <td data-battery="{{ node.battery }}">
                             <div class="d-flex align-items-center {% if node.battery == 0 %}coming-soon-battery{% endif %} battery-cell" 
                                  data-node-uuid="{{ node.uuid }}">
-                                <div class="progress me-2 flex-shrink-0 node-battery-progress">
+                                <div class="progress d-none d-md-flex me-2 node-battery-progress">
                                     <div class="progress-bar 
                                         {% if node.battery >= 80 %}bg-success
                                         {% elif node.battery >= 50 %}bg-warning
@@ -135,7 +135,16 @@
                                          aria-valuemax="100" 
                                          style="width: {{ node.battery }}%"></div>
                                 </div>
-                                <small class="text-muted">{{ node.battery }}%</small>
+                                <div class="d-md-none me-2">
+                                    <div class="battery-circle 
+                                        {% if node.battery >= 80 %}bg-success
+                                        {% elif node.battery >= 50 %}bg-warning
+                                        {% else %}bg-danger{% endif %}">
+                                    </div>
+                                </div>
+                                <div class="battery-percentage text-nowrap">
+                                    <small class="text-muted">{{ node.battery }}%</small>
+                                </div>
                             </div>
                         </td>
                         <td class="node-scanned-by-column" data-scanned-by="{{ node.scanned_by }}">{{ node.scanned_by }}</td>

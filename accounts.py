@@ -2281,3 +2281,36 @@ def update_files(account_url):
         return jsonify({
             'error': str(e)
         }), 500
+
+@accounts_bp.route('/<account_url>/gateway/<int:gateway_id>/delete', methods=['POST'])
+def delete_gateway(account_url, gateway_id):
+    try:
+        account = Account.query.filter_by(url=account_url).first_or_404()
+        # Get the initial gateway to find its name
+        gateway = Gateway.query.filter_by(id=gateway_id, account_id=account.id).first_or_404()
+        gateway_name = gateway.name
+        
+        # Delete all gateways with this name for this account
+        gateways = Gateway.query.filter_by(
+            account_id=account.id,
+            name=gateway_name
+        ).all()
+        
+        deleted_count = len(gateways)
+        if deleted_count > 0:
+            # Delete the gateways (nodes will be cascade deleted due to relationship)
+            for gw in gateways:
+                db.session.delete(gw)
+            
+            db.session.commit()
+            
+            logging.info(f"Successfully deleted {deleted_count} gateways named '{gateway_name}' for account {account_url}")
+            return "", 200
+        else:
+            logging.warning(f"No gateways found with name '{gateway_name}' for account {account_url}")
+            return "No gateways found to delete", 404
+        
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Error deleting gateways for account {account_url}: {e}")
+        return "Error deleting gateways", 500
