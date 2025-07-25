@@ -23,7 +23,7 @@ class Account(db.Model):
     # Plan and storage tracking fields
     plan_uploads_mo = db.Column(db.Integer, nullable=False, server_default='500')
     plan_storage_gb = db.Column(db.Integer, nullable=False, server_default='10')
-    plan_versioned_backups = db.Column(db.Boolean, nullable=False, server_default=text('true'))
+    plan_versioned_backups = db.Column(db.Boolean, nullable=False, server_default=text('false'))
     plan_version_days = db.Column(db.Integer, nullable=False, server_default='7')
     plan_start_date = db.Column(db.DateTime(timezone=True), nullable=False, server_default=func.now())
     storage_current_bytes = db.Column(db.BigInteger, nullable=False, server_default='0')

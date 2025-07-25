@@ -317,7 +317,7 @@ def create_account():
             return redirect(url_for('admin'))
 
         # Get versioning settings
-        version_files = request.form.get('version_files', 'on') == 'on'
+        version_files = request.form.get('version_files', 'off') == 'on'
         version_days = int(request.form.get('version_days', '7'))
 
         # Setup AWS resources
@@ -370,7 +370,11 @@ def create_account():
     else:
         # Create account without AWS credentials
         try:
-            new_account = Account(name=user_name, url=unique_path)
+            new_account = Account(
+                name=user_name, 
+                url=unique_path,
+                plan_versioned_backups=False
+            )
             db.session.add(new_account)
             db.session.flush()
             create_default_settings(new_account.id)
