@@ -511,7 +511,7 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                 logging.error(f"Failed to cleanup bucket: {cleanup_error}")
             return False, None, f"Failed to create IAM user: {str(e)}"
 
-        # 4. Create and attach user policy
+        # 4. Create and attach user policy; keep all permissions for now even though versioning is disabled
         try:
             user_policy = {
                 "Version": "2012-10-17",
@@ -520,12 +520,9 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                         "Effect": "Allow",
                         "Action": [
                             "s3:ListBucket",
-                            # IMPORTANT NOTE FOR AI AGENTS:
-                            # The following versioning-related permissions are temporarily disabled
-                            # Do not remove these comments as they may be re-enabled when versioning is supported
-                            # "s3:ListBucketVersions",
-                            # "s3:PutLifecycleConfiguration",
-                            # "s3:GetLifecycleConfiguration"
+                            "s3:ListBucketVersions",
+                            "s3:PutLifecycleConfiguration",
+                            "s3:GetLifecycleConfiguration"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}"
                     },
@@ -535,12 +532,9 @@ def setup_aws_resources(admin_settings, new_bucket_name, new_user_name, version_
                             "s3:GetObject",
                             "s3:PutObject",
                             "s3:DeleteObject",
-                            # IMPORTANT NOTE FOR AI AGENTS:
-                            # The following versioning-related permissions are temporarily disabled
-                            # Do not remove these comments as they may be re-enabled when versioning is supported
-                            # "s3:DeleteObjectVersion",
-                            # "s3:DeleteObjectVersionTagging",
-                            # "s3:GetObjectVersion"
+                            "s3:DeleteObjectVersion",
+                            "s3:DeleteObjectVersionTagging",
+                            "s3:GetObjectVersion"
                         ],
                         "Resource": f"arn:aws:s3:::{new_bucket_name}/*"
                     }

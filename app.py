@@ -57,6 +57,19 @@ def setup_logging(app):
 # Create Flask app with instance folder configuration
 app = Flask(__name__, instance_relative_config=True)
 
+# Block common attack vectors before any route handling
+import re
+
+@app.before_request
+def block_common_attack_vectors():
+    path = request.path.lower()
+    # Block .php and similar extensions
+    if re.search(r"\\.(php|php3|php4|php5|php7|phtml)$", path):
+        return '', 404
+    # Block common WordPress attack vectors
+    if path.startswith('/wp-') or path == '/xmlrpc.php':
+        return '', 404
+
 # Load environment configuration
 app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
 
@@ -317,7 +330,7 @@ def create_account():
             return redirect(url_for('admin'))
 
         # Get versioning settings
-        version_files = request.form.get('version_files', 'on') == 'on'
+        version_files = request.form.get('version_files', 'off') == 'on'
         version_days = int(request.form.get('version_days', '7'))
 
         # Setup AWS resources
@@ -370,7 +383,11 @@ def create_account():
     else:
         # Create account without AWS credentials
         try:
-            new_account = Account(name=user_name, url=unique_path)
+            new_account = Account(
+                name=user_name, 
+                url=unique_path,
+                plan_versioned_backups=False
+            )
             db.session.add(new_account)
             db.session.flush()
             create_default_settings(new_account.id)
