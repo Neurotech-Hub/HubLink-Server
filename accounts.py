@@ -920,7 +920,7 @@ def layout_grid(account_url, layout_id):
                              layout=layout_data,
                              plot_info_arr=plot_info_arr)
     except Exception as e:
-        logging.error(f"Error loading layout grid for {account_url}: {e}")
+        logging.error(f"Error loading layout grid for {account_url} (layout_id: {layout_id}): {e}")
         return "Error loading layout grid", 500
 
 @accounts_bp.route('/<account_url>/layout/<int:layout_id>/edit', methods=['GET'])
