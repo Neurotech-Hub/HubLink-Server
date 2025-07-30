@@ -64,57 +64,31 @@ import re
 def block_common_attack_vectors():
     path = request.path.lower()
     
-    # Block .php and similar extensions
+    # Block only the most obvious attack vectors that won't conflict with legitimate routes
+    
+    # Block .php and similar extensions (safe - you don't use these)
     if re.search(r"\\.(php|php3|php4|php5|php7|php8|phtml|phar)$", path):
         return '', 404
     
-    # Block common WordPress attack vectors
+    # Block common WordPress attack vectors (safe - you don't use WordPress)
     if path.startswith('/wp-') or path == '/xmlrpc.php':
         return '', 404
     
-    # Block common bot attack patterns
-    bot_patterns = [
-        r'\\.(asp|aspx|jsp|jspx|cfm|pl|cgi|sh|py|rb|do|action)$',  # Other server-side extensions
-        r'/(wp-admin|phpmyadmin|mysql|sql|database)$',  # Admin panels (but not /admin)
-        r'/(config|configuration|setup|install|update|upgrade)$',  # Setup files
-        r'/(backup|bak|old|tmp|temp|cache|log|logs)$',  # Backup/temp files
-        r'/(test|demo|example|sample|debug)$',  # Test files
-        r'/(shell|cmd|exec|system|eval|base64)$',  # Command execution attempts
-        r'/(union|select|insert|update|delete|drop|create|alter)$',  # SQL injection attempts
-        r'/(script|javascript|vbscript|onload|onerror)$',  # XSS attempts
-        r'/(\.\.|%2e%2e|%252e%252e)',  # Path traversal attempts
-    ]
-    
-    for pattern in bot_patterns:
-        if re.search(pattern, path):
-            return '', 404
-    
-    # Block requests with suspicious User-Agent headers
+    # Block only the most obvious malicious User-Agent headers
     user_agent = request.headers.get('User-Agent', '').lower()
-    bot_user_agents = [
-        'bot', 'crawler', 'spider', 'scraper', 'scanner', 'probe',
-        'nmap', 'nikto', 'sqlmap', 'w3af', 'nessus', 'openvas',
-        'acunetix', 'burp', 'zap', 'arachni', 'skipfish',
-        'dirbuster', 'gobuster', 'wfuzz', 'ffuf', 'dirb',
-        'masscan', 'zmap', 'amass', 'subfinder', 'httpx',
-        'curl', 'wget', 'python-requests', 'java', 'perl',
-        'php', 'asp', 'jsp', 'coldfusion', 'ruby'
+    obvious_bot_user_agents = [
+        'sqlmap', 'nikto', 'nmap', 'dirbuster', 'gobuster', 'wfuzz', 'ffuf', 'dirb',
+        'masscan', 'zmap', 'amass', 'subfinder', 'httpx'
     ]
     
-    if any(bot in user_agent for bot in bot_user_agents):
+    if any(bot in user_agent for bot in obvious_bot_user_agents):
         return '', 404
     
-    # Block requests with suspicious query parameters
-    query_string = request.query_string.decode('utf-8', errors='ignore').lower()
-    suspicious_params = [
-        'union', 'select', 'insert', 'update', 'delete', 'drop', 'create', 'alter',
-        'script', 'javascript', 'vbscript', 'onload', 'onerror', 'onclick',
-        'eval', 'exec', 'system', 'shell', 'cmd', 'base64',
-        'php', 'asp', 'jsp', 'cfm', 'pl', 'cgi', 'sh', 'py', 'rb'
-    ]
-    
-    if any(param in query_string for param in suspicious_params):
-        return '', 404
+    # Query parameter blocking disabled - too many conflicts with legitimate parameters
+    # Your app uses: name, type, data, config, group, show, page, since, etc.
+    # These could be flagged by aggressive parameter blocking
+    # Instead, rely on input validation in your routes and proper authentication
+    pass
 
 # Load environment configuration
 app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
