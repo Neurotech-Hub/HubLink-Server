@@ -63,11 +63,57 @@ import re
 @app.before_request
 def block_common_attack_vectors():
     path = request.path.lower()
+    
     # Block .php and similar extensions
-    if re.search(r"\\.(php|php3|php4|php5|php7|phtml)$", path):
+    if re.search(r"\\.(php|php3|php4|php5|php7|php8|phtml|phar)$", path):
         return '', 404
+    
     # Block common WordPress attack vectors
     if path.startswith('/wp-') or path == '/xmlrpc.php':
+        return '', 404
+    
+    # Block common bot attack patterns
+    bot_patterns = [
+        r'\\.(asp|aspx|jsp|jspx|cfm|pl|cgi|sh|py|rb|do|action)$',  # Other server-side extensions
+        r'/(wp-admin|phpmyadmin|mysql|sql|database)$',  # Admin panels (but not /admin)
+        r'/(config|configuration|setup|install|update|upgrade)$',  # Setup files
+        r'/(backup|bak|old|tmp|temp|cache|log|logs)$',  # Backup/temp files
+        r'/(test|demo|example|sample|debug)$',  # Test files
+        r'/(shell|cmd|exec|system|eval|base64)$',  # Command execution attempts
+        r'/(union|select|insert|update|delete|drop|create|alter)$',  # SQL injection attempts
+        r'/(script|javascript|vbscript|onload|onerror)$',  # XSS attempts
+        r'/(\.\.|%2e%2e|%252e%252e)',  # Path traversal attempts
+    ]
+    
+    for pattern in bot_patterns:
+        if re.search(pattern, path):
+            return '', 404
+    
+    # Block requests with suspicious User-Agent headers
+    user_agent = request.headers.get('User-Agent', '').lower()
+    bot_user_agents = [
+        'bot', 'crawler', 'spider', 'scraper', 'scanner', 'probe',
+        'nmap', 'nikto', 'sqlmap', 'w3af', 'nessus', 'openvas',
+        'acunetix', 'burp', 'zap', 'arachni', 'skipfish',
+        'dirbuster', 'gobuster', 'wfuzz', 'ffuf', 'dirb',
+        'masscan', 'zmap', 'amass', 'subfinder', 'httpx',
+        'curl', 'wget', 'python-requests', 'java', 'perl',
+        'php', 'asp', 'jsp', 'coldfusion', 'ruby'
+    ]
+    
+    if any(bot in user_agent for bot in bot_user_agents):
+        return '', 404
+    
+    # Block requests with suspicious query parameters
+    query_string = request.query_string.decode('utf-8', errors='ignore').lower()
+    suspicious_params = [
+        'union', 'select', 'insert', 'update', 'delete', 'drop', 'create', 'alter',
+        'script', 'javascript', 'vbscript', 'onload', 'onerror', 'onclick',
+        'eval', 'exec', 'system', 'shell', 'cmd', 'base64',
+        'php', 'asp', 'jsp', 'cfm', 'pl', 'cgi', 'sh', 'py', 'rb'
+    ]
+    
+    if any(param in query_string for param in suspicious_params):
         return '', 404
 
 # Load environment configuration
