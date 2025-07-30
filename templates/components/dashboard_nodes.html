@@ -339,12 +339,59 @@ function showBatteryHistory(nodeUuid, element) {
         </div>
     `;
     
-    // Position the popover
+    // Position the popover with mobile-friendly positioning
     const rect = element.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const popoverWidth = 320; // Approximate width of the popover
+    const popoverHeight = 250; // Approximate height of the popover
+    
     popover.style.position = 'fixed';
-    popover.style.left = (rect.right + 10) + 'px';
-    popover.style.top = (rect.top - 100) + 'px';
     popover.style.zIndex = '9999';
+    
+    // Check if we're on mobile (smaller viewport)
+    const isMobile = viewportWidth <= 768;
+    
+    // Calculate horizontal position
+    let left = rect.right + 10;
+    
+    // If popover would go off the right edge, position it to the left instead
+    if (left + popoverWidth > viewportWidth) {
+        left = rect.left - popoverWidth - 10;
+    }
+    
+    // Ensure it doesn't go off the left edge either
+    if (left < 10) {
+        left = 10;
+    }
+    
+    // Calculate vertical position - on mobile, always position well above the battery bar
+    let top;
+    if (isMobile) {
+        // On mobile, position well above the battery bar to avoid feedback loops
+        top = rect.top - popoverHeight - 20; // 20px gap above the battery bar
+    } else {
+        // On desktop, use the original positioning
+        top = rect.top - 100;
+    }
+    
+    // If popover would go off the top, position it below the element
+    if (top < 10) {
+        top = rect.bottom + 10;
+    }
+    
+    // If it would go off the bottom, adjust to fit
+    if (top + popoverHeight > viewportHeight) {
+        top = viewportHeight - popoverHeight - 10;
+    }
+    
+    // Ensure it doesn't go off the top edge
+    if (top < 10) {
+        top = 10;
+    }
+    
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
     
     document.body.appendChild(popover);
     

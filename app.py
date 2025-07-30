@@ -63,12 +63,32 @@ import re
 @app.before_request
 def block_common_attack_vectors():
     path = request.path.lower()
-    # Block .php and similar extensions
-    if re.search(r"\\.(php|php3|php4|php5|php7|phtml)$", path):
+    
+    # Block only the most obvious attack vectors that won't conflict with legitimate routes
+    
+    # Block .php and similar extensions (safe - you don't use these)
+    if re.search(r"\\.(php|php3|php4|php5|php7|php8|phtml|phar)$", path):
         return '', 404
-    # Block common WordPress attack vectors
+    
+    # Block common WordPress attack vectors (safe - you don't use WordPress)
     if path.startswith('/wp-') or path == '/xmlrpc.php':
         return '', 404
+    
+    # Block only the most obvious malicious User-Agent headers
+    user_agent = request.headers.get('User-Agent', '').lower()
+    obvious_bot_user_agents = [
+        'sqlmap', 'nikto', 'nmap', 'dirbuster', 'gobuster', 'wfuzz', 'ffuf', 'dirb',
+        'masscan', 'zmap', 'amass', 'subfinder', 'httpx'
+    ]
+    
+    if any(bot in user_agent for bot in obvious_bot_user_agents):
+        return '', 404
+    
+    # Query parameter blocking disabled - too many conflicts with legitimate parameters
+    # Your app uses: name, type, data, config, group, show, page, since, etc.
+    # These could be flagged by aggressive parameter blocking
+    # Instead, rely on input validation in your routes and proper authentication
+    pass
 
 # Load environment configuration
 app.config['ENVIRONMENT'] = os.environ.get('ENVIRONMENT', 'development')
