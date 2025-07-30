@@ -28,7 +28,8 @@
                                href="{{ url_for('accounts.download_file', account_url=account.url, file_id=source.file.id) }}" 
                                target="_blank">Download</a></li>
                         <li><button class="dropdown-item copy-link" 
-                               data-url="{{ url_for('accounts.download_file', account_url=account.url, file_id=source.file.id) }}" 
+                               onclick="copyLinkToClipboard('{{ source.file.url }}')"
+                               data-url="{{ source.file.url }}" 
                                data-source-id="{{ source.id }}">Copy Link</button></li>
                         {% endif %}
                         <li>

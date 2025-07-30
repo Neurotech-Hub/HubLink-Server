@@ -924,6 +924,42 @@
         layoutModal.show();
     }
 
+    // Function to copy link to clipboard - needs to be global for onclick
+    function copyLinkToClipboard(url) {
+        navigator.clipboard.writeText(url).then(function () {
+            // Show success feedback
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.classList.add('text-success');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('text-success');
+            }, 2000);
+        }).catch(function (err) {
+            console.error('Failed to copy: ', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            // Show success feedback even for fallback
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Copied!';
+            button.classList.add('text-success');
+            
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.classList.remove('text-success');
+            }, 2000);
+        });
+    }
+
     // Function to validate tags - needs to be global for Tagify callbacks
     function validateTags() {
         const form = document.getElementById('sourceForm');
