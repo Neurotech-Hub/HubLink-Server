@@ -16,6 +16,8 @@
 
         {% include 'pricing-cards.html' %}
 
+        {% include 'cost-comparison-section.html' %}
+
         <section style="margin-bottom: 5rem;" class="mt-5">
             <h2 class="border-bottom pb-2 mb-4">Components</h2>
 
@@ -24,37 +26,27 @@
                     class="img-fluid rounded" style="max-width:80%">
             </div>
             
-            <h3 class="mt-4">Nodes</h3>
-            <p>Hublink requires that you have <strong>ESP32-based</strong> nodes in order to communicate over Bluetooth
-                Low Energy (BLE) to gateways. This is made simple via the <strong>open-source</strong> <a
-                    target="_blank" href="https://github.com/Neurotech-Hub/Hublink-Node_ESP32">Hublink Node
-                    Library <i class="fa-solid fa-up-right-from-square"></i></a> for the Arduino IDE.</p>
-
-            <h3 class="mt-4">Gateways</h3>
-            <p>Hublink gateways are pre-configured <strong>Raspberry Pi</strong> devices that simply need a power outlet
-                and internet
-                connection. Your gateways will sync settings with your <a
-                    href="/">hublink.cloud</a> Dashboard enabling remote management.</p>
-
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Not using the cloud?</h5>
-                    <p class="card-text">Gateways can run in stand-alone mode and still collect node data. However,
-                        conflict resolution between gateways is done at the cloud-level, so you will need to develop a
-                        custom workflow.
-                    </p>
+            <div class="row g-4 mt-2">
+                <div class="col-lg-4">
+                    <h3 class="h5">Hublink "Raven" Node</h3>
+                    <p class="mb-0">Hublink requires that you have <strong>ESP32-based</strong> nodes in order to
+                        communicate over Bluetooth Low Energy (BLE) to gateways. This is made simple via the
+                        <strong>open-source</strong> <a target="_blank"
+                            href="https://github.com/Neurotech-Hub/Hublink-Node-Raven">Hublink Node Library <i
+                                class="fa-solid fa-up-right-from-square"></i></a> for the Arduino IDE.</p>
+                </div>
+                <div class="col-lg-4">
+                    <h3 class="h5">Hublink Gateway</h3>
+                    <p class="mb-0">Hublink gateways are pre-configured <strong>Raspberry Pi</strong> devices that simply
+                        need a power outlet and internet connection. Your gateways will sync settings with your hublink.cloud Dashboard enabling remote management.</p>
+                </div>
+                <div class="col-lg-4">
+                    <h3 class="h5">Dashboard</h3>
+                    <p class="mb-0">The Hublink Dashboard is the primary link between <strong>nodes</strong>,
+                        <strong>gateways</strong>, and <strong>cloud storage</strong>. We use Amazon S3 for long-term,
+                        persistent, reliable storage. This will always be <em>your data</em>.</p>
                 </div>
             </div>
-
-            <h3 class="mt-4">Dashboard</h3>
-            <p>The Hublink Dashboard is the primary link between <strong>nodes</strong>, <strong>gateways</strong>,
-                and <strong>cloud storage</strong>. We use Amazon S3 for long-term, persistent,
-                reliable storage.
-                After your purchase of a Hublink gateway, your Amazon S3 bucket will be provisioned and you will own those
-                data.
-                Amazon S3 provides a rich API itself, which can be augemented with our open-source <a
-                    href="https://github.com/Neurotech-Hub/HubLink-Client" target="_blank">Hublink Client Library <i
-                        class="fa-solid fa-up-right-from-square"></i></a>.</p>
 
             <h2 class="border-bottom pb-2 mb-4 mt-5">Ordering Hardware</h2>
 
@@ -68,21 +60,21 @@
                             <table class="table table-bordered text-center">
                                 <thead class="bg-dark text-white">
                                     <tr>
-                                        <th colspan="2">Nodes</th>
+                                        <th colspan="2">Hublink "Raven" Node</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
                                         <td>1-5</td>
-                                        <td>$89 / node</td>
+                                        <td>$99 / node</td>
                                     </tr>
                                     <tr>
                                         <td>6-10</td>
-                                        <td>$79 / node</td>
+                                        <td>$89 / node</td>
                                     </tr>
                                     <tr>
                                         <td>>10</td>
-                                        <td>$69 / node</td>
+                                        <td>$79 / node</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -96,7 +88,7 @@
                             <table class="table table-bordered text-center">
                                 <thead class="bg-dark text-white">
                                     <tr>
-                                        <th colspan="2">Gateways</th>
+                                        <th colspan="2">Hublink Gateway</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -117,6 +109,59 @@
                         </div>
                         <div class="mt-2">
                             <p class="font-italic text-muted"><strong>How many gateways?</strong> 1 per ~30 nodes or 1 per ~30 meter radius.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="border-bottom pb-2 mb-4 mt-5">Flagship Products</h3>
+
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                        <div class="px-3 pt-3">
+                            <img src="{{ url_for('static', filename='img/BEAM-Product.jpg') }}"
+                                alt="Hublink BEAM compact data-logging device"
+                                class="img-fluid rounded w-100">
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h4 class="h5 card-title mb-2">Hublink BEAM</h4>
+                            <p class="small text-muted mb-3">Arduino library firmware for field-ready logging—sensors,
+                                RTC, battery awareness, and microSD CSV capture on ESP32‑S3.</p>
+                            <ul class="small mb-4 flex-grow-1">
+                                <li>Ultra-low-power ULP pathway for motion-aware wake / deep sleep</li>
+                                <li>Environmental + activity metrics streamed into timestamped CSV rows</li>
+                                <li>Boot-resilient file naming &amp; smart battery thresholds for safe deployments</li>
+                            </ul>
+                            <a class="btn btn-outline-primary rounded-pill"
+                                href="https://github.com/Neurotech-Hub/Hublink-BEAM" target="_blank"
+                                rel="noopener noreferrer">
+                                Explore Hublink-BEAM on GitHub <i class="fa-solid fa-up-right-from-square ms-1"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card border-0 shadow-sm h-100 overflow-hidden">
+                        <div class="px-3 pt-3">
+                            <img src="{{ url_for('static', filename='img/HubWheel-Product.jpg') }}"
+                                alt="Hub Wheel running-wheel module with Raven node and Hublink"
+                                class="img-fluid rounded w-100">
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h4 class="h5 card-title mb-2">Hub Wheel</h4>
+                            <p class="small text-muted mb-3">Raven-powered running wheel wired for cages—magnet-ready for
+                                Bio‑Serv FastTrak plates plus ambient + environmental telemetry.</p>
+                            <ul class="small mb-4 flex-grow-1">
+                                <li>Turn-by-turn logging alongside lux, temperature, pressure, and environmental signals</li>
+                                <li>Measured ~50&nbsp;µA deep-sleep baseline and ~236&nbsp;µA low-power magnet counting</li>
+                                <li>Month-scale runtime on a charge with microSD capture and hublink.cloud workflow</li>
+                            </ul>
+                            <a class="btn btn-outline-primary rounded-pill"
+                                href="https://neurotechhub.wustl.edu/items/hub-wheel-with-hublink" target="_blank"
+                                rel="noopener noreferrer">
+                                Shop Hub Wheel <i class="fa-solid fa-up-right-from-square ms-1"></i>
+                            </a>
                         </div>
                     </div>
                 </div>

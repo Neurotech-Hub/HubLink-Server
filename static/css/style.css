@@ -1211,53 +1211,6 @@ table td code {
     background-color: white;
 }
 
-/* Memory Flow Animation */
-.memoryFlow {
-    position: relative;
-    height: 30vh;
-    touch-action: pan-y pinch-zoom;
-}
-
-.memoryFlow .icon {
-    position: absolute;
-    height: auto;
-    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-    will-change: transform;
-}
-
-.memoryFlow .memory-icon {
-    left: -100px;
-    width: min(200px, 40vw);
-    transform: rotate(-15deg);
-    opacity: 0.15;
-}
-
-.memoryFlow .cloud-icon {
-    right: -100px;
-    transform: rotate(15deg);
-    width: min(360px, 48vw);
-    height: auto;
-    opacity: 0.15;
-}
-
-/* Add media queries for smaller screens */
-@media (max-width: 768px) {
-    .memoryFlow {
-        height: 20vh;
-        margin: 2rem 0;
-    }
-
-    .memoryFlow .icon {
-        width: min(120px, 40vw);
-        min-width: 140px;
-    }
-
-    .memoryFlow .cloud-icon {
-        width: min(280px, 65vw);
-        min-width: 200px;
-    }
-}
-
 /* Magical text effect */
 .highlight-text {
     background: linear-gradient(120deg,
@@ -1935,4 +1888,175 @@ table td code {
         /* Smaller popover on mobile */
         max-width: 320px;
     }
+}
+
+/* --- Cost comparison (templates/cost-comparison-section.html) --- */
+.cost-comparison-section.cc-compact .cc-be-kicker {
+    font-size: 1.125rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+@media (min-width: 768px) {
+    .cost-comparison-section.cc-compact .cc-be-kicker {
+        font-size: 1.35rem;
+    }
+}
+
+.cost-comparison-section.cc-compact .cc-be-value-display {
+    font-size: clamp(2.25rem, 4.5vw, 3.25rem);
+    letter-spacing: -0.02em;
+}
+
+.cost-comparison-section.cc-compact .cc-cost-summary .cc-cost-row + .cc-cost-row {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.cost-comparison-section.cc-compact .cc-input-btn {
+    font-size: 0.9rem;
+}
+
+/* Cost comparison: plot fills vertical space beside calculator at lg+ */
+.cost-comparison-section.cc-compact .cc-cost-plot {
+    font-family: inherit;
+    color: var(--bs-body-color);
+}
+
+.cost-comparison-section.cc-compact .cc-plot-surface {
+    min-height: 220px;
+}
+
+@media (max-width: 991.98px) {
+    .cost-comparison-section.cc-compact .cc-cost-plot-lg-fill {
+        aspect-ratio: 640 / 280;
+        min-height: 220px;
+        max-height: min(42vh, 380px);
+        height: auto !important;
+    }
+
+    .cost-comparison-section.cc-compact .cc-plot-stack {
+        flex-grow: 0 !important;
+    }
+
+    .cost-comparison-section.cc-compact .cc-plot-block {
+        flex-grow: 0 !important;
+    }
+
+    .cost-comparison-section.cc-compact .cc-plot-surface {
+        flex: 0 0 auto;
+    }
+}
+
+@media (min-width: 992px) {
+    /* flex-basis 0 so the plot region actually grows with the stretched row */
+    .cost-comparison-section.cc-compact .cc-plot-block {
+        flex: 1 1 0 !important;
+    }
+
+    .cost-comparison-section.cc-compact .cc-plot-surface {
+        position: relative;
+        flex: 1 1 0;
+        min-height: 0;
+    }
+
+    .cost-comparison-section.cc-compact .cc-cost-plot-lg-fill {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100% !important;
+        aspect-ratio: unset;
+        max-height: none !important;
+        min-height: 0 !important;
+    }
+
+    .cost-comparison-section.cc-compact .cc-plot-stack {
+        flex: 1 1 0;
+        min-height: 0;
+    }
+}
+
+.cost-comparison-section.cc-compact .cc-plot-intro {
+    font-size: 1.05rem;
+}
+
+.cost-comparison-section.cc-compact .cc-plot-legend-text {
+    font-size: 0.9375rem;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-grid {
+    stroke: rgba(33, 37, 41, 0.08);
+    stroke-width: 1;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-axis {
+    stroke: rgba(33, 37, 41, 0.28);
+    stroke-width: 1.25;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-tick {
+    fill: currentColor;
+    opacity: 0.78;
+    font-size: 17px;
+    font-weight: 500;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-tick-y {
+    font-size: 16px;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-tick-x {
+    font-size: 17px;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-axis-label {
+    fill: currentColor;
+    opacity: 0.88;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-line {
+    fill: none;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-line-tech {
+    stroke: #232434;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-line-hub {
+    stroke: var(--bs-primary);
+}
+
+.cost-comparison-section.cc-compact .cc-chart-be-line {
+    stroke: var(--bs-primary);
+    stroke-width: 2;
+    stroke-dasharray: 8 6;
+    opacity: 0.85;
+}
+
+.cost-comparison-section.cc-compact .cc-chart-be-label {
+    fill: var(--bs-primary);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.cost-comparison-section.cc-compact .cc-line-dot {
+    display: inline-block;
+    width: 1.35rem;
+    height: 5px;
+    border-radius: 999px;
+    vertical-align: middle;
+}
+
+.cost-comparison-section.cc-compact .cc-dot-tech {
+    background: #232434;
+}
+
+.cost-comparison-section.cc-compact .cc-dot-hub {
+    background: var(--bs-primary);
 }
