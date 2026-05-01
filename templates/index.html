@@ -6,7 +6,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-c.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 </head>
 
 <body class="index-page">
@@ -85,12 +84,8 @@
             <span class="effortless royal">Seamlessly.</span>
         </h1>
         <h2 class="subtagline">
-            The <strong>premier</strong> memory card mirror
-            <span class="mirror-text">mirror</span>
+            frictionless <strong>data</strong>, faster <strong>discovery</strong>
         </h2>
-
-        <!-- Learn More Button -->
-        {# <a href="#more-content" class="learn-more-btn" id="learn-more-btn">Learn More</a> #}
         
         <!-- Code Preview -->
         <div class="code-editor-frame">
@@ -127,10 +122,6 @@ void loop()
 
     <!-- Hidden Content Section -->
     <div style="font-size:1.15rem;" id="more-content" class="container">
-        <section class="memoryFlow mb-5">
-            <img src="{{ url_for('static', filename='img/memory_icon.png') }}" alt="Memory Card" class="icon memory-icon">
-            <img src="{{ url_for('static', filename='img/cloud_icon.png') }}" alt="Cloud Storage" class="icon cloud-icon">
-        </section>
         <section class="mb-5">
             <div class="container-fluid">
                 <h2>How it works</h2>
@@ -146,6 +137,8 @@ void loop()
         </section>
 
         {% include 'pricing-cards.html' %}
+
+        {% include 'cost-comparison-section.html' %}
 
         <!-- Core Components Section -->
         <section class="mb-5 mt-5">
@@ -214,24 +207,6 @@ void loop()
                         </div>
                     </div>
 
-                    <!-- Hublink Client -->
-                    <div class="step-item">
-                        <div class="step-number">4</div>
-                        <div class="step-content">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body py-2">
-                                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
-                                        <h5 class="card-title mb-2 mb-sm-0">Hublink Client</h5>
-                                    </div>
-                                    <p class="card-text small mb-1">A client library to interact, consume, and sync with
-                                        Hublink-created data.</p>
-                                    <div class="text-muted">
-                                        <small>Amazon S3 • Python</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -443,182 +418,6 @@ void loop()
             effortlessText.style.backgroundClip = 'text';
             effortlessText.style.webkitTextFillColor = 'transparent';
         });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const memoryFlow = document.querySelector('.memoryFlow');
-            const memoryIcon = document.querySelector('.memory-icon');
-            const cloudIcon = document.querySelector('.cloud-icon');
-            let hasConverged = false;
-            const convergenceThreshold = 50;
-            
-            // Get current icon dimensions and positions
-            const memoryIconRect = memoryIcon.getBoundingClientRect();
-            const cloudIconRect = cloudIcon.getBoundingClientRect();
-            const memoryIconWidth = memoryIconRect.width;
-            const cloudIconWidth = cloudIconRect.width;
-            
-            // Get the initial positions from CSS (-100px and window.innerWidth + 100px)
-            const initialLeftPos = -100;
-            const initialRightPos = 100;
-            
-            function updateIconPositions() {
-                const rect = memoryFlow.getBoundingClientRect();
-                const viewportHeight = window.innerHeight;
-                const convergencePoint = viewportHeight * 1.2;
-                const centerX = window.innerWidth / 2;
-                
-                // Reset to initial positions when scrolled back to top
-                if (rect.top >= viewportHeight) {
-                    memoryIcon.style.transform = `rotate(-15deg)`;
-                    cloudIcon.style.transform = `rotate(15deg)`;
-                    memoryIcon.style.opacity = 0.15;
-                    cloudIcon.style.opacity = 0.15;
-                    if (hasConverged) {
-                        confetti.reset();
-                        hasConverged = false;
-                    }
-                    return;
-                }
-                
-                // Calculate progress
-                const progress = Math.min(1, Math.max(0, (convergencePoint - rect.bottom) / (viewportHeight * 0.8)));
-                
-                // Reset convergence state if icons move apart significantly
-                if (progress < 0.9 && hasConverged) {
-                    hasConverged = false;
-                    confetti.reset();
-                }
-                
-                // Calculate target positions relative to center
-                const baseOffset = 50;
-                const responsiveOffset = Math.min(
-                    baseOffset,
-                    window.innerWidth < 768 ? -40 : Math.max(5, (memoryIconWidth * 0.05))
-                );
-                const finalOffset = window.innerWidth < 768 ? responsiveOffset : baseOffset;
-                
-                // Calculate final positions
-                const leftTarget = centerX - finalOffset - (memoryIconWidth / 2);
-                
-                // Calculate translations ensuring we never move outward from initial positions
-                const leftTranslate = Math.max(
-                    initialLeftPos,  // Never go more left than initial
-                    initialLeftPos + ((leftTarget - initialLeftPos) * progress)
-                );
-
-                const rightTranslate = Math.min(
-                    initialRightPos,  // Never go more right than initial
-                    initialRightPos + ((-leftTarget - initialRightPos) * progress)
-                );
-                
-                // Calculate rotations
-                const leftRotation = -15 + (10 * progress);
-                const rightRotation = 15 - (10 * progress);
-                
-                if (progress >= 0.95) {
-                    if (!hasConverged) {
-                        console.log('Triggering confetti at progress:', progress);
-                        triggerConfetti();
-                        hasConverged = true;
-                    }
-                    memoryIcon.style.opacity = 1;
-                    cloudIcon.style.opacity = 1;
-                    memoryIcon.style.transform = `translateX(${leftTarget}px) rotate(-5deg)`;
-                    cloudIcon.style.transform = `translateX(${-leftTarget}px) rotate(5deg)`;
-                } else {
-                    const opacity = 0.15 + (progress * 0.75);
-                    memoryIcon.style.opacity = opacity;
-                    cloudIcon.style.opacity = opacity;
-                    memoryIcon.style.transform = `translateX(${leftTranslate}px) rotate(${leftRotation}deg)`;
-                    cloudIcon.style.transform = `translateX(${rightTranslate}px) rotate(${rightRotation}deg)`;
-                }
-            }
-            
-            // Use requestAnimationFrame for smoother animations
-            let ticking = false;
-            let scrollTimeout;
-            document.addEventListener('scroll', function() {
-                if (!scrollTimeout) {
-                    scrollTimeout = setTimeout(function() {
-                        if (!ticking) {
-                            window.requestAnimationFrame(function() {
-                                updateIconPositions();
-                                ticking = false;
-                            });
-                            ticking = true;
-                        }
-                        scrollTimeout = null;
-                    }, 16); // ~60fps
-                }
-            }, { passive: true });
-            
-            // Handle window resize
-            window.addEventListener('resize', updateIconPositions);
-        });
-
-        console.log('Confetti library loaded:', typeof confetti); // Should print 'function'
-
-        function triggerConfetti() {
-            console.log('triggerConfetti called!');
-            const count = 200;
-            const defaults = {
-                origin: { 
-                    x: 0.5,
-                    y: 0.4
-                },
-                spread: 70,
-                startVelocity: 25,
-                gravity: 1.5,
-                ticks: 400,
-                shapes: ['square', 'circle'],
-                zIndex: 9999,
-                colors: [
-                    '#FF1493', // Deep pink
-                    '#00FF00', // Lime
-                    '#FFD700', // Gold
-                    '#FF4500', // Orange Red
-                    '#7B68EE', // Medium Slate Blue
-                    '#00FFFF', // Cyan
-                    '#FF69B4', // Hot Pink
-                    '#32CD32'  // Lime Green
-                ]
-            };
-
-            function fire(particleRatio, opts) {
-                confetti({
-                    ...defaults,
-                    ...opts,
-                    particleCount: Math.floor(count * particleRatio)
-                });
-            }
-
-            fire(0.25, {
-                spread: 26,
-                startVelocity: 55,
-            });
-
-            fire(0.2, {
-                spread: 60,
-            });
-
-            fire(0.35, {
-                spread: 100,
-                decay: 0.91,
-                scalar: 0.8
-            });
-
-            fire(0.1, {
-                spread: 120,
-                startVelocity: 25,
-                decay: 0.92,
-                scalar: 1.2
-            });
-
-            fire(0.1, {
-                spread: 120,
-                startVelocity: 45,
-            });
-        }
     </script>
 </body>
 
