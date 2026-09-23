@@ -1650,6 +1650,22 @@ table td code {
     text-transform: uppercase;
 }
 
+.single-pricing h5.price-period {
+    text-transform: none;
+}
+
+.single-pricing .pricing-description {
+    text-align: left;
+    font-size: 15px;
+    line-height: 1.5;
+    margin: 24px 0 0;
+    color: #555;
+}
+
+.single-pricing-white .pricing-description {
+    color: rgba(255, 255, 255, 0.85);
+}
+
 .single-pricing ul {
     list-style: none;
     margin-bottom: 20px;
