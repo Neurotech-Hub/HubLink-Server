@@ -155,13 +155,9 @@ def update_settings(account_url):
             original_bucket_name != settings.bucket_name
         )
 
-        print(f"aws_settings_changed: {aws_settings_changed}")
-        print(f"original_access_key: {original_access_key}")
-        print(f"settings.aws_access_key_id: {settings.aws_access_key_id}")
-        print(f"original_secret_key: {original_secret_key}")
-        print(f"settings.aws_secret_access_key: {settings.aws_secret_access_key}")
-        print(f"original_bucket_name: {original_bucket_name}")
-        print(f"settings.bucket_name: {settings.bucket_name}")
+        # Log only whether the AWS settings changed. The values themselves (the access
+        # key id and secret access key) and the secret account URL must never reach the logs.
+        logging.info(f"AWS settings changed for account id {account.id}: {aws_settings_changed}")
 
         # we would need to rebuild if AWS settings changed
 
